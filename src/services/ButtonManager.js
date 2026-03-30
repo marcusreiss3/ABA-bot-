@@ -1,0 +1,114 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
+
+class ButtonManager {
+  static createActionComponents(battleId, character, isDisabled = false, battle = null) {
+    const rows = [];
+    
+    // Menu de Seleção de Alvo para o Boss no Boss Rush
+    if (battle && battle.type === "boss-rush" && battle.currentPlayerTurnId === battle.player1Id && !isDisabled) {
+      const aliveTargets = battle.partyCharacters.filter(c => c.isAlive());
+      const targetOptions = aliveTargets.map(c => ({
+        label: `Atacar: ${c.name}`,
+        value: c.ownerId,
+        description: `HP: ${c.health}/${c.maxHealth}`,
+        emoji: "🎯",
+        default: c.ownerId === battle.player2Id
+      }));
+
+      const targetMenu = new StringSelectMenuBuilder()
+        .setCustomId(`target_${battleId}`)
+        .setPlaceholder('Escolha quem você quer atacar!')
+        .addOptions(targetOptions);
+      
+      rows.push(new ActionRowBuilder().addComponents(targetMenu));
+    }
+
+    // StringSelectMenu para ataques, buffs e curas
+    const attackOptions = character.activeSkills.map(skill => {
+      let label = `${skill.name} (${skill.cost}⚡)`;
+      if (skill.isOnCooldown()) {
+        label = `${skill.name} (⏳ ${skill.currentCooldown} turno(s))`;
+      }
+
+      return {
+        label: label,
+        description: skill.description.substring(0, 100),
+        value: skill.id,
+        emoji: this.getSkillEmoji(skill)
+      };
+    });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`menu_${battleId}_attack`)
+      .setPlaceholder('Selecione uma habilidade para usar!')
+      .addOptions(attackOptions)
+      .setDisabled(isDisabled);
+
+    const menuRow = new ActionRowBuilder().addComponents(menu);
+    rows.push(menuRow);
+
+    // Botão separado para Recuperar Energia
+    const recoverButton = new ButtonBuilder()
+      .setCustomId(`recover_${battleId}_energy`)
+      .setLabel("Recuperar Energia (+25⚡)")
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(isDisabled || character.energy >= character.maxEnergy);
+
+    const abandonButton = new ButtonBuilder()
+      .setCustomId(`battle_${battleId}_abandon`)
+      .setLabel("Abandonar Combate")
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(isDisabled);
+
+    const buttonRow = new ActionRowBuilder().addComponents(recoverButton, abandonButton);
+    rows.push(buttonRow);
+
+    return rows;
+  }
+
+  static getSkillEmoji(skill) {
+    if (skill.type === "heal") return "💚";
+    if (skill.type === "buff") return "✨";
+    if (skill.damageType === "elemental") return "🔥";
+    return "🥊";
+  }
+
+  static createReactionButtons(battleId, character, isDisabled = false) {
+    const row = new ActionRowBuilder();
+
+    character.reactions.forEach(reaction => {
+      let label = `${reaction.name} (${reaction.cost}⚡)`;
+      if (reaction.isOnCooldown()) {
+        label = `${reaction.name} (⏳ ${reaction.currentCooldown} turno(s))`;
+      }
+
+      const button = new ButtonBuilder()
+        .setCustomId(`reaction_${battleId}_${reaction.id}`)
+        .setLabel(label)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(isDisabled || character.energy < reaction.cost || reaction.isOnCooldown());
+
+      row.addComponents(button);
+    });
+
+    const skipButton = new ButtonBuilder()
+      .setCustomId(`reaction_${battleId}_skip`)
+      .setLabel("Pular Reação")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(isDisabled);
+
+    row.addComponents(skipButton);
+
+    const abandonButton = new ButtonBuilder()
+      .setCustomId(`battle_${battleId}_abandon`)
+      .setLabel("Abandonar Combate")
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(isDisabled);
+
+    const abandonRow = new ActionRowBuilder().addComponents(abandonButton);
+
+    return [row, abandonRow];
+  }
+}
+
+module.exports = ButtonManager;
