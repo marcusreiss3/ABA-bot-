@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const EmbedManager = require("../services/EmbedManager");
 
 // Gerenciamento simples de parties em memória
 global.parties = global.parties || new Map();
@@ -14,7 +15,7 @@ module.exports = {
     if (!mentionedUser) {
       const party = Array.from(global.parties.values()).find(p => p.members.includes(leaderId));
       if (!party) {
-        return message.reply("❌ Você não está em nenhuma party. Use `!party @jogador` para convidar alguém.");
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não está em nenhuma party. Use `!party @jogador` para convidar alguém.", false)] });
       }
 
       const leader = await message.client.users.fetch(party.leaderId);
@@ -30,11 +31,11 @@ module.exports = {
     }
 
     if (mentionedUser.id === leaderId) {
-      return message.reply("❌ Você não pode convidar a si mesmo.");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não pode convidar a si mesmo.", false)] });
     }
 
     if (mentionedUser.bot) {
-      return message.reply("❌ Você não pode convidar bots.");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não pode convidar bots.", false)] });
     }
 
     // Verificar se o líder já tem uma party
@@ -44,22 +45,22 @@ module.exports = {
     if (!party) {
       const existingParty = Array.from(global.parties.values()).find(p => p.members.includes(leaderId));
       if (existingParty) {
-        return message.reply("❌ Apenas o líder da party pode convidar novos membros.");
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed("Apenas o líder da party pode convidar novos membros.", false)] });
       }
     }
 
     if (party && party.members.length >= 3) {
-      return message.reply("❌ A party já está cheia (máximo 3 jogadores).");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("A party já está cheia (máximo 3 jogadores).", false)] });
     }
 
     if (party && party.members.includes(mentionedUser.id)) {
-      return message.reply(`❌ **${mentionedUser.username}** já está na sua party.`);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`**${mentionedUser.username}** já está na sua party.`, false)] });
     }
 
     // Verificar se o convidado já está em outra party
     const targetInParty = Array.from(global.parties.values()).find(p => p.members.includes(mentionedUser.id));
     if (targetInParty) {
-      return message.reply(`❌ **${mentionedUser.username}** já está em outra party.`);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`**${mentionedUser.username}** já está em outra party.`, false)] });
     }
 
     // Criar o convite com botões

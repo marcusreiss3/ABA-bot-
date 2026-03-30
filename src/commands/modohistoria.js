@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const playerRepository = require("../database/repositories/playerRepository");
 const storyConfig = require("../config/storyConfig.js");
+const EmbedManager = require("../services/EmbedManager");
 
 module.exports = {
   name: "modo-historia",
@@ -11,7 +12,7 @@ module.exports = {
     const BattleEngine = require("../services/BattleEngine");
     const status = BattleEngine.canStartBattle(playerId);
     if (!status.can) {
-      return message.reply(status.reason);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)] });
     }
 
     const progress = playerRepository.getStoryProgress(playerId);

@@ -16,7 +16,7 @@ class EmbedManager {
       .setTitle(title)
       .setDescription(battle.lastActionMessage)
       .setColor(battle.state === "finished" ? "#FFD700" : "#0099ff")
-      .setTimestamp();
+;
 
     if (battle.type === "boss-rush") {
       // No Boss Rush, char1 é o Boss (P1)
@@ -171,14 +171,14 @@ class EmbedManager {
         { name: "Personagens Possuídos", value: charsList, inline: false },
         { name: "Artefatos Equipados", value: equippedArtifactsList, inline: false }
       )
-      .setTimestamp();
+;
   }
 
   static createInventoryEmbed(player, user, type = "chars") {
     const embed = new EmbedBuilder()
       .setTitle(`🎒 Inventário de ${user.username}`)
       .setThumbnail(user.displayAvatarURL())
-      .setTimestamp();
+;
 
     if (type === "chars") {
       embed.setColor("#9B59B6");
@@ -284,7 +284,7 @@ class EmbedManager {
         { name: "XP Ganho", value: `\`+${xpGained}\``, inline: true },
         { name: "Novos Atributos", value: `❤️ HP: \`${charData.maxHealth}\`\n⚔️ Dano Bônus: \`+${charData.bonusDamage}\``, inline: false }
       )
-      .setTimestamp();
+;
 
     if (charData.imageUrl) {
       embed.setThumbnail(charData.imageUrl);
@@ -304,14 +304,22 @@ class EmbedManager {
       .addFields(
         { name: "XP Ganho", value: `\`+${xpGained}\``, inline: true },
         { name: "Progresso", value: `\`${bar}\` \`${Math.floor(currentXP)}/${Math.floor(requiredXP)}\``, inline: false }
-      )
-      .setTimestamp();
+      );
 
     if (charData.imageUrl) {
       embed.setThumbnail(charData.imageUrl);
     }
 
     return embed;
+  }
+
+  static createStatusEmbed(message, isSuccess = true) {
+    const color = isSuccess ? "#00FF00" : "#FF0000";
+    const emoji = isSuccess ? "✅" : "❌";
+    
+    return new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`${emoji} ${message}`);
   }
 }
 

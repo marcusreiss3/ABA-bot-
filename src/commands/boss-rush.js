@@ -1,6 +1,7 @@
 const BattleEngine = require("../services/BattleEngine");
 const playerRepository = require("../database/repositories/playerRepository");
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const EmbedManager = require("../services/EmbedManager");
 
 module.exports = {
   execute: async (message) => {
@@ -8,7 +9,7 @@ module.exports = {
     const mentions = message.mentions.users.filter(u => u.id !== player1Id && !u.bot);
     
     if (mentions.size !== 3) {
-      return message.reply("Você precisa mencionar exatamente 3 outros jogadores para o Boss Rush!");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você precisa mencionar exatamente 3 outros jogadores para o Boss Rush!", false)] });
     }
 
     const team2Ids = mentions.map(u => u.id);
@@ -19,7 +20,7 @@ module.exports = {
       const status = BattleEngine.canStartBattle(pid);
       if (!status.can) {
         const reason = status.reason.replace("Você já está", `<@${pid}> já está`).replace("Saia da fila", "Precisa sair da fila");
-        return message.reply(reason);
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(reason, false)] });
       }
     }
 
@@ -27,7 +28,7 @@ module.exports = {
     for (const pid of allPlayers) {
       const p = playerRepository.getPlayer(pid);
       if (!p.equipped_instance_id) {
-        return message.reply(`<@${pid}> não tem um personagem equipado!`);
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${pid}> não tem um personagem equipado!`, false)] });
       }
     }
 

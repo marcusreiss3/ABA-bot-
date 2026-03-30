@@ -22,7 +22,7 @@ module.exports = {
         const instances = playerRepository.getPlayerCharacters(userId);
 
         if (instances.length === 0) {
-          return interaction.update({ content: "Você não possui nenhum personagem para equipar!", embeds: [], components: [] });
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui nenhum personagem para equipar!", false)], components: [] });
         }
 
         const selectMenu = new StringSelectMenuBuilder()
@@ -68,10 +68,10 @@ module.exports = {
         const artifacts = playerRepository.getPlayerArtifacts(userId);
 
         if (!ownedChars || ownedChars.length === 0) {
-          return interaction.update({ content: "❌ Você não possui nenhum personagem para equipar artefatos.", embeds: [], components: [] });
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui nenhum personagem para equipar artefatos.", false)], components: [] });
         }
         if (!artifacts || artifacts.length === 0) {
-          return interaction.update({ content: "❌ Você não possui nenhum artefato no seu inventário.", embeds: [], components: [] });
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui nenhum artefato no seu inventário.", false)], components: [] });
         }
 
         const embed = new EmbedBuilder()
@@ -108,8 +108,8 @@ module.exports = {
       const instance = playerRepository.getCharacterInstance(instanceId);
       const charData = CharacterManager.getCharacter(instance.character_id, instance);
       return interaction.update({
-        content: `✅ Você equipou **${charData.name} [Lvl ${instance.level}]** com sucesso!`,
-        embeds: [], components: []
+        embeds: [EmbedManager.createStatusEmbed(`Você equipou **${charData.name} [Lvl ${instance.level}]** com sucesso!`, true)],
+        components: []
       });
     }
 
@@ -133,7 +133,7 @@ module.exports = {
       player.ownedChars = playerRepository.getPlayerCharacters(playerId);
       player.artifacts = playerRepository.getPlayerArtifacts(playerId);
       const selectedCharInstance = player.ownedChars.find(c => c.id === characterInstanceId);
-      if (!selectedCharInstance) return interaction.update({ content: "Personagem não encontrado.", embeds: [], components: [] });
+      if (!selectedCharInstance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
       const charData = CharacterManager.getCharacter(selectedCharInstance.character_id, selectedCharInstance);
       const availableArtifacts = player.artifacts.filter(pa => ![selectedCharInstance.equipped_artifact_1, selectedCharInstance.equipped_artifact_2, selectedCharInstance.equipped_artifact_3].includes(pa.id)).map(pa => {
         const artifactData = ArtifactManager.getArtifact(pa.artifact_id, pa);
@@ -162,12 +162,12 @@ module.exports = {
       const parts = interaction.customId.split("_");
       const characterInstanceId = parseInt(parts[parts.length - 1]);
       const artifactInstanceId = parseInt(interaction.values[0]);
-      if (interaction.values[0] === "none") return interaction.update({ content: "Nenhum artefato selecionado.", embeds: [], components: [] });
+      if (interaction.values[0] === "none") return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Nenhum artefato selecionado.", false)], components: [] });
       const charInstance = playerRepository.getCharacterInstance(characterInstanceId);
-      if (!charInstance) return interaction.update({ content: `❌ Personagem não encontrado (ID: ${characterInstanceId}).`, embeds: [], components: [] });
+      if (!charInstance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Personagem não encontrado (ID: ${characterInstanceId}).`, false)], components: [] });
       let equippedSlot = null;
       for (let i = 1; i <= 3; i++) { if (!charInstance[`equipped_artifact_${i}`]) { equippedSlot = i; break; } }
-      if (!equippedSlot) return interaction.update({ content: "❌ Este personagem já tem 3 artefatos equipados. Remova um antes de equipar outro.", embeds: [], components: [] });
+      if (!equippedSlot) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Este personagem já tem 3 artefatos equipados. Remova um antes de equipar outro.", false)], components: [] });
       playerRepository.equipArtifact(charInstance.id, artifactInstanceId, equippedSlot);
       const updatedCharInstance = playerRepository.getCharacterInstance(charInstance.id);
       const charData = CharacterManager.getCharacter(updatedCharInstance.character_id, updatedCharInstance);
@@ -185,7 +185,7 @@ module.exports = {
       const charData = CharacterManager.getCharacter(updatedCharInstance.character_id, updatedCharInstance);
       const artifactRaw = playerRepository.getArtifactInstance(parseInt(artifactInstanceId));
       const artifactData = ArtifactManager.getArtifact(artifactRaw.artifact_id, artifactRaw);
-      return interaction.update({ content: `✅ Artefato **${artifactData.name}** removido de **${charData.name}**!`, embeds: [], components: [] });
+      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Artefato **${artifactData.name}** removido de **${charData.name}**!`, true)], components: [] });
     }
 
     // --- Lógica de Party: Aceitar/Recusar ---
@@ -194,7 +194,7 @@ module.exports = {
       if (interaction.user.id !== targetId) return interaction.reply({ content: "Este convite não é para você!", ephemeral: true });
 
       if (action === "decline") {
-        return interaction.update({ content: `❌ **${interaction.user.username}** recusou o convite.`, embeds: [], components: [] });
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`**${interaction.user.username}** recusou o convite.`, false)], components: [] });
       }
 
       if (action === "accept") {
@@ -206,12 +206,12 @@ module.exports = {
           global.parties.set(leaderId, party);
         }
 
-        if (party.members.length >= 3) return interaction.update({ content: "❌ A party já está cheia.", embeds: [], components: [] });
-        if (party.members.includes(targetId)) return interaction.update({ content: "❌ Você já está nesta party.", embeds: [], components: [] });
+        if (party.members.length >= 3) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("A party já está cheia.", false)], components: [] });
+        if (party.members.includes(targetId)) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você já está nesta party.", false)], components: [] });
 
         party.members.push(targetId);
         const leaderUser = await interaction.client.users.fetch(leaderId);
-        return interaction.update({ content: `✅ **${interaction.user.username}** aceitou o convite e entrou na party de **${leaderUser.username}**! (${party.members.length}/3)`, embeds: [], components: [] });
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`**${interaction.user.username}** aceitou o convite e entrou na party de **${leaderUser.username}**! (${party.members.length}/3)`, true)], components: [] });
       }
     }
 
@@ -223,10 +223,10 @@ module.exports = {
       const itemId = interaction.values[0];
       const characters = playerRepository.getPlayerCharacters(playerId);
       
-      if (characters.length === 0) return interaction.update({ content: "❌ Você não possui personagens.", embeds: [], components: [] });
+      if (characters.length === 0) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui personagens.", false)], components: [] });
 
       const itemData = EvolutionManager.ITEMS[itemId];
-      if (!itemData) return interaction.update({ content: `❌ Item inválido (${itemId}).`, embeds: [], components: [] });
+      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
 
       const charOptions = characters.map(c => {
         const charData = CharacterManager.getCharacter(c.character_id, c);
@@ -260,10 +260,10 @@ module.exports = {
       const item = playerItems.find(i => i.item_id === itemId);
       
       const itemData = EvolutionManager.ITEMS[itemId];
-      if (!itemData) return interaction.update({ content: `❌ Item inválido (${itemId}).`, embeds: [], components: [] });
+      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
 
       if (!item || item.quantity <= 0) {
-        return interaction.update({ content: `❌ Você não possui o item **${itemData.name}** no inventário.`, embeds: [], components: [] });
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Você não possui o item **${itemData.name}** no inventário.`, false)], components: [] });
       }
 
       const maxQuantity = item.quantity;
@@ -298,11 +298,11 @@ module.exports = {
 
       const quantity = parseInt(interaction.values[0]);
       const instance = playerRepository.getCharacterInstance(parseInt(instanceId));
-      if (!instance) return interaction.update({ content: "❌ Personagem não encontrado.", embeds: [], components: [] });
+      if (!instance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
 
       const charData = CharacterManager.getCharacter(instance.character_id, instance);
       const itemData = EvolutionManager.ITEMS[itemId];
-      if (!itemData) return interaction.update({ content: `❌ Item inválido (${itemId}).`, embeds: [], components: [] });
+      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
 
       const totalXP = itemData.xp * quantity;
 
@@ -335,15 +335,15 @@ module.exports = {
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta ação não é sua!", ephemeral: true });
 
       const itemData = EvolutionManager.ITEMS[itemId];
-      if (!itemData) return interaction.update({ content: `❌ Item inválido (${itemId}).`, embeds: [], components: [] });
+      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
 
       const instanceBefore = playerRepository.getCharacterInstance(parseInt(instanceId));
-      if (!instanceBefore) return interaction.update({ content: "❌ Personagem não encontrado.", embeds: [], components: [] });
+      if (!instanceBefore) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
       
       const oldLevel = instanceBefore.level;
       const result = EvolutionManager.useItem(playerId, parseInt(instanceId), itemId, quantity);
 
-      if (!result.success) return interaction.update({ content: `❌ ${result.message}`, embeds: [], components: [] });
+      if (!result.success) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(result.message, false)], components: [] });
 
       const instanceAfter = playerRepository.getCharacterInstance(parseInt(instanceId));
       const charData = CharacterManager.getCharacter(instanceAfter.character_id, instanceAfter);
@@ -407,7 +407,7 @@ module.exports = {
         .setTitle(`${world.emoji} Modo História: ${world.name}`)
         .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
         .setColor("#5865F2")
-        .setTimestamp();
+        ;
 
       const row = new ActionRowBuilder();
       const allBosses = [];
@@ -455,7 +455,7 @@ module.exports = {
         .setTitle("🌍 Modo História: Seleção de Universo")
         .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
         .setColor("#5865F2")
-        .setTimestamp();
+        ;
 
       const row = new ActionRowBuilder();
       const allBosses = [];
@@ -562,7 +562,10 @@ module.exports = {
           if (!status.can) return interaction.reply({ content: status.reason, ephemeral: true });
 
           playerRepository.addToQueue(p1Id);
-          await interaction.update({ content: "✅ Você entrou na fila ranqueada! O bot procurará um oponente compatível...", embeds: [], components: [] });
+          await interaction.update({ 
+            embeds: [EmbedManager.createStatusEmbed("Você entrou na fila ranqueada! O bot procurará um oponente compatível...", true)], 
+            components: [] 
+          });
 
           // Anúncio no canal específico
           const queueChannelId = "1487958808897781780";
@@ -575,7 +578,7 @@ module.exports = {
                 .setDescription(`<@${p1Id}> entrou na fila para uma partida ranqueada!`)
                 .addFields({ name: "Rank Atual", value: `**${p1Data.rank}** (${p1Data.pa} PA)`, inline: true })
                 .setColor("#FFD700")
-                .setTimestamp();
+                ;
               await qChannel.send({ embeds: [queueEmbed] });
             }
           } catch (e) { console.error("Erro ao enviar anúncio de fila:", e); }
@@ -623,7 +626,10 @@ module.exports = {
         }
 
         if (mode === "casual") {
-          return interaction.update({ content: "🥊 Modo Casual selecionado! Agora use `!pvp @usuario` para desafiar alguém específico.", embeds: [], components: [] });
+          return interaction.update({ 
+            embeds: [EmbedManager.createStatusEmbed("Modo Casual selecionado! Agora use `!pvp @usuario` para desafiar alguém específico.", true)], 
+            components: [] 
+          });
         }
       }
 

@@ -1,6 +1,7 @@
 const BattleEngine = require("../services/BattleEngine");
 const playerRepository = require("../database/repositories/playerRepository");
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const EmbedManager = require("../services/EmbedManager");
 
 module.exports = {
   execute: async (message, args) => {
@@ -10,12 +11,12 @@ module.exports = {
     // Verificação de estado (combate ou fila)
     const status = BattleEngine.canStartBattle(player1Id);
     if (!status.can) {
-      return message.reply(status.reason);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)] });
     }
 
     const player1 = playerRepository.getPlayer(player1Id);
     if (!player1.equipped_instance_id) {
-      return message.reply("Você não tem um personagem equipado! Use `!equipar` para selecionar um.");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem um personagem equipado! Use `!equipar` para selecionar um.", false)] });
     }
 
     // Se o usuário mencionou alguém, assume-se que ele quer um PVP Casual direto (ou o fluxo antigo)
@@ -51,22 +52,22 @@ module.exports = {
 
     // Se mencionou alguém, segue o fluxo de desafio casual direto
     if (player2User.bot) {
-      return message.reply("Você não pode lutar contra bots!");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não pode lutar contra bots!", false)] });
     }
 
     if (player1Id === player2User.id) {
-      return message.reply("Você não pode lutar contra si mesmo!");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não pode lutar contra si mesmo!", false)] });
     }
 
     const statusP2 = BattleEngine.canStartBattle(player2User.id);
     if (!statusP2.can) {
       const reason = statusP2.reason.replace("Você já está", `<@${player2User.id}> já está`).replace("Saia da fila", "Ele precisa sair da fila");
-      return message.reply(reason);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(reason, false)] });
     }
 
     const player2 = playerRepository.getPlayer(player2User.id);
     if (!player2.equipped_instance_id) {
-      return message.reply(`<@${player2User.id}> não tem um personagem equipado e não pode lutar!`);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${player2User.id}> não tem um personagem equipado e não pode lutar!`, false)] });
     }
 
     const embed = new EmbedBuilder()
