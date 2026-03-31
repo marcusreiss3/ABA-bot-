@@ -13,6 +13,7 @@ const partyCommand = require("./commands/party");
 const kickCommand = require("./commands/kick");
 const partyUtils = require("./commands/party_utils");
 const bossRushCommand = require("./commands/boss-rush");
+const desafioCommand = require("./commands/desafio");
 const sairFilaCommand = require("./commands/sairfila");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
@@ -101,6 +102,11 @@ client.on("messageCreate", async (message) => {
   if (command === "!boss-rush" || command === "!bossrush") {
     console.log("Comando boss-rush detectado"); // DEBUG
     bossRushCommand.execute(message, args);
+  }
+
+  if (command === "!desafio" || command === "!challenge") {
+    console.log("Comando desafio detectado"); // DEBUG
+    desafioCommand.execute(message, args);
   }
 
   if (command === "!sairfila" || command === "!cancelarfila" || command === "!sf") {

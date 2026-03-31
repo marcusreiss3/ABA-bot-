@@ -332,6 +332,134 @@ module.exports = {
       const instanceId = parts[3];
       const quantity = parseInt(parts[4]);
       const itemId = parts.slice(5).join("_");
+
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta ação não é sua!", ephemeral: true });
+
+      const itemData = EvolutionManager.ITEMS[itemId];
+      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
+
+      const instanceBefore = playerRepository.getCharacterInstance(parseInt(instanceId));
+      if (!instanceBefore) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
+
+      const oldLevel = instanceBefore.level;
+      const result = EvolutionManager.useItem(playerId, parseInt(instanceId), itemId, quantity);
+
+      if (result.success) {
+        const instanceAfter = playerRepository.getCharacterInstance(parseInt(instanceId));
+        const charData = CharacterManager.getCharacter(instanceAfter.character_id, instanceAfter);
+
+        if (instanceAfter.level > oldLevel) {
+          const levelUpEmbed = EmbedManager.createLevelUpEmbed(charData, oldLevel, instanceAfter.level, result.xpGained);
+          return interaction.update({ embeds: [levelUpEmbed], components: [] });
+        } else {
+          const nextLevelXP = EvolutionManager.getXPRequired(instanceAfter.level);
+          const xpGainEmbed = EmbedManager.createXPGainEmbed(charData, result.xpGained, instanceAfter.xp, nextLevelXP, quantity, itemData.name);
+          return interaction.update({ embeds: [xpGainEmbed], components: [] });
+        }
+      } else {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(result.message, false)], components: [] });
+      }
+    }
+
+    // --- Modo Desafio: Seleção de Dificuldade ----
+    if (interaction.isButton() && interaction.customId.startsWith("challenge_diff_")) {
+      const parts = interaction.customId.split("_");
+      const diffKey = parts[2];
+      const playerId = parts[3];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
+
+      const challengeConfig = require("../config/challengeConfig.js");
+      const diff = challengeConfig.difficulties[diffKey];
+      const globalCooldown = playerRepository.getGlobalChallengeCooldown(diffKey);
+      const now = Date.now();
+
+      if (now < globalCooldown.available_at) {
+        const timeLeft = Math.ceil((globalCooldown.available_at - now) / 60000);
+        return interaction.reply({ content: `Esta dificuldade está em cooldown! Disponível em ${timeLeft} minutos.`, ephemeral: true });
+      }
+
+      // Sortear Boss
+      const bossData = diff.bosses[Math.floor(Math.random() * diff.bosses.length)];
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`⚔️ Desafio: ${diff.emoji} ${diff.name}`)
+        .setDescription(`Você encontrou o boss **${bossData.name}** do anime **${bossData.anime}**!\n\nPrepare-se para o combate!`)
+        .setColor("#FF4500")
+        .setThumbnail(bossData.imageUrl)
+        .addFields(
+          { name: "Nível", value: bossData.level.toString(), inline: true },
+          { name: "Vida", value: bossData.health.toString(), inline: true }
+        );
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`challenge_start_${diffKey}_${bossData.id}_${playerId}`)
+          .setLabel("INICIAR COMBATE")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    // --- Modo Desafio: Iniciar Combate ---
+    if (interaction.isButton() && interaction.customId.startsWith("challenge_start_")) {
+      const parts = interaction.customId.split("_");
+      const diffKey = parts[2];
+      const bossId = parts[3];
+      const playerId = parts[4];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
+
+      const status = BattleEngine.canStartBattle(playerId);
+      if (!status.can) return interaction.reply({ content: status.reason, ephemeral: true });
+
+      const player = playerRepository.getPlayer(playerId);
+      if (!player.equipped_instance_id) return interaction.reply({ content: "Você não tem um personagem equipado!", ephemeral: true });
+
+      const party = global.parties ? global.parties.get(playerId) : null;
+      const partyMembers = party ? party.members : [playerId];
+
+      for (const memberId of partyMembers) {
+        const memberPlayer = playerRepository.getPlayer(memberId);
+        if (!memberPlayer.equipped_instance_id) {
+          const memberUser = await interaction.client.users.fetch(memberId);
+          return interaction.reply({ content: `O membro **${memberUser.username}** não tem um personagem equipado!`, ephemeral: true });
+        }
+      }
+
+      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+      const bossInstance = { character_id: bossId, level: 1 }; 
+      
+      const guild = interaction.guild;
+      const channel = await guild.channels.create({
+        name: `desafio-${interaction.user.username}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+          ...partyMembers.map(mId => ({ id: mId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }))
+        ]
+      });
+
+      const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id);
+      battle.challengeDifficulty = diffKey;
+      
+      const embed = EmbedManager.createBattleEmbed(battle);
+      const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
+      
+      await channel.send({
+        content: `⚔️ **DESAFIO INICIADO!** ⚔️\n<@${playerId}> vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
+        embeds: [embed],
+        components: components
+      });
+
+      return interaction.update({ content: `✅ Desafio iniciado no canal <#${channel.id}>!`, embeds: [], components: [] });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("story_world_")) {
+      const parts = interaction.customId.split("_");
+      const worldId = parts[2];
+      const playerId = parts[3];
+      const quantity = parseInt(parts[4]);
+      const itemId = parts.slice(5).join("_");
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta ação não é sua!", ephemeral: true });
 
       const itemData = EvolutionManager.ITEMS[itemId];
@@ -540,10 +668,29 @@ module.exports = {
       }
 
       const bossInstance = { character_id: bossId, level: 1 }; 
-      const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers);
+      
+      const guild = interaction.guild;
+      const channel = await guild.channels.create({
+        name: `historia-${interaction.user.username}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+          ...partyMembers.map(mId => ({ id: mId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }))
+        ]
+      });
+
+      const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id);
+      
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
-      return interaction.update({ embeds: [embed], components: components });
+      
+      await channel.send({
+        content: `📖 **JORNADA INICIADA!** 📖\n<@${playerId}> vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
+        embeds: [embed],
+        components: components
+      });
+
+      return interaction.update({ content: `✅ Jornada iniciada no canal <#${channel.id}>!`, embeds: [], components: [] });
     }
 
     // 1.0 Lógica de Confirmação de PVP
@@ -854,8 +1001,18 @@ module.exports = {
           if (updatedBattle.state === "choosing_reaction" && updatedBattle.getOpponentId() === updatedBattle.player2Id) {
             setTimeout(async () => {
               const reactionBattle = BattleEngine.processBossReaction(updatedBattle);
-              if (reactionBattle) {
+                if (reactionBattle) {
                 const reactionEmbed = EmbedManager.createBattleEmbed(reactionBattle);
+
+                // ✅ DELETAR CANAL SE O PLAYER VENCER NA REAÇÃO DO BOSS (ex: contra-ataque ou boss morrendo por status)
+                if (reactionBattle.state === "finished" && reactionBattle.channelId) {
+                  setTimeout(async () => {
+                    try {
+                      const channel = await interaction.client.channels.fetch(reactionBattle.channelId);
+                      if (channel) await channel.delete("Combate finalizado na reação");
+                    } catch (e) { console.error("Erro ao deletar canal (Reaction Win):", e); }
+                  }, 10000);
+                }
                 
                 // 2. Ataque do Boss após reagir
                 if (reactionBattle.state === "choosing_action" && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id) {
@@ -866,6 +1023,16 @@ module.exports = {
                       const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
                       const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
                       await interaction.editReply({ embeds: [attackEmbed], components: attackComponents });
+
+                      // ✅ DELETAR CANAL SE O BOSS VENCER NO ATAQUE
+                      if (attackBattle.state === "finished" && attackBattle.channelId) {
+                        setTimeout(async () => {
+                          try {
+                            const channel = await interaction.client.channels.fetch(attackBattle.channelId);
+                            if (channel) await channel.delete("Combate finalizado pelo Boss");
+                          } catch (e) { console.error("Erro ao deletar canal (Boss Win):", e); }
+                        }, 10000);
+                      }
                     }
                   }, 1500);
                 } else {
@@ -885,6 +1052,16 @@ module.exports = {
                 const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
                 const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
                 await interaction.editReply({ embeds: [attackEmbed], components: attackComponents });
+
+                // ✅ DELETAR CANAL SE O BOSS VENCER NO ATAQUE DIRETO
+                if (attackBattle.state === "finished" && attackBattle.channelId) {
+                  setTimeout(async () => {
+                    try {
+                      const channel = await interaction.client.channels.fetch(attackBattle.channelId);
+                      if (channel) await channel.delete("Combate finalizado pelo Boss");
+                    } catch (e) { console.error("Erro ao deletar canal (Boss Win Direct):", e); }
+                  }, 10000);
+                }
               }
             }, 1500);
           }

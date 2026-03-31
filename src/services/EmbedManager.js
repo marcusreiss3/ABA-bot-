@@ -135,14 +135,7 @@ class EmbedManager {
       charCounts[inst.character_id] = (charCounts[inst.character_id] || 0) + 1;
     });
 
-    const charsList = Object.keys(charCounts).length > 0 
-      ? Object.entries(charCounts).map(([id, count]) => {
-          const charData = CharacterManager.getCharacter(id);
-          const name = charData ? charData.name : id.toUpperCase();
-          const rarity = charData ? charData.rarity : "??";
-          return `• **${name}** [${rarity}] x${count}`;
-        }).join("\n") 
-      : "Nenhum";
+    const charsList = "Consulte seu inventário com `!inv`";
 
     const equippedInstance = instances.find(i => i.id === player.equipped_instance_id);
     let equippedName = "Nenhum";
@@ -168,7 +161,6 @@ class EmbedManager {
         { name: "🏆 Rank", value: `\`${player.rank || "Discípulo I"}\``, inline: true },
         { name: "📈 PA", value: `\`${player.pa || 0}/100\``, inline: true },
         { name: "Equipado", value: `\`${equippedName}\``, inline: false },
-        { name: "Personagens Possuídos", value: charsList, inline: false },
         { name: "Artefatos Equipados", value: equippedArtifactsList, inline: false }
       )
 ;
@@ -237,7 +229,8 @@ class EmbedManager {
       const itemNames = {
         "soul_stone_1": `${Emojis.SOUL_STONE_1} Pedra da Alma I (+20 XP)`,
         "soul_stone_2": `${Emojis.SOUL_STONE_2} Pedra da Alma II (+50 XP)`,
-        "soul_stone_3": `${Emojis.SOUL_STONE_3} Pedra da Alma III (+150 XP)`
+        "soul_stone_3": `${Emojis.SOUL_STONE_3} Pedra da Alma III (+150 XP)`,
+        "fr": `💎 Fragmento de Relíquia (FR)`
       };
 
       let soulStonesList = items.length > 0 

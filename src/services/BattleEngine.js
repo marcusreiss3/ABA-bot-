@@ -86,6 +86,25 @@ class BattleEngine {
         char.ownerId = id;
         return char;
       });
+
+      // ✅ ESCALONAMENTO (SCALING) PARA PARTY (EXATAMENTE COMO NO MODO HISTÓRIA)
+      const partySize = partyMembers.length;
+      if (partySize > 1) {
+        const extraMembers = partySize - 1;
+        const healthMultiplier = 1 + extraMembers * 0.3; // 30% a mais de vida por pessoa extra
+        const damageMultiplier = 1 + extraMembers * 0.5; // 50% a mais de dano por pessoa extra
+        const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
+
+        character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
+        character2.health = character2.maxHealth;
+        
+        character2.maxEnergy = Math.floor(character2.maxEnergy * energyMultiplier);
+        character2.energy = character2.maxEnergy;
+
+        character2.skills.forEach(s => {
+          if (s.damage) s.damage = Math.floor(s.damage * damageMultiplier);
+        });
+      }
     }
 
     battle.startedAt = Date.now();
@@ -465,6 +484,71 @@ class BattleEngine {
     const leaderId = battle.player1Id;
     const bossId = battle.character2.id;
     const partyMembers = battle.partyMembers || [leaderId];
+    const now = Date.now();
+
+    if (battle.challengeDifficulty) {
+      const challengeConfig = require("../config/challengeConfig.js");
+      const diff = challengeConfig.difficulties[battle.challengeDifficulty];
+      const bossData = diff.bosses.find(b => b.id === bossId);
+      const rewards = bossData.reward;
+
+      // Atualizar Cooldown Global
+      playerRepository.updateGlobalChallengeCooldown(battle.challengeDifficulty, now + diff.cooldown);
+
+      let rewardMsg = `\n\n✨ **RECOMPENSAS DO DESAFIO (${diff.name}):**`;
+      
+      const globalCooldown = playerRepository.getGlobalChallengeCooldown(battle.challengeDifficulty);
+      const currentCycleStart = globalCooldown.available_at - diff.cooldown;
+      
+      // Verificar se algum membro está em cooldown
+      const anyMemberInCooldown = partyMembers.some(mId => {
+        const p = playerRepository.getPlayerChallengeProgress(mId, battle.challengeDifficulty);
+        return p.last_completed_at >= currentCycleStart;
+      });
+
+      partyMembers.forEach(memberId => {
+        const progress = playerRepository.getPlayerChallengeProgress(memberId, battle.challengeDifficulty);
+        const isLeader = memberId === leaderId;
+        
+        // Regra de Party: 
+        // Caso algum membro esteja em cooldown -> Apenas o líder recebe a recompensa
+        // Caso todos estejam sem cooldown -> Todos recebem recompensa normalmente
+        if (!anyMemberInCooldown || isLeader) {
+          let memberRewards = [];
+          for (const itemId in rewards) {
+            const range = rewards[itemId];
+            const qty = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+            playerRepository.addItem(memberId, itemId, qty);
+            memberRewards.push(`${qty}x ${itemId.toUpperCase().replace(/_/g, " ")}`);
+          }
+          playerRepository.updatePlayerChallengeProgress(memberId, battle.challengeDifficulty, now);
+          rewardMsg += `\n- <@${memberId}>: ${memberRewards.join(", ")}`;
+        } else {
+          rewardMsg += `\n- <@${memberId}>: *Membro em cooldown na party (apenas líder recebeu).*`;
+        }
+      });
+
+      battle.lastActionMessage += rewardMsg;
+
+      // Agendar notificação de disponibilidade
+      const notificationChannelId = "1488527948909904014";
+      setTimeout(async () => {
+        try {
+          const client = require("../index.js").client; // Assumindo que o client está exportado
+          const channel = await client.channels.fetch(notificationChannelId);
+          if (channel) {
+            const embed = new EmbedBuilder()
+              .setTitle("🔔 Desafio Disponível!")
+              .setDescription(`O Modo Desafio na dificuldade **${diff.name}** está liberado novamente!`)
+              .setColor(diff.emoji === "🟢" ? "#00FF00" : diff.emoji === "🟡" ? "#FFFF00" : "#FF0000")
+              .setTimestamp();
+            await channel.send({ embeds: [embed] });
+          }
+        } catch (e) { console.error("Erro ao enviar notificação de desafio:", e); }
+      }, diff.cooldown);
+
+      return;
+    }
     
     let bossReward = { zenith: 250, stoneId: "soul_stone_1", stoneQty: 1 };
     for (const world of storyConfig.worlds) {

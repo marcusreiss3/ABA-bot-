@@ -75,4 +75,28 @@ db.prepare(`
   )
 `).run();
 
+// Criar tabela de cooldown global do Modo Desafio
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS challenge_cooldowns (
+    difficulty TEXT PRIMARY KEY,
+    available_at INTEGER DEFAULT 0
+  )
+`).run();
+
+// Inicializar cooldowns se não existirem
+const difficulties = ['facil', 'medio', 'dificil'];
+difficulties.forEach(diff => {
+  db.prepare("INSERT OR IGNORE INTO challenge_cooldowns (difficulty, available_at) VALUES (?, 0)").run(diff);
+});
+
+// Criar tabela de progresso individual no Modo Desafio (para controle de recompensa em party)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS player_challenge_progress (
+    player_id TEXT,
+    difficulty TEXT,
+    last_completed_at INTEGER DEFAULT 0,
+    PRIMARY KEY (player_id, difficulty)
+  )
+`).run();
+
 module.exports = db;

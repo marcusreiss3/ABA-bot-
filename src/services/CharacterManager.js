@@ -103,6 +103,31 @@ class CharacterManager {
     }
 
     // --- Carregamento Dinâmico de Bosses do Modo História ---
+    // --- Bosses do Modo Desafio ---
+    if (!char) {
+      const challengeConfig = require("../config/challengeConfig.js");
+      for (const diffKey in challengeConfig.difficulties) {
+        const diff = challengeConfig.difficulties[diffKey];
+        const bossData = diff.bosses.find(b => b.id === characterId);
+        if (bossData) {
+          char = new Character({
+            id: bossData.id,
+            name: bossData.name,
+            anime: bossData.anime,
+            health: bossData.health,
+            maxHealth: bossData.health,
+            energy: bossData.energy,
+            maxEnergy: bossData.energy,
+            rarity: "BOSS",
+            level: bossData.level,
+            imageUrl: bossData.imageUrl,
+            skills: this.generateChallengeBossSkills(bossData.id)
+          });
+          break;
+        }
+      }
+    }
+
     if (!char) {
       for (const world of storyConfig.worlds) {
         const bossData = world.bosses.find(b => b.id === characterId);
@@ -220,6 +245,42 @@ class CharacterManager {
       baseSkills[0].name = "Pisada Gigante";
       baseSkills[1].name = "Vapor Escaldante";
       baseSkills.push(new Skill({ id: "titan_steam", name: "Explosão de Vapor", description: "Causa **QUEIMADURA** em todos.", type: "attack", cost: 45, damage: 50, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.05 } }));
+    }
+
+    return baseSkills;
+  }
+
+  static generateChallengeBossSkills(bossId) {
+    const baseSkills = [
+      new Skill({ id: "boss_atk_1", name: "Ataque Rápido", description: "Um golpe veloz.", type: "attack", cost: 15, damage: 30, damageType: 'fisico' }),
+      new Skill({ id: "boss_atk_2", name: "Explosão de Energia", description: "Dano em área.", type: "attack", cost: 35, damage: 60, damageType: 'elemental' }),
+      new Skill({ id: "boss_def", name: "Guarda do Boss", description: "Reduz 70% do dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.3 } })
+    ];
+
+    if (bossId === "buggy") {
+      baseSkills[0].name = "Bara Bara Ho";
+      baseSkills[1].name = "Bara Bara Festival";
+      baseSkills.push(new Skill({ id: "buggy_split", name: "Separação", description: "Esquiva-se completamente do ataque.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
+    } else if (bossId === "haruta") {
+      baseSkills[0].name = "Corte de Espada";
+      baseSkills[1].name = "Técnica Amaldiçoada";
+      baseSkills.push(new Skill({ id: "haruta_luck", name: "Sorte Milagrosa", description: "Reduz o dano recebido em 90%.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.1 } }));
+    } else if (bossId === "neferpitou") {
+      baseSkills[0].name = "Terpsichora";
+      baseSkills[1].name = "Garra de Gato";
+      baseSkills.push(new Skill({ id: "pitou_jump", name: "Salto Predador", description: "Ataca e **ATORDOA** o oponente.", type: "attack", cost: 40, damage: 50, damageType: 'fisico', cooldown: 3, effect: { type: "stun", duration: 1 } }));
+    } else if (bossId === "rui") {
+      baseSkills[0].name = "Fios de Aço";
+      baseSkills[1].name = "Prisão de Fios";
+      baseSkills.push(new Skill({ id: "rui_blood", name: "Arte de Sangue", description: "Causa **SANGRAMENTO** severo.", type: "attack", cost: 35, damage: 40, damageType: 'elemental', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.1 } }));
+    } else if (bossId === "esdeath") {
+      baseSkills[0].name = "Weissschnabel";
+      baseSkills[1].name = "Grauphorn";
+      baseSkills.push(new Skill({ id: "esdeath_freeze", name: "Mahapadma", description: "Congela o tempo (**ATORDOA** por 2 turnos).", type: "attack", cost: 80, damage: 20, damageType: 'elemental', cooldown: 6, effect: { type: "stun", duration: 2 } }));
+    } else if (bossId === "dabi") {
+      baseSkills[0].name = "Chamas Azuis";
+      baseSkills[1].name = "Prominence Burn";
+      baseSkills.push(new Skill({ id: "dabi_burn", name: "Cremação", description: "Causa **QUEIMADURA** massiva.", type: "attack", cost: 50, damage: 70, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 3, value: 0.15 } }));
     }
 
     return baseSkills;

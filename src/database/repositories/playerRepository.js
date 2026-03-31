@@ -136,5 +136,27 @@ module.exports = {
   addToQueue: (playerId) => db.prepare("INSERT OR REPLACE INTO ranked_queue (player_id) VALUES (?)").run(playerId),
   removeFromQueue: (playerId) => db.prepare("DELETE FROM ranked_queue WHERE player_id = ?").run(playerId),
   getQueue: () => db.prepare("SELECT * FROM ranked_queue ORDER BY joined_at ASC").all(),
-  isInQueue: (playerId) => !!db.prepare("SELECT 1 FROM ranked_queue WHERE player_id = ?").get(playerId)
+  isInQueue: (playerId) => !!db.prepare("SELECT 1 FROM ranked_queue WHERE player_id = ?").get(playerId),
+
+  // --- Modo Desafio ---
+  getGlobalChallengeCooldown: (difficulty) => {
+    return db.prepare("SELECT available_at FROM challenge_cooldowns WHERE difficulty = ?").get(difficulty);
+  },
+
+  updateGlobalChallengeCooldown: (difficulty, availableAt) => {
+    return db.prepare("UPDATE challenge_cooldowns SET available_at = ? WHERE difficulty = ?").run(availableAt, difficulty);
+  },
+
+  getPlayerChallengeProgress: (playerId, difficulty) => {
+    let progress = db.prepare("SELECT last_completed_at FROM player_challenge_progress WHERE player_id = ? AND difficulty = ?").get(playerId, difficulty);
+    if (!progress) {
+      db.prepare("INSERT INTO player_challenge_progress (player_id, difficulty) VALUES (?, ?)").run(playerId, difficulty);
+      progress = { last_completed_at: 0 };
+    }
+    return progress;
+  },
+
+  updatePlayerChallengeProgress: (playerId, difficulty, completedAt) => {
+    return db.prepare("UPDATE player_challenge_progress SET last_completed_at = ? WHERE player_id = ? AND difficulty = ?").run(completedAt, playerId, difficulty);
+  }
 };
