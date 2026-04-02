@@ -3,6 +3,18 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } 
 class ButtonManager {
   static createActionComponents(battleId, character, isDisabled = false, battle = null) {
     const rows = [];
+
+    // Botão de Avançar Andar na Torre Infinita
+    if (battle && battle.state === "waiting_next_floor") {
+      const nextFloorNum = battle.currentFloor + 1;
+      const nextFloorButton = new ButtonBuilder()
+        .setCustomId(`tower_next_${battleId}_${nextFloorNum}_${battle.player1Id}`)
+        .setLabel(`Avançar para o Andar ${nextFloorNum}`)
+        .setStyle(ButtonStyle.Success);
+      
+      rows.push(new ActionRowBuilder().addComponents(nextFloorButton));
+      return rows;
+    }
     
     // Menu de Seleção de Alvo para o Boss no Boss Rush
     if (battle && battle.type === "boss-rush" && battle.currentPlayerTurnId === battle.player1Id && !isDisabled) {

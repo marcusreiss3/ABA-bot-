@@ -99,4 +99,21 @@ db.prepare(`
   )
 `).run();
 
+// Criar tabela de cooldown da Torre Infinita
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS tower_cooldowns (
+    player_id TEXT PRIMARY KEY,
+    available_at INTEGER DEFAULT 0
+  )
+`).run();
+
+// Criar tabela de recordes da Torre Infinita
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS tower_records (
+    player_id TEXT PRIMARY KEY,
+    max_floor INTEGER DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
+
 module.exports = db;

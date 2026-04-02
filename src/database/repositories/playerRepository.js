@@ -158,5 +158,39 @@ module.exports = {
 
   updatePlayerChallengeProgress: (playerId, difficulty, completedAt) => {
     return db.prepare("UPDATE player_challenge_progress SET last_completed_at = ? WHERE player_id = ? AND difficulty = ?").run(completedAt, playerId, difficulty);
+  },
+
+  // --- Torre Infinita ---
+  getTowerCooldown: (playerId) => {
+    let cooldown = db.prepare("SELECT available_at FROM tower_cooldowns WHERE player_id = ?").get(playerId);
+    if (!cooldown) {
+      db.prepare("INSERT INTO tower_cooldowns (player_id, available_at) VALUES (?, 0)").run(playerId);
+      cooldown = { available_at: 0 };
+    }
+    return cooldown;
+  },
+
+  updateTowerCooldown: (playerId, availableAt) => {
+    return db.prepare("UPDATE tower_cooldowns SET available_at = ? WHERE player_id = ?").run(availableAt, playerId);
+  },
+
+  // --- Ranking da Torre ---
+  updateTowerRecord: (playerId, floor) => {
+    const existing = db.prepare("SELECT max_floor FROM tower_records WHERE player_id = ?").get(playerId);
+    if (!existing) {
+      return db.prepare("INSERT INTO tower_records (player_id, max_floor) VALUES (?, ?)").run(playerId, floor);
+    } else if (floor > existing.max_floor) {
+      return db.prepare("UPDATE tower_records SET max_floor = ?, updated_at = CURRENT_TIMESTAMP WHERE player_id = ?").run(floor, playerId);
+    }
+  },
+
+  getTowerRanking: (limit = 10) => {
+    return db.prepare(`
+      SELECT tr.player_id, tr.max_floor, p.equipped_instance_id 
+      FROM tower_records tr
+      JOIN players p ON tr.player_id = p.id
+      ORDER BY tr.max_floor DESC, tr.updated_at ASC
+      LIMIT ?
+    `).all(limit);
   }
 };

@@ -2,6 +2,7 @@ const Battle = require("../models/Battle");
 const CharacterManager = require("./CharacterManager");
 const playerRepository = require("../database/repositories/playerRepository");
 const storyConfig = require("../config/storyConfig.js");
+const towerConfig = require("../config/towerConfig.js");
 
 class BattleEngine {
   constructor() {
@@ -207,6 +208,7 @@ class BattleEngine {
       if (battle.abandonVotes.size >= 2) {
         battle.state = "finished";
         battle.lastActionMessage = "🏳️ O combate foi encerrado pois 2 ou mais jogadores abandonaram!";
+        this.activeBattles.delete(battleId);
         return battle;
       }
       return "voted";
@@ -215,6 +217,20 @@ class BattleEngine {
       battle.lastActionMessage = `🏳️ <@${playerId}> abandonou o combate!`;
       battle.winnerId = (battle.player1Id === playerId) ? battle.player2Id : battle.player1Id;
       
+      // Se for Torre Infinita, aplicar cooldown de 30 minutos em todos os membros da party que abandonaram
+      if (battle.type === "tower") {
+        const cooldownTime = 30 * 60 * 1000;
+        const availableAt = Date.now() + cooldownTime;
+        const playersToCooldown = battle.partyMembers || [playerId];
+        
+        console.log(`[TOWER COOLDOWN] Aplicando cooldown de 30 min para: ${playersToCooldown.join(", ")}`);
+        
+        playersToCooldown.forEach(mId => {
+          playerRepository.updateTowerCooldown(mId, availableAt);
+        });
+        battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party que abandonaram estão em cooldown de 30 minutos.`;
+      }
+
       // Recompensa de PA se for ranqueado no abandono
       if (battle.isRanked) {
         const RankManager = require("./RankManager");
@@ -225,6 +241,7 @@ class BattleEngine {
         battle.lastActionMessage += `\n📉 <@${playerId}> perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
       }
       
+      this.activeBattles.delete(battleId);
       return battle;
     }
   }
@@ -245,6 +262,7 @@ class BattleEngine {
           } catch (e) { console.error("Erro ao deletar canal expirado:", e); }
         }
         
+        battle.state = "finished";
         this.activeBattles.delete(battleId);
       }
     }
@@ -472,11 +490,23 @@ class BattleEngine {
           battle.state = "finished";
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n\n💀 Todos os jogadores foram derrotados! O Boss venceu.`;
+          
+          // Se for Torre Infinita, aplicar cooldown de 30 minutos em todos
+          if (battle.type === "tower") {
+            const cooldownTime = 30 * 60 * 1000;
+            const availableAt = Date.now() + cooldownTime;
+            battle.partyMembers.forEach(mId => {
+              playerRepository.updateTowerCooldown(mId, availableAt);
+            });
+            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party estão em cooldown de 30 minutos.`;
+          }
         }
       }
     }
 
-    this.endTurnUpdate(battle);
+    if (battle.state !== "waiting_next_floor") {
+      this.endTurnUpdate(battle);
+    }
     return battle;
   }
 
@@ -485,6 +515,39 @@ class BattleEngine {
     const bossId = battle.character2.id;
     const partyMembers = battle.partyMembers || [leaderId];
     const now = Date.now();
+
+    if (battle.type === "tower") {
+      const floorNum = battle.currentFloor;
+      const floorData = towerConfig.floors.find(f => f.floor === floorNum);
+      const rewards = floorData.reward;
+      const fragmentsZenith = 10;
+
+      let rewardMsg = `\n\n✨ **RECOMPENSAS DO ANDAR ${floorNum}:**`;
+      
+      partyMembers.forEach(memberId => {
+        const player = playerRepository.getPlayer(memberId);
+        playerRepository.updatePlayer(memberId, { 
+          zenith_fragments: (player.zenith_fragments || 0) + fragmentsZenith 
+        });
+        playerRepository.addItem(memberId, rewards.stoneId, rewards.stoneQty);
+        
+        // Salvar recorde da torre para o ranking
+        playerRepository.updateTowerRecord(memberId, floorNum);
+      });
+
+      rewardMsg += `\n- Todos: ${fragmentsZenith} Fragmentos Zenith + ${rewards.stoneQty}x ${rewards.stoneId.toUpperCase().replace(/_/g, " ")}`;
+      battle.lastActionMessage += rewardMsg;
+
+      // Verificar se há próximo andar
+      const nextFloor = towerConfig.floors.find(f => f.floor === floorNum + 1);
+      if (nextFloor) {
+        battle.state = "waiting_next_floor"; // Estado especial
+        battle.lastActionMessage += `\n\n🗼 O líder pode clicar no botão abaixo para avançar para o **Andar ${floorNum + 1}**!`;
+      } else {
+        battle.lastActionMessage += `\n\n🏆 **PARABÉNS!** Vocês completaram todos os andares disponíveis da Torre Infinita!`;
+      }
+      return;
+    }
 
     if (battle.challengeDifficulty) {
       const challengeConfig = require("../config/challengeConfig.js");
@@ -674,7 +737,6 @@ class BattleEngine {
       battle.lastActionMessage += `\n💤 **${nextPlayer.name}** pulou o turno por atordoamento!`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
       return;
     }
 

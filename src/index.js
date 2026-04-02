@@ -15,6 +15,8 @@ const partyUtils = require("./commands/party_utils");
 const bossRushCommand = require("./commands/boss-rush");
 const desafioCommand = require("./commands/desafio");
 const sairFilaCommand = require("./commands/sairfila");
+const torreCommand = require("./commands/torre");
+const torreRankCommand = require("./commands/torre-rank");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
 
@@ -112,6 +114,16 @@ client.on("messageCreate", async (message) => {
   if (command === "!sairfila" || command === "!cancelarfila" || command === "!sf") {
     console.log("Comando sairfila detectado"); // DEBUG
     sairFilaCommand.execute(message);
+  }
+
+  if (command === "!torre" || command === "!tower") {
+    console.log("Comando torre detectado"); // DEBUG
+    torreCommand.execute(message, args);
+  }
+
+  if (command === "!torre-rank") {
+    console.log("Comando torrerank detectado"); // DEBUG
+    torreRankCommand.execute(message, args);
   }
 });
 

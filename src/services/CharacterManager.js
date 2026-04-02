@@ -3,6 +3,7 @@ const Skill = require("../models/Skill");
 const ArtifactManager = require("./ArtifactManager");
 const playerRepository = require("../database/repositories/playerRepository");
 const storyConfig = require("../config/storyConfig.js");
+const towerConfig = require("../config/towerConfig.js");
 
 class CharacterManager {
   static getCharacter(characterId, instanceData = {}) {
@@ -144,6 +145,29 @@ class CharacterManager {
             level: bossData.level,
             imageUrl: bossData.imageUrl,
             skills: this.generateBossSkills(bossData.id, world.id)
+          });
+          break;
+        }
+      }
+    }
+
+    // --- Bosses da Torre Infinita ---
+    if (!char) {
+      for (const floor of towerConfig.floors) {
+        if (floor.boss.id === characterId) {
+          const bossData = floor.boss;
+          char = new Character({
+            id: bossData.id,
+            name: bossData.name,
+            anime: bossData.anime,
+            health: bossData.health,
+            maxHealth: bossData.health,
+            energy: bossData.energy,
+            maxEnergy: bossData.energy,
+            rarity: "BOSS",
+            level: bossData.level,
+            imageUrl: bossData.imageUrl,
+            skills: bossData.skills.map(s => new Skill(s))
           });
           break;
         }

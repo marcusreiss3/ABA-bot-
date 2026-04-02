@@ -7,6 +7,7 @@ const CharacterManager = require("../services/CharacterManager");
 const ArtifactManager = require("../services/ArtifactManager");
 const EvolutionManager = require("../services/EvolutionManager");
 const storyConfig = require("../config/storyConfig.js");
+const towerConfig = require("../config/towerConfig.js");
 const RankManager = require("../services/RankManager");
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 
@@ -410,10 +411,10 @@ module.exports = {
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
 
       const status = BattleEngine.canStartBattle(playerId);
-      if (!status.can) return interaction.reply({ content: status.reason, ephemeral: true });
+      if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
 
       const player = playerRepository.getPlayer(playerId);
-      if (!player.equipped_instance_id) return interaction.reply({ content: "Você não tem um personagem equipado!", ephemeral: true });
+      if (!player.equipped_instance_id) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem um personagem equipado!", false)], ephemeral: true });
 
       const party = global.parties ? global.parties.get(playerId) : null;
       const partyMembers = party ? party.members : [playerId];
@@ -422,7 +423,14 @@ module.exports = {
         const memberPlayer = playerRepository.getPlayer(memberId);
         if (!memberPlayer.equipped_instance_id) {
           const memberUser = await interaction.client.users.fetch(memberId);
-          return interaction.reply({ content: `O membro **${memberUser.username}** não tem um personagem equipado!`, ephemeral: true });
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** não tem um personagem equipado!`, false)], ephemeral: true });
+        }
+        if (memberId !== playerId) {
+          const memberStatus = BattleEngine.canStartBattle(memberId);
+          if (!memberStatus.can) {
+            const memberUser = await interaction.client.users.fetch(memberId);
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+          }
         }
       }
 
@@ -451,7 +459,7 @@ module.exports = {
         components: components
       });
 
-      return interaction.update({ content: `✅ Desafio iniciado no canal <#${channel.id}>!`, embeds: [], components: [] });
+      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Desafio iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("story_world_")) {
@@ -649,7 +657,7 @@ module.exports = {
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
       
       const status = BattleEngine.canStartBattle(playerId);
-      if (!status.can) return interaction.reply({ content: status.reason, ephemeral: true });
+      if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
 
       const player = playerRepository.getPlayer(playerId);
       const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
@@ -658,12 +666,19 @@ module.exports = {
       const party = global.parties ? global.parties.get(playerId) : null;
       const partyMembers = party ? party.members : [playerId];
       
-      // Validar se todos os membros têm personagens equipados
+      // Validar se todos os membros têm personagens equipados e não estão em combate
       for (const memberId of partyMembers) {
         const memberPlayer = playerRepository.getPlayer(memberId);
         if (!memberPlayer.equipped_instance_id) {
           const memberUser = await interaction.client.users.fetch(memberId);
-          return interaction.reply({ content: `O membro **${memberUser.username}** não tem um personagem equipado!`, ephemeral: true });
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** não tem um personagem equipado!`, false)], ephemeral: true });
+        }
+        if (memberId !== playerId) {
+          const memberStatus = BattleEngine.canStartBattle(memberId);
+          if (!memberStatus.can) {
+            const memberUser = await interaction.client.users.fetch(memberId);
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+          }
         }
       }
 
@@ -690,7 +705,117 @@ module.exports = {
         components: components
       });
 
-      return interaction.update({ content: `✅ Jornada iniciada no canal <#${channel.id}>!`, embeds: [], components: [] });
+      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Jornada iniciada no canal <#${channel.id}>!`, true)], components: [] });
+    }
+
+    // --- Lógica da Torre Infinita ---
+    if (type === "tower" && parts[1] === "start") {
+      const floorNum = parseInt(parts[2]);
+      const playerId = parts[3];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua torre!", ephemeral: true });
+
+      const floorData = towerConfig.floors.find(f => f.floor === floorNum);
+      if (!floorData) return interaction.reply({ content: "Andar não encontrado!", ephemeral: true });
+
+        // Verificar se o líder está em party (Busca consistente com o comando !torre)
+      const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+      const partyMembers = party ? party.members : [playerId];
+
+      // Verificar cooldown, personagens e combate ativo de todos
+      for (const mId of partyMembers) {
+        const cooldown = playerRepository.getTowerCooldown(mId);
+        if (cooldown.available_at > Date.now()) {
+          const remainingMin = Math.ceil((cooldown.available_at - Date.now()) / (1000 * 60));
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> ainda está em cooldown da torre! Restam **${remainingMin} minutos**.`, false)], ephemeral: true });
+        }
+        const mPlayer = playerRepository.getPlayer(mId);
+        if (!mPlayer.equipped_instance_id) {
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> não tem personagem equipado!`, false)], ephemeral: true });
+        }
+        const mStatus = BattleEngine.canStartBattle(mId);
+        if (!mStatus.can) {
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+        }
+      }
+
+      // Criar canal temporário
+      const guild = interaction.guild;
+      const channel = await guild.channels.create({
+        name: `torre-andar-${floorNum}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+          ...partyMembers.map(mId => ({ id: mId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }))
+        ]
+      });
+
+      const leaderPlayer = playerRepository.getPlayer(playerId);
+      const leaderInstance = playerRepository.getCharacterInstance(leaderPlayer.equipped_instance_id);
+      const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
+
+      const battle = BattleEngine.startBattle(playerId, floorData.boss.id, leaderInstance, bossInstance, true, partyMembers, false, channel.id);
+      battle.type = "tower";
+      battle.currentFloor = floorNum;
+      battle.partyMembers = partyMembers; // GARANTIR que os membros da party sejam passados para a batalha inicial
+
+      const embed = EmbedManager.createBattleEmbed(battle);
+      const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
+
+      await channel.send({
+        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\nPreparem-se para o combate contra **${floorData.boss.name}**!`,
+        embeds: [embed],
+        components: components
+      });
+
+      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Combate iniciado no canal <#${channel.id}>!`, true)], components: [] });
+    }
+
+    if (type === "tower" && parts[1] === "next") {
+      const battleId = parts[2];
+      const floorNum = parseInt(parts[3]);
+      const playerId = parts[4];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Apenas o líder pode avançar!", ephemeral: true });
+
+      const floorData = towerConfig.floors.find(f => f.floor === floorNum);
+      if (!floorData) return interaction.reply({ content: "Andar não encontrado!", ephemeral: true });
+
+      const oldBattle = BattleEngine.getBattle(battleId);
+      if (!oldBattle) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Sessão de batalha expirada. Inicie a torre novamente.", false)], ephemeral: true });
+
+      // Remover a batalha antiga do mapa de batalhas ativas antes de criar a nova
+      BattleEngine.activeBattles.delete(battleId);
+
+      // Criar nova batalha mantendo a vida dos jogadores
+      const partyMembers = oldBattle.partyMembers;
+      const partyCharacters = oldBattle.partyCharacters;
+      
+      // Criar boss do novo andar
+      const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
+
+      // Recuperar instância real do líder para o startBattle não quebrar
+      const leaderPlayer = playerRepository.getPlayer(playerId);
+      const leaderInstance = playerRepository.getCharacterInstance(leaderPlayer.equipped_instance_id);
+
+      // Iniciar nova batalha no mesmo canal
+      const newBattle = BattleEngine.startBattle(playerId, floorData.boss.id, leaderInstance, bossInstance, true, partyMembers, false, oldBattle.channelId);
+      newBattle.type = "tower";
+      newBattle.currentFloor = floorNum;
+      newBattle.partyMembers = partyMembers; // GARANTIR que os membros da party sejam passados para a nova batalha
+      
+      // SOBRESCREVER os personagens da party pelos que vieram da luta anterior (com HP atual)
+      newBattle.partyCharacters = partyCharacters;
+      // Garantir que o character1 seja o líder da partyCharacters (que tem o HP atualizado)
+      newBattle.character1 = partyCharacters.find(c => c.ownerId === playerId) || partyCharacters[0];
+      newBattle.player1Id = playerId;
+
+      const embed = EmbedManager.createBattleEmbed(newBattle);
+      const components = ButtonManager.createActionComponents(newBattle.id, newBattle.getCurrentPlayer(), false, newBattle);
+
+      return interaction.update({
+        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\nVocês avançaram! Próximo oponente: **${floorData.boss.name}**!`,
+        embeds: [embed],
+        components: components
+      });
     }
 
     // 1.0 Lógica de Confirmação de PVP
@@ -706,7 +831,7 @@ module.exports = {
 
         if (mode === "ranked") {
           const status = BattleEngine.canStartBattle(p1Id);
-          if (!status.can) return interaction.reply({ content: status.reason, ephemeral: true });
+          if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
 
           playerRepository.addToQueue(p1Id);
           await interaction.update({ 
@@ -794,8 +919,10 @@ module.exports = {
         const statusP1 = BattleEngine.canStartBattle(p1IdChallenge);
         const statusP2 = BattleEngine.canStartBattle(p2IdChallenge);
         if (!statusP1.can || !statusP2.can) {
-          const reason = !statusP1.can ? statusP1.reason.replace("Você já está", `<@${p1IdChallenge}> já está`) : statusP2.reason.replace("Você já está", `<@${p2IdChallenge}> já está`);
-          return interaction.update({ content: reason, components: [] });
+          const reason = !statusP1.can
+            ? statusP1.reason.replace("Você já está", `<@${p1IdChallenge}> já está`).replace("Saia da fila", "Ele precisa sair da fila")
+            : statusP2.reason.replace("Você já está", `<@${p2IdChallenge}> já está`).replace("Saia da fila", "Ele precisa sair da fila");
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed(reason, false)], components: [] });
         }
 
         const p1 = playerRepository.getPlayer(p1IdChallenge);
@@ -825,7 +952,7 @@ module.exports = {
           components: components
         });
 
-        return interaction.update({ content: `✅ Batalha iniciada no canal <#${channel.id}>!`, components: [] });
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Batalha iniciada no canal <#${channel.id}>!`, true)], components: [] });
       }
     }
 
@@ -896,7 +1023,7 @@ module.exports = {
           const status = BattleEngine.canStartBattle(pid);
           if (!status.can) {
             const reason = status.reason.replace("Você já está", `<@${pid}> já está`).replace("Saia da fila", "Precisa sair da fila");
-            return interaction.update({ content: reason, components: [] });
+            return interaction.update({ embeds: [EmbedManager.createStatusEmbed(reason, false)], components: [] });
           }
         }
 
@@ -922,7 +1049,7 @@ module.exports = {
           components: components
         });
 
-        return interaction.update({ content: `🔥 Boss Rush iniciado no canal <#${channel.id}>!`, components: [] });
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Boss Rush iniciado no canal <#${channel.id}>!`, true)], components: [] });
       }
     }
 
@@ -975,10 +1102,11 @@ module.exports = {
       if (updatedBattle) {
         const embed = EmbedManager.createBattleEmbed(updatedBattle);
         let components = [];
-        if (updatedBattle.state === "finished") {
-          components = [];
-          // Deletar canal temporário se existir
-          if (updatedBattle.channelId) {
+        if (updatedBattle.state === "finished" || updatedBattle.state === "waiting_next_floor") {
+          components = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), false, updatedBattle);
+          
+          // Deletar canal temporário se estiver finalizado (não deletar se estiver esperando próximo andar)
+          if (updatedBattle.state === "finished" && updatedBattle.channelId) {
             setTimeout(async () => {
               try {
                 const channel = await interaction.client.channels.fetch(updatedBattle.channelId);
@@ -996,7 +1124,7 @@ module.exports = {
         await interaction.update({ embeds: [embed], components: components });
 
         // ✅ AUTOMAÇÃO PVE CENTRALIZADA: Reação e Turno do Boss
-        if (updatedBattle.isPve && updatedBattle.player2Id.startsWith("boss_")) {
+        if (updatedBattle.isPve) {
           // 1. Reação do Boss (sempre pula se estiver em fase de reação)
           if (updatedBattle.state === "choosing_reaction" && updatedBattle.getOpponentId() === updatedBattle.player2Id) {
             setTimeout(async () => {
@@ -1037,7 +1165,7 @@ module.exports = {
                   }, 1500);
                 } else {
                   const isBossTurn = reactionBattle.isPve && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id;
-                  const reactionComponents = reactionBattle.state === "finished" ? [] : ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
+                  const reactionComponents = (reactionBattle.state === "finished" || reactionBattle.state === "waiting_next_floor") ? ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), false, reactionBattle) : ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
                   await interaction.editReply({ embeds: [reactionEmbed], components: reactionComponents });
                 }
               }
