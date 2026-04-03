@@ -44,7 +44,7 @@ class ButtonManager {
 
       return {
         label: label,
-        description: skill.description.substring(0, 100),
+        description: (skill.description || "Sem descrição disponível.").substring(0, 100),
         value: skill.id,
         emoji: this.getSkillEmoji(skill)
       };

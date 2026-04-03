@@ -9,20 +9,20 @@ module.exports = {
           id: "buggy",
           name: "Buggy",
           anime: "One Piece",
-          level: 20,
-          health: 2500,
+          level: 5,
+          health: 500,
           energy: 150,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png", // Placeholder
+          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png", 
           reward: { fr: [5, 10], soul_stone_1: [2, 3] }
         },
         {
           id: "haruta",
           name: "Haruta",
           anime: "Jujutsu Kaisen",
-          level: 20,
-          health: 2500,
+          level: 5,
+          health: 500,
           energy: 150,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png", // Placeholder
+          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png", 
           reward: { fr: [5, 10], soul_stone_1: [2, 3] }
         }
       ]
@@ -36,8 +36,8 @@ module.exports = {
           id: "neferpitou",
           name: "Neferpitou",
           anime: "Hunter x Hunter",
-          level: 50,
-          health: 8000,
+          level: 20,
+          health: 6000,
           energy: 300,
           imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
           reward: { fr: [10, 15], soul_stone_2: [2, 3] }
@@ -46,8 +46,8 @@ module.exports = {
           id: "rui",
           name: "Rui",
           anime: "Demon Slayer",
-          level: 50,
-          health: 8000,
+          level: 20,
+          health: 6000,
           energy: 300,
           imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
           reward: { fr: [10, 15], soul_stone_2: [2, 3] }
@@ -63,8 +63,8 @@ module.exports = {
           id: "esdeath",
           name: "Esdeath",
           anime: "Akame ga Kill",
-          level: 100,
-          health: 25000,
+          level: 50,
+          health: 15000,
           energy: 600,
           imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
           reward: { fr: [20, 30], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }
@@ -73,8 +73,8 @@ module.exports = {
           id: "dabi",
           name: "Dabi",
           anime: "Boku no Hero Academia",
-          level: 100,
-          health: 25000,
+          level: 50,
+          health: 15000,
           energy: 600,
           imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
           reward: { fr: [20, 30], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }

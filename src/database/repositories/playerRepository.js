@@ -113,6 +113,36 @@ function unequipArtifact(characterInstanceId, slot) {
   return db.prepare(`UPDATE player_characters SET equipped_artifact_${slot} = NULL WHERE id = ?`).run(characterInstanceId);
 }
 
+// --- Reset de Cooldowns (Admin) ---
+
+/**
+ * Reseta o cooldown da Torre Infinita de um jogador específico.
+ * @param {string} playerId
+ */
+function resetTowerCooldown(playerId) {
+  const existing = db.prepare("SELECT player_id FROM tower_cooldowns WHERE player_id = ?").get(playerId);
+  if (existing) {
+    return db.prepare("UPDATE tower_cooldowns SET available_at = 0 WHERE player_id = ?").run(playerId);
+  }
+  // Se não existir registro, cria com available_at = 0 (sem cooldown)
+  return db.prepare("INSERT INTO tower_cooldowns (player_id, available_at) VALUES (?, 0)").run(playerId);
+}
+
+/**
+ * Reseta os cooldowns globais do Modo Desafio para todas as dificuldades.
+ */
+function resetAllChallengeCooldowns() {
+  return db.prepare("UPDATE challenge_cooldowns SET available_at = 0").run();
+}
+
+/**
+ * Reseta o progresso individual de desafio de um jogador (permite receber recompensa novamente).
+ * @param {string} playerId
+ */
+function resetPlayerChallengeProgress(playerId) {
+  return db.prepare("UPDATE player_challenge_progress SET last_completed_at = 0 WHERE player_id = ?").run(playerId);
+}
+
 module.exports = {
   getPlayer,
   createPlayer,
@@ -192,5 +222,10 @@ module.exports = {
       ORDER BY tr.max_floor DESC, tr.updated_at ASC
       LIMIT ?
     `).all(limit);
-  }
+  },
+
+  // --- Admin: Reset de Cooldowns ---
+  resetTowerCooldown,
+  resetAllChallengeCooldowns,
+  resetPlayerChallengeProgress,
 };

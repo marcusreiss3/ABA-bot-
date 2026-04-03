@@ -416,7 +416,7 @@ module.exports = {
       const player = playerRepository.getPlayer(playerId);
       if (!player.equipped_instance_id) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem um personagem equipado!", false)], ephemeral: true });
 
-      const party = global.parties ? global.parties.get(playerId) : null;
+      const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
       const partyMembers = party ? party.members : [playerId];
 
       for (const memberId of partyMembers) {
@@ -462,40 +462,136 @@ module.exports = {
       return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Desafio iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
 
+
+
+    if (interaction.isButton() && interaction.customId.startsWith("use_cancel_")) {
+      return interaction.update({ content: "❌ Ação cancelada.", embeds: [], components: [] });
+    }
+
+    // --- Lógica de Seleção de Mundo ---
     if (interaction.isButton() && interaction.customId.startsWith("story_world_")) {
       const parts = interaction.customId.split("_");
       const worldId = parts[2];
       const playerId = parts[3];
-      const quantity = parseInt(parts[4]);
-      const itemId = parts.slice(5).join("_");
-      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta ação não é sua!", ephemeral: true });
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
 
-      const itemData = EvolutionManager.ITEMS[itemId];
-      if (!itemData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Item inválido (${itemId}).`, false)], components: [] });
+      const world = storyConfig.worlds.find(w => w.id === worldId);
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
 
-      const instanceBefore = playerRepository.getCharacterInstance(parseInt(instanceId));
-      if (!instanceBefore) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
-      
-      const oldLevel = instanceBefore.level;
-      const result = EvolutionManager.useItem(playerId, parseInt(instanceId), itemId, quantity);
+      const embed = new EmbedBuilder()
+        .setTitle(`${world.emoji} Modo História: ${world.name}`)
+        .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
+        .setColor("#5865F2")
+        ;
 
-      if (!result.success) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(result.message, false)], components: [] });
+      const row = new ActionRowBuilder();
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
 
-      const instanceAfter = playerRepository.getCharacterInstance(parseInt(instanceId));
-      const charData = CharacterManager.getCharacter(instanceAfter.character_id, instanceAfter);
+      world.bosses.forEach((boss) => {
+        let isUnlocked = false;
+        const globalBossIndex = allBosses.findIndex(b => b.id === boss.id);
+        
+        if (globalBossIndex === 0) isUnlocked = true;
+        else {
+          const previousBossId = allBosses[globalBossIndex - 1].id;
+          const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
+          const prevBossIndex = allBosses.findIndex(b => b.id === previousBossId);
+          if (lastDefeatedIndex >= prevBossIndex) isUnlocked = true;
+        }
 
-      if (result.leveledUp) {
-        const levelUpEmbed = EmbedManager.createLevelUpEmbed(charData, oldLevel, result.newLevel, result.xpGained);
-        return interaction.update({ embeds: [levelUpEmbed], components: [] });
-      } else {
-        const xpRequired = EvolutionManager.getXPRequired(instanceAfter.level);
-        const xpGainEmbed = EmbedManager.createXPGainEmbed(charData, result.xpGained, instanceAfter.xp, xpRequired, quantity, itemData.name);
-        return interaction.update({ embeds: [xpGainEmbed], components: [] });
-      }
+        const isDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
+
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`pve_intro_${boss.id}_${playerId}`)
+            .setLabel(boss.shortName)
+            .setStyle(isDefeated ? ButtonStyle.Success : (isUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary))
+            .setDisabled(isDefeated || !isUnlocked)
+        );
+      });
+
+      const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
+      );
+
+      return interaction.update({ embeds: [embed], components: [row, backButton] });
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith("use_cancel_")) {
-      return interaction.update({ content: "❌ Ação cancelada.", embeds: [], components: [] });
+    // --- Lógica de Voltar ao Menu de Mundos ---
+    if (interaction.isButton() && interaction.customId.startsWith("story_back_")) {
+      const parts = interaction.customId.split("_");
+      const playerId = parts[2];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
+
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+
+      const embed = new EmbedBuilder()
+        .setTitle("🌍 Modo História: Seleção de Universo")
+        .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
+        .setColor("#5865F2")
+        ;
+
+      const row = new ActionRowBuilder();
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+
+      storyConfig.worlds.forEach((world, index) => {
+        let isWorldUnlocked = index === 0;
+        if (index > 0) {
+          const prevWorld = storyConfig.worlds[index - 1];
+          const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
+          const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
+          const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
+          if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
+        }
+
+        embed.addFields({ name: `${world.emoji} ${world.name}`, value: isWorldUnlocked ? "✅ Disponível" : "❌ Bloqueado", inline: true });
+        row.addComponents(new ButtonBuilder().setCustomId(`story_world_${world.id}_${playerId}`).setLabel(world.name.split(" ")[1] || world.name).setEmoji(world.emoji).setStyle(isWorldUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(!isWorldUnlocked));
+      });
+
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    // --- Lógica de Introdução do Modo História ---
+    if (interaction.isButton() && interaction.customId.startsWith("pve_intro_")) {
+      const parts = interaction.customId.split("_");
+      const bossId = parts.slice(2, -1).join("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
+      
+      const player = playerRepository.getPlayer(playerId);
+      if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
+      
+      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+      const playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
+      
+      let worldData, bossData;
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => {
+        allBosses.push(...w.bosses);
+        const b = w.bosses.find(x => x.id === bossId);
+        if (b) { worldData = w; bossData = b; }
+      });
+      
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+      const globalBossIndex = allBosses.findIndex(b => b.id === bossId);
+      const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
+      
+      if (globalBossIndex > 0 && lastDefeatedIndex < globalBossIndex - 1) {
+        return interaction.reply({ content: "Você ainda não desbloqueou este desafio!", ephemeral: true });
+      }
+
+      const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
+      const isBossDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
+      const startButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel(isBossDefeated ? "BOSS DERROTADO" : "INICIAR COMBATE").setStyle(isBossDefeated ? ButtonStyle.Success : ButtonStyle.Danger).setDisabled(isBossDefeated)
+      );
+      
+      return interaction.update({ embeds: [introEmbed], components: [startButton] });
     }
 
     // 1. Lógica de Seleção de Personagem (Botões)
@@ -568,7 +664,7 @@ module.exports = {
             .setCustomId(`pve_intro_${boss.id}_${playerId}`)
             .setLabel(boss.shortName)
             .setStyle(isDefeated ? ButtonStyle.Success : (isUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary))
-            .setDisabled(!isUnlocked)
+            .setDisabled(isDefeated || !isUnlocked)
         );
       });
 
@@ -644,8 +740,132 @@ module.exports = {
       }
 
       const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
+      const isBossDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
       const startButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel("INICIAR COMBATE").setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel(isBossDefeated ? "BOSS DERROTADO" : "INICIAR COMBATE").setStyle(isBossDefeated ? ButtonStyle.Success : ButtonStyle.Danger).setDisabled(isBossDefeated)
+      );
+      
+      return interaction.update({ embeds: [introEmbed], components: [startButton] });
+    }
+
+    // --- Lógica de Seleção de Mundo ---
+    if (type === "story" && parts[1] === "world") {
+      const worldId = parts[2];
+      const playerId = parts[3];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
+
+      const world = storyConfig.worlds.find(w => w.id === worldId);
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${world.emoji} Modo História: ${world.name}`)
+        .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
+        .setColor("#5865F2")
+        ;
+
+      const row = new ActionRowBuilder();
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+
+      world.bosses.forEach((boss) => {
+        let isUnlocked = false;
+        const globalBossIndex = allBosses.findIndex(b => b.id === boss.id);
+        
+        if (globalBossIndex === 0) isUnlocked = true;
+        else {
+          const previousBossId = allBosses[globalBossIndex - 1].id;
+          const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
+          const prevBossIndex = allBosses.findIndex(b => b.id === previousBossId);
+          if (lastDefeatedIndex >= prevBossIndex) isUnlocked = true;
+        }
+
+        const isDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
+
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`pve_intro_${boss.id}_${playerId}`)
+            .setLabel(boss.shortName)
+            .setStyle(isDefeated ? ButtonStyle.Success : (isUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary))
+            .setDisabled(isDefeated || !isUnlocked)
+        );
+      });
+
+      const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
+      );
+
+      return interaction.update({ embeds: [embed], components: [row, backButton] });
+    }
+
+    // --- Lógica de Voltar ao Menu de Mundos ---
+    if (type === "story" && parts[1] === "back") {
+      const playerId = parts[2];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
+
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+
+      const embed = new EmbedBuilder()
+        .setTitle("🌍 Modo História: Seleção de Universo")
+        .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
+        .setColor("#5865F2")
+        ;
+
+      const row = new ActionRowBuilder();
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+
+      storyConfig.worlds.forEach((world, index) => {
+        let isWorldUnlocked = index === 0;
+        if (index > 0) {
+          const prevWorld = storyConfig.worlds[index - 1];
+          const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
+          const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
+          const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
+          if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
+        }
+
+        embed.addFields({ name: `${world.emoji} ${world.name}`, value: isWorldUnlocked ? "✅ Disponível" : "❌ Bloqueado", inline: true });
+        row.addComponents(new ButtonBuilder().setCustomId(`story_world_${world.id}_${playerId}`).setLabel(world.name.split(" ")[1] || world.name).setEmoji(world.emoji).setStyle(isWorldUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(!isWorldUnlocked));
+      });
+
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    // --- Lógica de Introdução do Modo História ---
+    if (type === "pve" && parts[1] === "intro") {
+      const bossId = parts.slice(2, -1).join("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
+      
+      const player = playerRepository.getPlayer(playerId);
+      if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
+      
+      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+      const playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
+      
+      let worldData, bossData;
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => {
+        allBosses.push(...w.bosses);
+        const b = w.bosses.find(x => x.id === bossId);
+        if (b) { worldData = w; bossData = b; }
+      });
+      
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+      const globalBossIndex = allBosses.findIndex(b => b.id === bossId);
+      const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
+      
+      if (globalBossIndex > 0 && lastDefeatedIndex < globalBossIndex - 1) {
+        return interaction.reply({ content: "Você ainda não desbloqueou este desafio!", ephemeral: true });
+      }
+
+      const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
+      const isBossDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
+      const startButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel(isBossDefeated ? "BOSS DERROTADO" : "INICIAR COMBATE").setStyle(isBossDefeated ? ButtonStyle.Success : ButtonStyle.Danger).setDisabled(isBossDefeated)
       );
       
       return interaction.update({ embeds: [introEmbed], components: [startButton] });
@@ -659,11 +879,22 @@ module.exports = {
       const status = BattleEngine.canStartBattle(playerId);
       if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
 
+      const progress = playerRepository.getStoryProgress(playerId);
+      const lastDefeated = progress.last_boss_defeated;
+      const allBosses = [];
+      storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const globalBossIndex = allBosses.findIndex(b => b.id === bossId);
+      const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
+
+      if (lastDefeatedIndex >= globalBossIndex) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você já derrotou este boss e não pode enfrentá-lo novamente! Avance para o próximo desafio.", false)], ephemeral: true });
+      }
+
       const player = playerRepository.getPlayer(playerId);
       const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
       
       // Verificar se o jogador está em uma party
-      const party = global.parties ? global.parties.get(playerId) : null;
+      const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
       const partyMembers = party ? party.members : [playerId];
       
       // Validar se todos os membros têm personagens equipados e não estão em combate
