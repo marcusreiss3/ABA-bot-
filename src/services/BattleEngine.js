@@ -443,12 +443,16 @@ class BattleEngine {
     battle.switchTurn();
     
     if (!defender.isAlive()) {
+      const missionRepository = require("../database/repositories/missionRepository");
       if (battle.type === "boss-rush") {
         if (defender.ownerId === battle.player1Id) {
           // Boss morreu
           battle.state = "finished";
           battle.winnerId = "team";
           battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado! O trio venceu!`;
+          
+          // Missão: Jogue um Boss Rush (Diária)
+          battle.team2.forEach(id => missionRepository.addProgress(id, "play_boss_rush"));
         } else {
           // Membro do time morreu
           battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado e está fora de combate!`;
@@ -457,6 +461,11 @@ class BattleEngine {
             battle.state = "finished";
             battle.winnerId = battle.player1Id;
             battle.lastActionMessage += `\n\n💀 Todos os desafiantes foram derrotados! O Boss venceu!`;
+            
+            // Missão: Jogue um Boss Rush (Diária)
+            missionRepository.addProgress(battle.player1Id, "play_boss_rush");
+            // Missão: Vença um Boss Rush como Boss (Semanal)
+            missionRepository.addProgress(battle.player1Id, "win_boss_rush_as_boss");
           }
         }
       } else if (battle.isPve && defender.id === battle.character2.id) {
@@ -464,12 +473,36 @@ class BattleEngine {
         battle.winnerId = "players"; // Vitória do time
         battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
         this.handlePveRewards(battle);
+
+        // Missões PVE
+        const partyMembers = battle.partyMembers || [battle.player1Id];
+        partyMembers.forEach(id => {
+          if (battle.type === "tower") {
+            missionRepository.addProgress(id, "win_tower_floor");
+            // Lógica de 3 andares seguidos seria mais complexa, vamos simplificar para 3 andares no total na semana
+            missionRepository.addProgress(id, "win_3_tower_floors");
+          } else if (battle.challengeDifficulty) {
+            missionRepository.addProgress(id, "win_challenge");
+            if (battle.challengeDifficulty === "medium") {
+              missionRepository.addProgress(id, "win_challenge_medium");
+            }
+          }
+        });
       } else if (!battle.isPve) {
            if (defender.health <= 0) {
       battle.state = "finished";
       battle.winnerId = attacker.ownerId;
       battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
       
+      // Missões PVP
+      if (battle.isRanked) {
+        missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+        missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+      } else {
+        missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+        missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
+      }
+
       // Recompensa de PA se for ranqueado
       if (battle.isRanked) {
         const RankManager = require("./RankManager");

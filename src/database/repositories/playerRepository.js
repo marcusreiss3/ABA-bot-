@@ -57,7 +57,17 @@ function updateCharacterInstance(instanceId, data) {
   const fields = Object.keys(data).map(key => `${key} = ?`).join(", ");
   const values = Object.values(data);
   values.push(instanceId);
-  return db.prepare(`UPDATE player_characters SET ${fields} WHERE id = ?`).run(...values);
+  const result = db.prepare(`UPDATE player_characters SET ${fields} WHERE id = ?`).run(...values);
+  
+  // Missão: Level Up
+  if (data.level) {
+    const instance = getCharacterInstance(instanceId);
+    const missionRepository = require("./missionRepository");
+    if (data.level >= 10) missionRepository.addProgress(instance.player_id, "level_up_10");
+    if (data.level >= 30) missionRepository.addProgress(instance.player_id, "level_up_30");
+  }
+  
+  return result;
 }
 
 // --- Itens ---
@@ -79,11 +89,20 @@ function removeItem(playerId, itemId, quantity = 1) {
   const existing = db.prepare("SELECT quantity FROM player_items WHERE player_id = ? AND item_id = ?").get(playerId, itemId);
   if (!existing || existing.quantity < quantity) return false;
   
+  let result;
   if (existing.quantity === quantity) {
-    return db.prepare("DELETE FROM player_items WHERE player_id = ? AND item_id = ?").run(playerId, itemId);
+    result = db.prepare("DELETE FROM player_items WHERE player_id = ? AND item_id = ?").run(playerId, itemId);
   } else {
-    return db.prepare("UPDATE player_items SET quantity = quantity - ? WHERE player_id = ? AND item_id = ?").run(quantity, playerId, itemId);
+    result = db.prepare("UPDATE player_items SET quantity = quantity - ? WHERE player_id = ? AND item_id = ?").run(quantity, playerId, itemId);
   }
+
+  // Missão: Soul Stones
+  if (itemId.startsWith("soul_stone_")) {
+    const missionRepository = require("./missionRepository");
+    missionRepository.addProgress(playerId, "use_soul_stones", quantity);
+  }
+
+  return result;
 }
 
 // --- Artefatos ---

@@ -17,6 +17,7 @@ const desafioCommand = require("./commands/desafio");
 const sairFilaCommand = require("./commands/sairfila");
 const torreCommand = require("./commands/torre");
 const torreRankCommand = require("./commands/torre-rank");
+const missionsCommand = require("./commands/missions");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
 
@@ -124,6 +125,11 @@ client.on("messageCreate", async (message) => {
   if (command === "!torre-rank") {
     console.log("Comando torrerank detectado"); // DEBUG
     torreRankCommand.execute(message, args);
+  }
+
+  if (command === "!missões" || command === "!missoes") {
+    console.log("Comando missões detectado"); // DEBUG
+    missionsCommand.execute(message);
   }
 });
 

@@ -9,6 +9,8 @@ const EvolutionManager = require("../services/EvolutionManager");
 const storyConfig = require("../config/storyConfig.js");
 const towerConfig = require("../config/towerConfig.js");
 const RankManager = require("../services/RankManager");
+const missionRepository = require("../database/repositories/missionRepository");
+const missionsCommand = require("../commands/missions");
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 
 module.exports = {
@@ -1426,6 +1428,86 @@ module.exports = {
           }
         }
       }
+    }
+
+    // --- Lógica de Navegação de Missões ---
+    if (interaction.isButton() && interaction.customId.startsWith("show_daily_missions_")) {
+      const parts = interaction.customId.split("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão de missões!", ephemeral: true });
+      const { embeds, components } = missionsCommand.createDailyMissionsEmbed(playerId);
+      return interaction.update({ embeds, components });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("show_weekly_missions_")) {
+      const parts = interaction.customId.split("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão de missões!", ephemeral: true });
+      const { embeds, components } = missionsCommand.createWeeklyMissionsEmbed(playerId);
+      return interaction.update({ embeds, components });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("missions_main_menu_")) {
+      const parts = interaction.customId.split("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão de missões!", ephemeral: true });
+      const embed = new EmbedBuilder()
+        .setTitle("📜 Menu de Missões")
+        .setDescription("Selecione o tipo de missão que deseja visualizar.")
+        .setColor("#2ECC71")
+        .setThumbnail(interaction.user.displayAvatarURL());
+
+      const row = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`show_daily_missions_${playerId}`)
+            .setLabel("Missões Diárias")
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(`show_weekly_missions_${playerId}`)
+            .setLabel("Missões Semanais")
+            .setStyle(ButtonStyle.Primary)
+        );
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    // --- Lógica de Resgate de Missões ---
+    if (interaction.isButton() && interaction.customId.startsWith("claim_mission_")) {
+      const parts = interaction.customId.split("_");
+      const missionId = parts.slice(2).join("_");
+      const userId = interaction.user.id;
+
+      const missions = missionRepository.getGlobalMissions();
+      const allMissions = [...missions.daily, ...missions.weekly];
+      const mission = allMissions.find(m => m.id === missionId);
+
+      if (!mission) return interaction.reply({ content: "Missão não encontrada ou expirada.", ephemeral: true });
+      if (missionRepository.isClaimed(userId, missionId)) return interaction.reply({ content: "Você já resgatou esta recompensa!", ephemeral: true });
+
+      const progress = missionRepository.getProgress(userId, missionId);
+      if (progress < mission.goal) return interaction.reply({ content: "Você ainda não completou esta missão!", ephemeral: true });
+
+      // Entregar Recompensas
+      const player = playerRepository.getPlayer(userId);
+      playerRepository.updatePlayer(userId, {
+        zenith_fragments: player.zenith_fragments + mission.reward.zenith
+      });
+      playerRepository.addItem(userId, mission.reward.soulStone.id, mission.reward.soulStone.qty);
+      missionRepository.claimReward(userId, missionId);
+
+      // Atualizar a interface de missões
+      let updatedEmbed, updatedComponents;
+      if (mission.id.startsWith("win_pvp_casual") || mission.id.startsWith("win_pvp_ranked") || mission.id.startsWith("play_boss_rush") || mission.id.startsWith("win_challenge") || mission.id.startsWith("win_tower_floor") || mission.id.startsWith("level_up_10") || mission.id.startsWith("use_soul_stones")) {
+        ({ embeds: [updatedEmbed], components: updatedComponents } = missionsCommand.createDailyMissionsEmbed(userId));
+      } else {
+        ({ embeds: [updatedEmbed], components: updatedComponents } = missionsCommand.createWeeklyMissionsEmbed(userId));
+      }
+
+      return interaction.update({ 
+        content: `✅ Recompensa resgatada: **${mission.reward.zenith} Fragmentos Zenith** e **${mission.reward.soulStone.qty}x Pedra da Alma ${mission.reward.soulStone.id.split('_')[2].toUpperCase()}**!`,
+        embeds: [updatedEmbed], 
+        components: updatedComponents
+      });
     }
   }
 };

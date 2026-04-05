@@ -3,6 +3,7 @@ const CharacterManager = require("../services/CharacterManager");
 const EvolutionManager = require("../services/EvolutionManager");
 const EmbedManager = require("../services/EmbedManager");
 const BattleEngine = require("../services/BattleEngine");
+const missionRepository = require("../database/repositories/missionRepository");
 
 const ADMIN_ROLE_ID = "1485648914068537354";
 
@@ -12,7 +13,18 @@ module.exports = {
       return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem permissão para usar este comando!", false)] });
     }
 
-    const subCommand = args[0]; // add, remove, addxp, additem, resetcooldown
+    const subCommand = args[0]; // add, remove, addxp, additem, resetcooldown, resetmissions
+    
+    // O subcomando resetmissions não requer um targetUserId obrigatoriamente como segundo argumento
+    if (subCommand === "resetmissions") {
+      const type = args[1]; // daily ou weekly
+      if (type !== "daily" && type !== "weekly") {
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed("Uso: `!setchar resetmissions <daily/weekly>`", false)] });
+      }
+      missionRepository.forceRotation(type);
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`As missões **${type === "daily" ? "Diárias" : "Semanais"}** foram resetadas e trocadas para todos!`, true)] });
+    }
+
     let targetUserId = args[1];
     if (targetUserId && targetUserId.startsWith('<@') && targetUserId.endsWith('>')) {
       targetUserId = targetUserId.replace(/[<@!>]/g, '');
@@ -27,7 +39,8 @@ module.exports = {
           "`!setchar remove @player <instanceId>` — Remove uma instância\n" +
           "`!setchar addxp @player <instanceId> <xp>` — Adiciona XP\n" +
           "`!setchar additem @player <itemId> <quantidade>` — Adiciona item\n" +
-          "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador",
+          "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
+          "`!setchar resetmissions <daily/weekly>` — Troca as missões globais",
           false
         )]
       });
