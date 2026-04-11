@@ -32,6 +32,7 @@ module.exports = {
     }
 
     const newArtifactInstanceId = playerRepository.addArtifact(targetUserId, artifactId);
+    if (newArtifactInstanceId && newArtifactInstanceId.error) return message.reply(newArtifactInstanceId.error);
     return message.reply(`Artefato **${artifact.name}** (ID de instância: ${newArtifactInstanceId}) dado a ${targetUserId}.`);
   },
 };

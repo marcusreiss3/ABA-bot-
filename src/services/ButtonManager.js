@@ -4,6 +4,27 @@ class ButtonManager {
   static createActionComponents(battleId, character, isDisabled = false, battle = null) {
     const rows = [];
 
+    // --- Menu de Seleção de Sombra: Sung Jin-Woo ---
+    if (character.id === "sung_jin_woo" && battle && !battle.sjwShadowChosen && !isDisabled) {
+      const shadowMenu = new StringSelectMenuBuilder()
+        .setCustomId(`shadow_${battleId}`)
+        .setPlaceholder("👥 Escolha uma Sombra para invocar este turno!")
+        .addOptions([
+          { label: "⚔️ Igris — Precisão e Execução", value: "igris", description: "Acumule Marcas de Sangue e execute com poder devastador." },
+          { label: "🐜 Beru — Agressão e Sustain", value: "beru", description: "Roubo de vida 20% e chance de golpe duplo em todos os ataques." },
+          { label: "🛡️ Tank — Defesa e Controle", value: "tank", description: "15% de redução física passiva + contra-ataques poderosos." }
+        ]);
+
+      const abandonButton = new ButtonBuilder()
+        .setCustomId(`battle_${battleId}_abandon`)
+        .setLabel("Abandonar Combate")
+        .setStyle(ButtonStyle.Danger);
+
+      rows.push(new ActionRowBuilder().addComponents(shadowMenu));
+      rows.push(new ActionRowBuilder().addComponents(abandonButton));
+      return rows;
+    }
+
     // Botão de Avançar Andar na Torre Infinita
     if (battle && battle.state === "waiting_next_floor") {
       const nextFloorNum = battle.currentFloor + 1;

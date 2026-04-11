@@ -28,25 +28,25 @@ module.exports = {
       if (rankEntry.equipped_instance_id) {
         const charInstance = playerRepository.getCharacterInstance(rankEntry.equipped_instance_id);
         if (charInstance) {
-          const character = CharacterManager.getCharacterById(charInstance.character_id);
-          charInfo = `**${character.name}** (Nv. ${charInstance.level})`;
+          const character = CharacterManager.getCharacter(charInstance.character_id);
+          if (character) {
+            charInfo = `**${character.name}** (Nv. ${charInstance.level})`;
 
-          const equippedArtifacts = [];
-          if (charInstance.equipped_artifact_1) {
-            const artifact = ArtifactManager.getArtifactById(playerRepository.getArtifactInstance(charInstance.equipped_artifact_1).artifact_id);
-            equippedArtifacts.push(artifact.name);
-          }
-          if (charInstance.equipped_artifact_2) {
-            const artifact = ArtifactManager.getArtifactById(playerRepository.getArtifactInstance(charInstance.equipped_artifact_2).artifact_id);
-            equippedArtifacts.push(artifact.name);
-          }
-          if (charInstance.equipped_artifact_3) {
-            const artifact = ArtifactManager.getArtifactById(playerRepository.getArtifactInstance(charInstance.equipped_artifact_3).artifact_id);
-            equippedArtifacts.push(artifact.name);
-          }
+            const equippedArtifacts = [];
+            for (let slot = 1; slot <= 3; slot++) {
+              const artifactInstanceId = charInstance[`equipped_artifact_${slot}`];
+              if (artifactInstanceId) {
+                const artInstance = playerRepository.getArtifactInstance(artifactInstanceId);
+                if (artInstance) {
+                  const artifact = ArtifactManager.getArtifact(artInstance.artifact_id);
+                  if (artifact) equippedArtifacts.push(artifact.name);
+                }
+              }
+            }
 
-          if (equippedArtifacts.length > 0) {
-            charInfo += ` com ${equippedArtifacts.join(", ")}`;
+            if (equippedArtifacts.length > 0) {
+              charInfo += ` com ${equippedArtifacts.join(", ")}`;
+            }
           }
         }
       }

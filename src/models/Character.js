@@ -38,6 +38,7 @@ class Character {
     this.statusEffects = [];
     this.stacks = {};
     this.isStunned = false;
+    this.stunDuration = 0;
     this.equippedArtifacts = data.equippedArtifacts || [];
   }
 

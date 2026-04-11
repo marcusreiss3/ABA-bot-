@@ -117,8 +117,34 @@ module.exports = {
     }
 
     // 0.1 Lógica de Botões do Inventário
+    if (interaction.isButton() && interaction.customId.startsWith("inv_unlock_")) {
+      const parts = interaction.customId.split("_"); // inv_unlock_char_userId or inv_unlock_artifact_userId
+      const slotType = parts[2]; // "char" or "artifact"
+      const userId = parts[3];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const result = playerRepository.unlockSlots(userId, slotType);
+      if (!result.can) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(result.reason, false)], ephemeral: true });
+      }
+
+      const typeLabel = slotType === "char" ? "personagens" : "artefatos";
+      await interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`✅ Desbloqueado! Agora você tem **${result.newSlots} slots de ${typeLabel}**! (-${playerRepository.SLOT_COST} Fragmentos Zenith)`, true)], ephemeral: true });
+
+      // Atualizar embed do inventário
+      const viewType = slotType === "char" ? "chars" : "items";
+      const player = playerRepository.getPlayer(userId);
+      player.ownedChars = playerRepository.getPlayerCharacters(userId);
+      player.items = playerRepository.getPlayerItems(userId);
+      player.artifacts = playerRepository.getPlayerArtifacts(userId);
+      const invResult = EmbedManager.createInventoryEmbed(player, interaction.user, viewType);
+      return interaction.message.edit(invResult);
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith("inv_")) {
-      const [_, type, userId] = interaction.customId.split("_");
+      const parts = interaction.customId.split("_"); // inv_chars_userId or inv_items_userId
+      const type = parts[1];
+      const userId = parts[2];
       if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
       const player = playerRepository.getPlayer(userId);
       player.ownedChars = playerRepository.getPlayerCharacters(userId);
@@ -373,12 +399,11 @@ module.exports = {
 
       const challengeConfig = require("../config/challengeConfig.js");
       const diff = challengeConfig.difficulties[diffKey];
-      const globalCooldown = playerRepository.getGlobalChallengeCooldown(diffKey);
-      const now = Date.now();
 
-      if (now < globalCooldown.available_at) {
-        const timeLeft = Math.ceil((globalCooldown.available_at - now) / 60000);
-        return interaction.reply({ content: `Esta dificuldade está em cooldown! Disponível em ${timeLeft} minutos.`, ephemeral: true });
+      if (!playerRepository.isPlayerChallengeCooledDown(playerId, diffKey)) {
+        const msLeft = playerRepository.getPlayerChallengeCooldownMs(playerId, diffKey);
+        const minLeft = Math.ceil(msLeft / 60000);
+        return interaction.reply({ content: `Você ainda está em cooldown nesta dificuldade! Disponível em ~${minLeft} minutos (baseado na hora BRT).`, ephemeral: true });
       }
 
       // Sortear Boss
@@ -1305,6 +1330,25 @@ module.exports = {
       }
     }
 
+    // 1.4 Lógica de Seleção de Sombra (Sung Jin-Woo)
+    if (isMenu && type === "shadow") {
+      const battleId = parts[1];
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle) return interaction.reply({ content: "Combate não encontrado.", ephemeral: true });
+      if (battle.state === "finished") return interaction.reply({ content: "A batalha terminou!", ephemeral: true });
+      if (interaction.user.id !== battle.currentPlayerTurnId) return interaction.reply({ content: "Não é seu turno!", ephemeral: true });
+
+      const shadowId = interaction.values[0];
+      const updatedBattle = BattleEngine.processShadowChoice(battleId, interaction.user.id, shadowId);
+      if (!updatedBattle) return interaction.reply({ content: "Erro ao selecionar sombra.", ephemeral: true });
+
+      const shadowEmbed = EmbedManager.createBattleEmbed(updatedBattle);
+      const shadowComponents = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), false, updatedBattle);
+
+      // Automação PvE: boss não precisa selecionar sombra
+      return interaction.update({ embeds: [shadowEmbed], components: shadowComponents });
+    }
+
     if (["menu", "recover", "reaction"].includes(type)) {
       const battleId = parts[1];
       const actionId = parts.slice(2).join("_");
@@ -1337,7 +1381,7 @@ module.exports = {
         let components = [];
         if (updatedBattle.state === "finished" || updatedBattle.state === "waiting_next_floor") {
           components = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), false, updatedBattle);
-          
+
           // Deletar canal temporário se estiver finalizado (não deletar se estiver esperando próximo andar)
           if (updatedBattle.state === "finished" && updatedBattle.channelId) {
             setTimeout(async () => {
@@ -1345,7 +1389,7 @@ module.exports = {
                 const channel = await interaction.client.channels.fetch(updatedBattle.channelId);
                 if (channel) await channel.delete("Combate finalizado");
               } catch (e) { console.error("Erro ao deletar canal:", e); }
-            }, 10000); // Espera 10 segundos para os jogadores verem o resultado
+            }, 10000);
           }
         } else if (updatedBattle.state === "choosing_reaction") {
           const isBossTurn = updatedBattle.isPve && updatedBattle.getOpponentId() === updatedBattle.player2Id;
@@ -1354,6 +1398,9 @@ module.exports = {
           const isBossTurn = updatedBattle.isPve && updatedBattle.currentPlayerTurnId === updatedBattle.player2Id;
           components = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), isBossTurn, updatedBattle);
         }
+
+        // Salvar referência da mensagem ANTES do update para uso nas atualizações automáticas do boss
+        const battleMessage = interaction.message;
         await interaction.update({ embeds: [embed], components: components });
 
         // ✅ AUTOMAÇÃO PVE CENTRALIZADA: Reação e Turno do Boss
@@ -1361,11 +1408,12 @@ module.exports = {
           // 1. Reação do Boss (sempre pula se estiver em fase de reação)
           if (updatedBattle.state === "choosing_reaction" && updatedBattle.getOpponentId() === updatedBattle.player2Id) {
             setTimeout(async () => {
-              const reactionBattle = BattleEngine.processBossReaction(updatedBattle);
-                if (reactionBattle) {
+              try {
+                const reactionBattle = BattleEngine.processBossReaction(updatedBattle);
+                if (!reactionBattle) return;
                 const reactionEmbed = EmbedManager.createBattleEmbed(reactionBattle);
 
-                // ✅ DELETAR CANAL SE O PLAYER VENCER NA REAÇÃO DO BOSS (ex: contra-ataque ou boss morrendo por status)
+                // Deletar canal se o player vencer na reação do boss
                 if (reactionBattle.state === "finished" && reactionBattle.channelId) {
                   setTimeout(async () => {
                     try {
@@ -1374,18 +1422,19 @@ module.exports = {
                     } catch (e) { console.error("Erro ao deletar canal (Reaction Win):", e); }
                   }, 10000);
                 }
-                
+
                 // 2. Ataque do Boss após reagir
                 if (reactionBattle.state === "choosing_action" && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id) {
                   setTimeout(async () => {
-                    const attackBattle = BattleEngine.processBossTurn(reactionBattle);
-                    if (attackBattle) {
+                    try {
+                      const attackBattle = BattleEngine.processBossTurn(reactionBattle);
+                      if (!attackBattle) return;
                       const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
                       const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
                       const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
-                      await interaction.editReply({ embeds: [attackEmbed], components: attackComponents });
+                      await battleMessage.edit({ embeds: [attackEmbed], components: attackComponents });
 
-                      // ✅ DELETAR CANAL SE O BOSS VENCER NO ATAQUE
+                      // Deletar canal se o boss vencer no ataque
                       if (attackBattle.state === "finished" && attackBattle.channelId) {
                         setTimeout(async () => {
                           try {
@@ -1394,27 +1443,28 @@ module.exports = {
                           } catch (e) { console.error("Erro ao deletar canal (Boss Win):", e); }
                         }, 10000);
                       }
-                    }
+                    } catch (e) { console.error("Erro no ataque do boss após reação:", e); }
                   }, 1500);
                 } else {
                   const isBossTurn = reactionBattle.isPve && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id;
                   const reactionComponents = (reactionBattle.state === "finished" || reactionBattle.state === "waiting_next_floor") ? ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), false, reactionBattle) : ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
-                  await interaction.editReply({ embeds: [reactionEmbed], components: reactionComponents });
+                  await battleMessage.edit({ embeds: [reactionEmbed], components: reactionComponents });
                 }
-              }
+              } catch (e) { console.error("Erro na reação do boss:", e); }
             }, 1500);
-          } 
+          }
           // 3. Ataque Direto do Boss (ex: após player usar buff ou recuperar energia)
           else if (updatedBattle.state === "choosing_action" && updatedBattle.currentPlayerTurnId === updatedBattle.player2Id) {
             setTimeout(async () => {
-              const attackBattle = BattleEngine.processBossTurn(updatedBattle);
-              if (attackBattle) {
+              try {
+                const attackBattle = BattleEngine.processBossTurn(updatedBattle);
+                if (!attackBattle) return;
                 const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
                 const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
                 const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
-                await interaction.editReply({ embeds: [attackEmbed], components: attackComponents });
+                await battleMessage.edit({ embeds: [attackEmbed], components: attackComponents });
 
-                // ✅ DELETAR CANAL SE O BOSS VENCER NO ATAQUE DIRETO
+                // Deletar canal se o boss vencer no ataque direto
                 if (attackBattle.state === "finished" && attackBattle.channelId) {
                   setTimeout(async () => {
                     try {
@@ -1423,7 +1473,7 @@ module.exports = {
                     } catch (e) { console.error("Erro ao deletar canal (Boss Win Direct):", e); }
                   }, 10000);
                 }
-              }
+              } catch (e) { console.error("Erro no ataque direto do boss:", e); }
             }, 1500);
           }
         }

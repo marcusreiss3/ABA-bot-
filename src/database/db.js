@@ -1,5 +1,6 @@
 const Database = require("better-sqlite3");
-const db = new Database("database.sqlite");
+const path = require("path");
+const db = new Database(path.join(__dirname, "../../database.sqlite"));
 
 // Criar tabela de jogadores
 db.prepare(`
@@ -115,5 +116,9 @@ db.prepare(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `).run();
+
+// Adicionar colunas de slots ao players (se ainda não existirem — SQLite não tem IF NOT EXISTS em ALTER TABLE)
+try { db.prepare("ALTER TABLE players ADD COLUMN char_slots INTEGER DEFAULT 10").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE players ADD COLUMN artifact_slots INTEGER DEFAULT 10").run(); } catch (_) {}
 
 module.exports = db;

@@ -22,17 +22,16 @@ module.exports = {
       .setTimestamp();
 
     const row = new ActionRowBuilder();
-    const now = Date.now();
 
     for (const key in challengeConfig.difficulties) {
       const diff = challengeConfig.difficulties[key];
-      const globalCooldown = playerRepository.getGlobalChallengeCooldown(key);
-      const isAvailable = now >= globalCooldown.available_at;
+      const isAvailable = playerRepository.isPlayerChallengeCooledDown(playerId, key);
 
       let statusText = isAvailable ? "✅ Disponível" : "⏳ Em Cooldown";
       if (!isAvailable) {
-        const timeLeft = Math.ceil((globalCooldown.available_at - now) / 60000);
-        statusText += ` (${timeLeft} min)`;
+        const msLeft = playerRepository.getPlayerChallengeCooldownMs(playerId, key);
+        const minLeft = Math.ceil(msLeft / 60000);
+        statusText += ` (~${minLeft} min)`;
       }
 
       embed.addFields({

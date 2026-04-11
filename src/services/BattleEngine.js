@@ -258,11 +258,15 @@ class BattleEngine {
         if (battle.channelId && client) {
           try {
             const channel = await client.channels.fetch(battle.channelId);
-            if (channel) await channel.delete("Combate expirado (45 min)");
-          } catch (e) { console.error("Erro ao deletar canal expirado:", e); }
+            if (channel) {
+              await channel.send(battle.lastActionMessage);
+              setTimeout(async () => {
+                try { await channel.delete("Combate encerrado por timeout de 45 minutos"); }
+                catch (e) { console.error("Erro ao deletar canal por timeout:", e); }
+              }, 10000);
+            }
+          } catch (e) { console.error("Erro ao enviar timeout message:", e); }
         }
-        
-        battle.state = "finished";
         this.activeBattles.delete(battleId);
       }
     }
@@ -270,32 +274,10 @@ class BattleEngine {
 
   processAction(battleId, playerId, skillId) {
     const battle = this.getBattle(battleId);
-    if (!battle || battle.currentPlayerTurnId !== playerId || battle.state !== "choosing_action") {
-      return null;
-    }
-
-    // No Boss Rush, se for o turno do Boss, ele ataca um alvo aleatório ou o primeiro vivo
-    if (battle.type === "boss-rush" && playerId === battle.player1Id) {
-      // Se o alvo atual morreu, seleciona um novo alvo vivo automaticamente
-      if (!battle.character2.isAlive()) {
-        const aliveTargets = battle.partyCharacters.filter(c => c.isAlive());
-        if (aliveTargets.length > 0) {
-          const target = aliveTargets[Math.floor(Math.random() * aliveTargets.length)];
-          battle.player2Id = target.ownerId;
-          battle.character2 = target;
-        }
-      }
-    }
-
-    // Se for o turno de um membro do time no Boss Rush, o oponente é o Boss
-    if (battle.type === "boss-rush" && playerId !== battle.player1Id) {
-      battle.character2 = battle.character1;
-      battle.player2Id = battle.player1Id;
-    }
+    if (!battle || battle.currentPlayerTurnId !== playerId || battle.state !== "choosing_action") return null;
 
     const attacker = battle.getCurrentPlayer();
     const defender = battle.getOpponentPlayer();
-    
     const skill = attacker.skills.find(s => s.id === skillId);
 
     if (!skill) return null;
@@ -355,10 +337,170 @@ class BattleEngine {
       return battle;
     }
 
+    if (skill.id === "at_field") {
+      attacker.addBuff({ id: "at_field", duration: 2, multiplier: 1.3 });
+      battle.lastActionMessage = `**${attacker.name}** ativou **Campo AT**! Proximo ataque causa **+30% de dano**.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    if (skill.id === "mana_analysis") {
+      attacker.manaAnalysisActive = true;
+      battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**! O próximo ataque terá **+50% de dano**.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    if (skill.id === "determination") {
+      attacker.addStack("eva_charge", 3);
+      const stacks = attacker.stacks["eva_charge"];
+      if (stacks < 3) {
+        battle.lastActionMessage = `**${attacker.name}** reuniu **Determinação**! (${stacks}/3). O EVA-01 aguarda...`;
+      } else {
+        // TRANSFORMAR EM EVA-01
+        const eva = CharacterManager.getCharacter("eva_01", { id: attacker.instanceId, level: attacker.level });
+        attacker.name = "EVA-01";
+        attacker.id = "eva_01";
+        attacker.rarity = "AL";
+        attacker.maxHealth = eva.maxHealth;
+        attacker.health = eva.maxHealth;
+        attacker.baseMaxHealth = eva.baseMaxHealth;
+        attacker.maxEnergy = eva.maxEnergy;
+        attacker.energy = eva.maxEnergy;
+        attacker.skills = eva.skills;
+        attacker.stacks = { sync: 0 };
+        battle.lastActionMessage = `**${attacker.name}** TRANSFORMOU no **EVA-01**! A verdadeira batalha começa.`;
+      }
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    // Levi mark handling
+    if (attacker.id === "levi") {
+      // ✅ CORREÇÃO: Usar attacker.stacks["marks"] em vez de defender.marks
+      if (!attacker.stacks["marks"]) attacker.stacks["marks"] = 0;
+
+      // Apply marks based on skill used
+      if (skill.id === "corte_horizontal") {
+        attacker.addStack("marks", 3);
+      } else if (skill.id === "investida_com_dmt") {
+        attacker.addStack("marks", 3);
+      } else if (skill.id === "foco_do_capitao") {
+        attacker.addStack("marks", 3);
+        attacker.addStack("marks", 3);
+        // Remove bleed and burn effects from attacker (self-cleanse)
+        attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
+      }
+      
+      // ✅ CORREÇÃO: Fury Mode só é ativado se já tiver 3 marcas ANTES do cálculo de dano
+      // Mas a lógica de ativação deve ser: se chegou em 3, "arma" o bônus para o PRÓXIMO ataque.
+      // Vamos verificar se atingiu 3 marcas. Se sim, o furyMode será checado no calculateDamage do PRÓXIMO ataque.
+      if (attacker.stacks["marks"] === 3 && !attacker.furyModeArmado) {
+        attacker.furyModeArmado = true; // Indica que o bônus está pronto para o próximo ataque
+      }
+
+      // Se for Foco do Capitão, encerra o turno aqui
+      if (skill.id === "foco_do_capitao") {
+        battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**! Marcas acumuladas: (${attacker.stacks["marks"]}/3).`;
+        if (attacker.furyModeArmado) {
+            battle.lastActionMessage += `\n⚡ **Fury Mode** preparado para o próximo ataque!`;
+        }
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        battle.state = "choosing_action";
+        return battle;
+      }
+    }
+
+
+    if (skill.id === "total_concentration") {
+      attacker.recoverEnergy(50);
+      battle.lastActionMessage = `**${attacker.name}** ativou **Concentração Total** e recuperou 50 de energia!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    if (skill.selfDamage) {
+      const selfDamageAmount = Math.floor(attacker.health * skill.selfDamage);
+      attacker.takeDamage(selfDamageAmount, 'fisico');
+      battle.lastActionMessage += `\n⚠️ **${attacker.name}** se feriu no ataque e perdeu **${selfDamageAmount}** HP!`;
+    }
+
+    if (skill.id === "chainsaw_man_form") {
+      attacker.addBuff({ id: "chainsaw_man", type: "transform", duration: 3 });
+      battle.lastActionMessage = `**${attacker.name}** deixou Pochita tomar o controle, o verdadeiro **CHAINSAW MAN**! 🪚\n🔥 Dano aumentado massivamente, mas sofrerá dano por turno!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Sung Jin-Woo: Marcas de Sangue (Igris) ---
+    if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "igris") {
+      if (!attacker.stacks["blood_marks"]) attacker.stacks["blood_marks"] = 0;
+      let markBonus = 0;
+      let markMsg = "";
+
+      if (skill.id === "sjw_corte_preciso") {
+        attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 1);
+        if (attacker.stacks["blood_marks"] >= 3) {
+          markBonus = 60;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+60** de dano bônus!`;
+          attacker.stacks["blood_marks"] = 0;
+        }
+      } else if (skill.id === "sjw_investida_cavaleiro") {
+        attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 2);
+        if (attacker.stacks["blood_marks"] >= 3) {
+          markBonus = 60;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+60** de dano bônus!`;
+          attacker.stacks["blood_marks"] = 0;
+        }
+      } else if (skill.id === "sjw_execucao_carmesim") {
+        const existing = attacker.stacks["blood_marks"];
+        if (existing > 0) {
+          markBonus = existing * 35;
+          markMsg = `\n🗡️ **Execução Carmesim!** ${existing} marca(s) consumida(s)! **+${markBonus}** de dano bônus!`;
+          attacker.stacks["blood_marks"] = 0;
+        }
+        attacker.stacks["blood_marks"] = 1; // sempre aplica 1 nova marca
+      }
+
+      attacker.sjwMarkBonus = markBonus;
+      attacker.sjwMarkMsg = markMsg;
+    }
+
+    // --- Sung Jin-Woo: Postura Inabalável (Tank) ---
+    if (skill.id === "sjw_postura_inabalavel") {
+      attacker.addBuff({ id: "sjw_postura_inabalavel", type: "damage_reduction_passive", duration: 2 });
+      battle.lastActionMessage = `**${attacker.name}** assumiu a **Postura Inabalável**! Dano recebido reduzido em **30%** por 2 turnos.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Sung Jin-Woo: Contra-Ataque Brutal (Tank) ---
+    if (skill.id === "sjw_contra_ataque_brutal") {
+      attacker.addBuff({ id: "sjw_contra_ataque_brutal", type: "counter_brutal", duration: 2 });
+      battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.10)}** de dano por turno por 2 turnos.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
     if (skill.type === "buff") {
       attacker.addBuff({ ...skill.effect, id: skill.id });
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**!`;
-      battle.switchTurn();
+      battle.switchTurn();if (skill.type === "buff")
       this.endTurnUpdate(battle);
       battle.state = "choosing_action";
       return battle;
@@ -367,7 +509,32 @@ class BattleEngine {
     const damage = this.calculateDamage(attacker, defender, skill, battle);
     battle.lastPendingDamage = damage;
     battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}** contra **${defender.name}**!\nDano previsto: **${damage}** HP.`;
-    battle.state = "choosing_reaction";
+    
+    // ✅ CORREÇÃO: Feedback visual do Fury Mode no BattleEngine
+    if (attacker.id === "levi" && attacker.furyModeAtivoNesteAtaque) {
+        battle.lastActionMessage += `\n⚡ **FURY MODE CONSUMIDO!** Dano aumentado em 150%.`;
+        attacker.furyModeAtivoNesteAtaque = false;
+    }
+
+    // Feedback visual das Marcas de Sangue de Sung Jin-Woo (Igris)
+    if (attacker.id === "sung_jin_woo" && attacker.sjwMarkMsg) {
+      battle.lastActionMessage += attacker.sjwMarkMsg;
+      attacker.sjwMarkMsg = "";
+      attacker.sjwMarkBonus = 0;
+    }
+
+    if (skill.effect && skill.effect.type === "ignore_reaction") {
+        const damage = battle.lastPendingDamage;
+        const finalDamage = defender.takeDamage(damage, skill.damageType);
+        battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
+        battle.lastActionMessage += `\n✨ **${attacker.name}** usou **${skill.name}** e ignorou a reação de **${defender.name}**!`;
+        battle.lastPendingSkill = null; // ← LINHA ADICIONADA: limpa o flag antes de chamar endTurnUpdate
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        battle.state = "choosing_action";
+    } else {
+      battle.state = "choosing_reaction";
+    }
 
     return battle;
   }
@@ -378,14 +545,83 @@ class BattleEngine {
 
     const character = battle.getCurrentPlayer();
     this.applyStatusTick(character, battle);
-    
+
     character.recoverEnergy(25);
     battle.lastActionMessage = `**${character.name}** concentrou sua energia e recuperou 25 pontos!`;
-    
+
     battle.switchTurn();
     this.endTurnUpdate(battle);
     battle.state = "choosing_action";
     return battle;
+  }
+
+  processShadowChoice(battleId, playerId, shadowId) {
+    const battle = this.getBattle(battleId);
+    if (!battle || battle.currentPlayerTurnId !== playerId || battle.state !== "choosing_action") return null;
+
+    const attacker = battle.getCurrentPlayer();
+    if (attacker.id !== "sung_jin_woo" || !attacker.shadowSkillSets) return null;
+
+    const shadowSkills = attacker.shadowSkillSets[shadowId];
+    if (!shadowSkills) return null;
+
+    attacker.skills = shadowSkills;
+    attacker.activeShadow = shadowId;
+    battle.sjwShadowChosen = true;
+
+    // Aplicar passiva de Tank (redução física)
+    if (shadowId === "tank") {
+      attacker.passives = { ...attacker.passives, physicalReduction: 0.15 };
+    } else {
+      const { physicalReduction, ...rest } = attacker.passives || {};
+      attacker.passives = rest;
+    }
+
+    const shadowEmojis = { igris: "⚔️", beru: "🐜", tank: "🛡️" };
+    const shadowNames = { igris: "Igris", beru: "Beru", tank: "Tank" };
+    const shadowDesc = {
+      igris: "Precisão e Execução — acumule **Marcas de Sangue**!",
+      beru: "Agressão e Sustain — **roubo de vida** e golpe duplo!",
+      tank: "Defesa e Controle — **15% de redução física** passiva!",
+    };
+
+    battle.lastActionMessage = `**${attacker.name}** invoca a sombra **${shadowEmojis[shadowId]} ${shadowNames[shadowId]}**!\n${shadowDesc[shadowId]}\nEscolha sua habilidade.`;
+    return battle;
+  }
+
+
+
+  processBossReaction(battle) {
+    if (!battle || battle.state !== "choosing_reaction") return null;
+
+    const boss = battle.getOpponentPlayer();
+    const incomingDamage = battle.lastPendingDamage || 0;
+    const availableReactions = boss.reactions.filter(r => boss.energy >= r.cost && !r.isOnCooldown());
+
+    let reactionId = "skip";
+
+    if (availableReactions.length > 0) {
+      // Só reage se o dano for relevante (> 8% do HP máximo ou > 15% do HP atual)
+      const damageThresholdMax = boss.maxHealth * 0.08;
+      const damageThresholdCurrent = boss.health * 0.15;
+      const shouldReact = incomingDamage > damageThresholdMax || incomingDamage > damageThresholdCurrent;
+
+      if (shouldReact) {
+        // Priorizar a reação com maior redução de dano
+        const bestReaction = availableReactions.reduce((best, r) => {
+          const reduction = r.effect && r.effect.type === "damage_reduction" ? (1 - r.effect.value) : 0;
+          const bestReduction = best.effect && best.effect.type === "damage_reduction" ? (1 - best.effect.value) : 0;
+          return reduction > bestReduction ? r : best;
+        });
+        reactionId = bestReaction.id;
+      }
+      // Se HP estiver crítico (< 20%), sempre reage se puder
+      if (boss.health < boss.maxHealth * 0.20) {
+        reactionId = availableReactions[0].id;
+      }
+    }
+
+    return this.processReaction(battle.id, boss.ownerId || battle.player2Id, reactionId);
   }
 
   processReaction(battleId, playerId, skillId) {
@@ -406,34 +642,100 @@ class BattleEngine {
         reaction.startCooldown();
         
         if (reaction.effect.type === "damage_reduction") {
-          damageToApply = Math.floor(damageToApply * reaction.effect.value);
-          if (reaction.effect.value === 0 || damageToApply === 0) {
+          if (reaction.effect.negateElemental && skillUsed.damageType === 'elemental') {
+            damageToApply = 0;
             avoidedEffect = true;
+            battle.lastActionMessage += `\n⚔️ **${reaction.name}** anulou completamente o ataque elemental!`;
+          } else {
+            damageToApply = Math.floor(damageToApply * reaction.effect.value);
+            if (reaction.effect.value === 0 || damageToApply === 0) {
+              avoidedEffect = true;
+            }
           }
         }
         battle.lastActionMessage += `\n🛡️ **${defender.name}** reagiu com **${reaction.name}**!`;
       }
     } else {
       battle.lastActionMessage += `\n⏩ **${defender.name}** não reagiu.`;
+      // Postura Inabalável de Sung Jin-Woo (passivo, sem reação)
+      if (defender.id === "sung_jin_woo") {
+        const posBuff = defender.buffs.find(b => b.id === "sjw_postura_inabalavel");
+        if (posBuff) {
+          damageToApply = Math.floor(damageToApply * 0.70);
+          battle.lastActionMessage += `\n🛡️ **Postura Inabalável:** Dano reduzido em 30%!`;
+        }
+      }
     }
 
     const finalDamage = defender.takeDamage(damageToApply, skillUsed.damageType);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
 
+    // --- Sung Jin-Woo: mecânicas de defesa (Tank) ao ser atacado ---
+    if (defender.id === "sung_jin_woo" && finalDamage > 0) {
+      if (defender.activeShadow === "tank") {
+        const passiveCounter = Math.floor(defender.maxHealth * 0.05);
+        attacker.health = Math.max(0, attacker.health - passiveCounter);
+        battle.lastActionMessage += `\n🛡️ **Instinto de Tank:** **${attacker.name}** sofreu **${passiveCounter}** de contra-ataque!`;
+      }
+      const counterBuff = defender.buffs.find(b => b.id === "sjw_contra_ataque_brutal");
+      if (counterBuff) {
+        const counterDmg = Math.floor(defender.maxHealth * 0.10);
+        attacker.addStatusEffect({ type: "brutal_counter", value: counterDmg, duration: 2 });
+        battle.lastActionMessage += `\n⚔️ **Contra-Ataque Brutal!** **${attacker.name}** sofrerá **${counterDmg}** de dano por 2 turnos!`;
+      }
+    }
+
+    // --- Sung Jin-Woo: Beru lifesteal e curas ---
+    if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
+      const lifesteal = Math.floor(finalDamage * 0.20);
+      attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
+      battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
+      if (skillUsed.id === "sjw_garras_vorazes") {
+        const extraHeal = Math.floor(attacker.maxHealth * 0.10);
+        attacker.health = Math.min(attacker.maxHealth, attacker.health + extraHeal);
+        battle.lastActionMessage += `\n💚 **Garras Vorazes:** Drena vitalidade! +**${extraHeal}** HP!`;
+      }
+      if (skillUsed.id === "sjw_frenesi_predador") {
+        const hits = attacker.sjwFrenesiHits || 2;
+        const frenesiHeal = Math.floor(attacker.maxHealth * 0.08) * hits;
+        attacker.health = Math.min(attacker.maxHealth, attacker.health + frenesiHeal);
+        battle.lastActionMessage += `\n💚 **Frenesi do Predador:** Drenou em ${hits} hit(s)! +**${frenesiHeal}** HP!`;
+        attacker.sjwFrenesiHits = 0;
+      }
+    }
+
     if (!avoidedEffect && skillUsed.effect) {
       if (skillUsed.effect.type === "stun") {
         // Boss no Boss Rush é imune a atordoamento
-        if (battle.type === "boss-rush" && defender.ownerId === battle.player1Id) {
+        if (battle.type === "boss-rush" && defender.ownerId === battle.player1Id && !skillUsed.effect.ignore_immunity) {
           battle.lastActionMessage += `\n✨ **${defender.name}** é imune a atordoamento!`;
         } else {
           defender.isStunned = true;
-          battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO**!`;
+          defender.stunDuration = skillUsed.effect.duration || 1;
+          battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO** por ${defender.stunDuration} turno(s)!`;
         }
       } else if (skillUsed.effect.type === "burn" || skillUsed.effect.type === "bleed") {
         defender.addStatusEffect({ ...skillUsed.effect });
         const emoji = skillUsed.effect.type === "burn" ? "🔥" : "🩸";
-        battle.lastActionMessage += `\n${emoji} **${defender.name}** recebeu um efeito negativo!`;
+        battle.lastActionMessage += `\n${emoji} **${defender.name}** está sofrendo de **${skillUsed.effect.type === "burn" ? "Queimadura" : "Sangramento"}**!`;
+      } else if (skillUsed.effect.type === "debuff_damage") {
+        defender.addBuff({ id: `debuff_damage_${skillUsed.id}`, type: "debuff_damage", value: skillUsed.effect.value, duration: skillUsed.effect.duration });
+        battle.lastActionMessage += `\n📉 **${defender.name}** teve seu dano reduzido em ${skillUsed.effect.value * 100}% por ${skillUsed.effect.duration} turno(s)!`;
       }
+    }
+
+    if (!avoidedEffect && skillUsed.effect && skillUsed.effect.type === "energy_drain") {
+      const drainAmount = skillUsed.effect.value;
+      const energyTaken = Math.min(defender.energy, drainAmount);
+      defender.consumeEnergy(energyTaken);
+      attacker.recoverEnergy(energyTaken);
+      battle.lastActionMessage += `\n🔮 **${defender.name}** teve **${energyTaken}** de energia drenada!`;
+    }
+
+    // Aplica debuff_damage_taken se presente no efeito da skill
+    if (!avoidedEffect && skillUsed.effect && skillUsed.effect.debuff_damage_taken) {
+      defender.addBuff({ id: `debuff_damage_taken_${skillUsed.id}`, type: "debuff_damage_taken", value: skillUsed.effect.debuff_damage_taken, duration: skillUsed.effect.debuff_duration });
+      battle.lastActionMessage += `\n📈 **${defender.name}** receberá ${skillUsed.effect.debuff_damage_taken * 100}% a mais de dano por ${skillUsed.effect.debuff_duration} turno(s)!`;
     }
 
     if (attacker.id === "naruto" && attacker.stacks["kage_bunshin"] > 0) {
@@ -489,31 +791,32 @@ class BattleEngine {
           }
         });
       } else if (!battle.isPve) {
-           if (defender.health <= 0) {
-      battle.state = "finished";
-      battle.winnerId = attacker.ownerId;
-      battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
-      
-      // Missões PVP
-      if (battle.isRanked) {
-        missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
-        missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
-      } else {
-        missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
-        missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
-      }
+        if (defender.health <= 0) {
+          battle.state = "finished";
+          battle.winnerId = attacker.ownerId;
+          battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
+          
+          // Missões PVP
+          if (battle.isRanked) {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+            missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+          } else {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+            missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
+          }
 
-      // Recompensa de PA se for ranqueado
-      if (battle.isRanked) {
-        const RankManager = require("./RankManager");
-        const winnerResult = RankManager.updatePA(battle.winnerId, true);
-        const loserId = (battle.player1Id === battle.winnerId) ? battle.player2Id : battle.player1Id;
-        const loserResult = RankManager.updatePA(loserId, false);
-        
-        battle.lastActionMessage += `\n📈 **${attacker.name}** ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
-        battle.lastActionMessage += `\n📉 O oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
-      }
-    }  } else {
+          // Recompensa de PA se for ranqueado
+          if (battle.isRanked) {
+            const RankManager = require("./RankManager");
+            const winnerResult = RankManager.updatePA(battle.winnerId, true);
+            const loserId = (battle.player1Id === battle.winnerId) ? battle.player2Id : battle.player1Id;
+            const loserResult = RankManager.updatePA(loserId, false);
+            
+            battle.lastActionMessage += `\n📈 **${attacker.name}** ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+            battle.lastActionMessage += `\n📉 O oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+          }
+        }
+      } else {
         // Se um jogador da party morreu no PVE
         battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado e está fora de combate!`;
         
@@ -588,37 +891,32 @@ class BattleEngine {
       const bossData = diff.bosses.find(b => b.id === bossId);
       const rewards = bossData.reward;
 
-      // Atualizar Cooldown Global
-      playerRepository.updateGlobalChallengeCooldown(battle.challengeDifficulty, now + diff.cooldown);
-
       let rewardMsg = `\n\n✨ **RECOMPENSAS DO DESAFIO (${diff.name}):**`;
-      
-      const globalCooldown = playerRepository.getGlobalChallengeCooldown(battle.challengeDifficulty);
-      const currentCycleStart = globalCooldown.available_at - diff.cooldown;
-      
-      // Verificar se algum membro está em cooldown
-      const anyMemberInCooldown = partyMembers.some(mId => {
-        const p = playerRepository.getPlayerChallengeProgress(mId, battle.challengeDifficulty);
-        return p.last_completed_at >= currentCycleStart;
-      });
+
+      // Verificar se algum membro está em cooldown (baseado na janela BRT individual)
+      const anyMemberInCooldown = partyMembers.some(mId => !playerRepository.isPlayerChallengeCooledDown(mId, battle.challengeDifficulty));
 
       partyMembers.forEach(memberId => {
-        const progress = playerRepository.getPlayerChallengeProgress(memberId, battle.challengeDifficulty);
         const isLeader = memberId === leaderId;
-        
-        // Regra de Party: 
+        const inCooldown = !playerRepository.isPlayerChallengeCooledDown(memberId, battle.challengeDifficulty);
+
+        // Regra de Party:
         // Caso algum membro esteja em cooldown -> Apenas o líder recebe a recompensa
         // Caso todos estejam sem cooldown -> Todos recebem recompensa normalmente
-        if (!anyMemberInCooldown || isLeader) {
-          let memberRewards = [];
-          for (const itemId in rewards) {
-            const range = rewards[itemId];
-            const qty = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-            playerRepository.addItem(memberId, itemId, qty);
-            memberRewards.push(`${qty}x ${itemId.toUpperCase().replace(/_/g, " ")}`);
+        if (!inCooldown || (!anyMemberInCooldown) || isLeader) {
+          if (!inCooldown) {
+            let memberRewards = [];
+            for (const itemId in rewards) {
+              const range = rewards[itemId];
+              const qty = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+              playerRepository.addItem(memberId, itemId, qty);
+              memberRewards.push(`${qty}x ${itemId.toUpperCase().replace(/_/g, " ")}`);
+            }
+            playerRepository.updatePlayerChallengeProgress(memberId, battle.challengeDifficulty, now);
+            rewardMsg += `\n- <@${memberId}>: ${memberRewards.join(", ")}`;
+          } else {
+            rewardMsg += `\n- <@${memberId}>: *Em cooldown — sem recompensa desta vez.*`;
           }
-          playerRepository.updatePlayerChallengeProgress(memberId, battle.challengeDifficulty, now);
-          rewardMsg += `\n- <@${memberId}>: ${memberRewards.join(", ")}`;
         } else {
           rewardMsg += `\n- <@${memberId}>: *Membro em cooldown na party (apenas líder recebeu).*`;
         }
@@ -633,6 +931,7 @@ class BattleEngine {
           const client = require("../index.js").client; // Assumindo que o client está exportado
           const channel = await client.channels.fetch(notificationChannelId);
           if (channel) {
+            const { EmbedBuilder } = require("discord.js");
             const embed = new EmbedBuilder()
               .setTitle("🔔 Desafio Disponível!")
               .setDescription(`O Modo Desafio na dificuldade **${diff.name}** está liberado novamente!`)
@@ -672,65 +971,51 @@ class BattleEngine {
         const cleanBossId = bossId.startsWith("boss_") ? bossId.replace("boss_", "") : bossId;
         playerRepository.updateStoryProgress(memberId, cleanBossId);
       }
+      
+      rewardMsg += `\n- <@${memberId}>: ${zenithAmount} Fragmentos Zenith + ${bossReward.stoneQty}x ${bossReward.stoneId.toUpperCase().replace(/_/g, " ")}`;
     });
-
-    rewardMsg += `\n- Líder: ${250} Zenith + Soul Stone`;
-    if (partyMembers.length > 1) {
-      rewardMsg += `\n- Membros: ${25} Zenith + Soul Stone`;
-      rewardMsg += `\n*(Apenas o líder desbloqueou a próxima missão)*`;
-    }
 
     battle.lastActionMessage += rewardMsg;
   }
 
-  processBossReaction(battle) {
-    if (battle.state !== "choosing_reaction") return null;
-    
-    const boss = battle.character2;
-    // Tentar encontrar uma reação válida (que não esteja em cooldown e tenha energia)
-    const reaction = boss.reactions.find(r => !r.isOnCooldown() && boss.energy >= r.cost);
-    
-    if (reaction) {
-      // 70% de chance do Boss reagir se tiver uma reação disponível
-      if (Math.random() < 0.7) {
-        return this.processReaction(battle.id, battle.player2Id, reaction.id);
-      }
-    }
-    
-    // Caso contrário, pula a reação
-    return this.processReaction(battle.id, battle.player2Id, "skip");
-  }
-
   processBossTurn(battle) {
-    if (battle.state !== "choosing_action" || battle.currentPlayerTurnId !== battle.player2Id) return null;
-    const boss = battle.character2;
+    if (!battle || battle.state !== "choosing_action") return null;
 
-    // Escolher um alvo vivo da party
-    if (battle.isPve && battle.partyCharacters) {
-      const aliveMembers = battle.partyCharacters.filter(c => c.isAlive());
-      if (aliveMembers.length > 0) {
-        // Boss ataca um membro aleatório vivo
-        const target = aliveMembers[Math.floor(Math.random() * aliveMembers.length)];
-        // Atualizar temporariamente o character1 para ser o alvo da reação/dano
-        battle.character1 = target;
-        battle.player1Id = target.ownerId;
+    const attacker = battle.getCurrentPlayer();
+
+    const allAttacks = attacker.skills.filter(s => s.type === "attack");
+    const affordableAttacks = allAttacks.filter(s => attacker.energy >= s.cost && !s.isOnCooldown());
+    const healSkills = attacker.skills.filter(s => s.type === "heal" && attacker.energy >= s.cost && !s.isOnCooldown());
+
+    // Critério de cura: HP < 30% e tem skill de cura disponível
+    if (healSkills.length > 0 && attacker.health < attacker.maxHealth * 0.30) {
+      return this.processAction(battle.id, battle.player2Id, healSkills[0].id);
+    }
+
+    // Encontra o ataque mais forte que consegue usar agora
+    const bestAffordable = affordableAttacks.sort((a, b) => b.damage - a.damage)[0];
+
+    if (bestAffordable) {
+      // Verifica se economizando energia consegue usar um ataque bem mais forte (30%+ mais dano)
+      const bestPossible = allAttacks.filter(s => !s.isOnCooldown()).sort((a, b) => b.damage - a.damage)[0];
+      const energyNeeded = bestPossible ? bestPossible.cost : 0;
+      const shouldSaveEnergy = (
+        bestPossible &&
+        bestPossible.id !== bestAffordable.id &&
+        bestPossible.damage > bestAffordable.damage * 1.3 &&
+        attacker.energy < energyNeeded &&
+        attacker.maxEnergy - attacker.energy >= 25 // Ainda tem espaço para recuperar
+      );
+
+      if (shouldSaveEnergy && attacker.energy < attacker.maxEnergy * 0.5) {
+        return this.processRecoverEnergy(battle.id, battle.player2Id);
       }
-    }
-    
-    const healSkill = boss.skills.find(s => s.type === "heal" && !s.isOnCooldown() && boss.energy >= s.cost);
-    if (healSkill && boss.health < boss.maxHealth * 0.3) {
-      return this.processAction(battle.id, battle.player2Id, healSkill.id);
+
+      return this.processAction(battle.id, battle.player2Id, bestAffordable.id);
     }
 
-    const attackSkills = boss.skills.filter(s => s.type === "attack" && !s.isOnCooldown() && boss.energy >= s.cost)
-      .sort((a, b) => b.cost - a.cost);
-
-    if (attackSkills.length > 0) {
-      const skill = attackSkills[0];
-      return this.processAction(battle.id, battle.player2Id, skill.id);
-    } else {
-      return this.processRecoverEnergy(battle.id, battle.player2Id);
-    }
+    // Sem ataque disponível — recupera energia
+    return this.processRecoverEnergy(battle.id, battle.player2Id);
   }
 
   applyStatusTick(character, battle) {
@@ -742,10 +1027,25 @@ class BattleEngine {
       } else if (effect.type === "bleed") {
         tickDamage = Math.floor(character.health * effect.value);
         battle.lastActionMessage += `\n🩸 **${character.name}** sofreu **${tickDamage}** de Sangramento!`;
+      } else if (effect.type === "brutal_counter") {
+        character.health = Math.max(0, character.health - effect.value);
+        battle.lastActionMessage += `\n⚔️ **Contra-Ataque Brutal:** **${character.name}** sofreu **${effect.value}** de dano de retaliação!`;
       }
-      character.takeDamage(tickDamage, 'elemental');
+      
+      // Aplicar o dano de status de fato
+      if (tickDamage > 0) {
+        character.takeDamage(tickDamage, 'elemental');
+      }
+
+      const chainsawBuff = character.buffs.find(b => b.id === "chainsaw_man");
+      if (chainsawBuff) {
+        const drainDamage = Math.floor(character.maxHealth * 0.08);
+        character.takeDamage(drainDamage, 'fisico');
+        battle.lastActionMessage += `\n🪚 A forma de **Chainsaw Man** está drenando a vida de **${character.name}**! (-${drainDamage} HP)`;
+      }
     });
   }
+
 
   endTurnUpdate(battle) {
     if (battle.state === "finished") {
@@ -765,12 +1065,32 @@ class BattleEngine {
     nextPlayer.updateCooldowns();
     nextPlayer.updateBuffsAndStatus();
 
-    if (nextPlayer.isStunned) {
-      nextPlayer.isStunned = false;
-      battle.lastActionMessage += `\n💤 **${nextPlayer.name}** pulou o turno por atordoamento!`;
+    // Lógica para pular o turno de reação se a habilidade "Imaginário: Roxo" foi usada
+    if (battle.lastPendingSkill && battle.lastPendingSkill.effect && battle.lastPendingSkill.effect.type === "ignore_reaction") {
+      battle.lastActionMessage += `\n🚫 O turno de reação de **${nextPlayer.name}** foi ignorado devido ao **Imaginário: Roxo**!`;
+      battle.lastPendingSkill = null; // Resetar para não ignorar reações futuras
       battle.switchTurn();
       this.endTurnUpdate(battle);
       return;
+    }
+
+    if (nextPlayer.isStunned) {
+      // ✅ CORREÇÃO: Reduzir a duração apenas quando o turno é efetivamente pulado
+      nextPlayer.stunDuration--;
+      battle.lastActionMessage += `\n💤 **${nextPlayer.name}** pulou o turno por atordoamento! (Restam: ${nextPlayer.stunDuration} turnos)`;
+
+      if (nextPlayer.stunDuration <= 0) {
+        nextPlayer.isStunned = false;
+      }
+
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      return;
+    }
+
+    // Reset da seleção de sombra de Sung Jin-Woo a cada novo turno
+    if (nextPlayer.id === "sung_jin_woo") {
+      battle.sjwShadowChosen = false;
     }
 
     battle.state = "choosing_action";
@@ -794,11 +1114,42 @@ class BattleEngine {
     
     attacker.buffs.forEach(buff => {
       if (buff.id === "kaioken") damage *= 1.5;
+      if (buff.type === "debuff_damage") damage *= (1 - buff.value);
     });
 
     if (attacker.id === "naruto" && attacker.stacks["kage_bunshin"]) {
       const multiplier = 1 + (attacker.stacks["kage_bunshin"] * 0.5);
       damage *= multiplier;
+    }
+
+    if (attacker.id === "eva_01") {
+      // Taxa de Sincronização: ganha 1 stack por ataque (10%), cada stack aumenta o dano do Canhão Posítron.
+      attacker.addStack("sync", 10); // Aumentar limite para 10 (100%)
+      const sync = attacker.stacks["sync"] || 0;
+      
+      let finalMultiplier = 1;
+      // Se for Canhão Posítron, aplica o bônus de sincronização (10% por stack)
+      if (skill.id === "positron_beam") {
+        finalMultiplier *= (1 + (sync * 0.1));
+      }
+
+      const atBuff = attacker.buffs.find(b => b.id === "at_field");
+      const atBonus = atBuff ? 1.3 : 1;
+      damage *= finalMultiplier * atBonus;
+    }
+
+    if (attacker.id === "frieren" && attacker.manaAnalysisActive) {
+      damage *= 1.5;
+      attacker.manaAnalysisActive = false;
+    }
+
+    // ✅ CORREÇÃO: Fury Mode damage boost for Levi
+    // Agora verifica se o bônus está "armado" (atingiu 3 marcas no passado)
+    if (attacker.id === "levi" && attacker.furyModeArmado) {
+      damage = Math.floor(damage * 2.5); // Bônus de +150% (total 2.5x)
+      attacker.furyModeArmado = false; // Consome o bônus
+      attacker.resetStacks("marks"); // Reseta as marcas para 0
+      attacker.furyModeAtivoNesteAtaque = true; // Flag para feedback visual no BattleEngine
     }
 
     if (attacker.id === "itadori" && skill.id === "black_flash") {
@@ -807,6 +1158,50 @@ class BattleEngine {
         battle.lastActionMessage += `\n✨ **BLACK FLASH!**`;
       }
     }
+
+    if (attacker.buffs.some(b => b.id === "chainsaw_man")) {
+      damage *= 1.8; // +80% de dano na forma transformada
+    }
+
+    // Passiva: Sinergia com Sangramento
+    const isBleeding = defender.statusEffects.some(e => e.type === "bleed");
+    if (isBleeding && attacker.id === "denji") {
+      damage *= 1.2; // +20% de dano contra alvos sangrando
+      const lifesteal = Math.floor(damage * 0.15); // Cura 15% do dano causado
+      attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
+      battle.lastActionMessage += `\n🩸 **Brutalidade:** Denji se cura em **${lifesteal}** HP ao atacar um alvo sangrando!`;
+    }
+
+    // --- Sung Jin-Woo: mecânicas de dano por sombra ---
+    if (attacker.id === "sung_jin_woo") {
+      // Igris: bônus de marcas de sangue
+      if (attacker.activeShadow === "igris" && attacker.sjwMarkBonus > 0) {
+        damage += attacker.sjwMarkBonus;
+      }
+
+      // Beru: Frenesi do Predador (2-3 hits com damage override)
+      if (attacker.activeShadow === "beru" && skill.id === "sjw_frenesi_predador") {
+        let hits = 2;
+        if (Math.random() < 0.35) {
+          hits = 3;
+          battle.lastActionMessage += `\n⚡ **Hit Extra!** Beru desfere um 3º golpe!`;
+        }
+        damage = Math.floor(skill.damage * hits);
+        attacker.sjwFrenesiHits = hits;
+      }
+      // Beru: golpe duplo em Garras e Devorar (25%)
+      else if (attacker.activeShadow === "beru" && (skill.id === "sjw_garras_vorazes" || skill.id === "sjw_devorar")) {
+        if (Math.random() < 0.25) {
+          damage *= 2;
+          battle.lastActionMessage += `\n⚡ **Golpe Duplo!** Beru ataca novamente!`;
+        }
+      }
+    }
+
+    // Efeito de debuff_damage_taken
+    defender.buffs.forEach(buff => {
+      if (buff.type === "debuff_damage_taken") damage *= (1 + buff.value);
+    });
 
     return Math.floor(damage);
   }

@@ -58,6 +58,7 @@ module.exports = {
         return message.reply({ embeds: [EmbedManager.createStatusEmbed(`Personagem \`${charId}\` não encontrado.`, false)] });
       }
       const instanceId = playerRepository.addCharacter(targetUserId, charId);
+      if (instanceId && instanceId.error) return message.reply({ embeds: [EmbedManager.createStatusEmbed(instanceId.error, false)] });
       const charData = CharacterManager.getCharacter(charId);
       return message.reply({ embeds: [EmbedManager.createStatusEmbed(`Personagem **${charData.name}** adicionado para <@${targetUserId}>. (ID da Instância: ${instanceId})`, true)] });
     }

@@ -62,7 +62,7 @@ class EmbedManager {
       );
     }
 
-    if (battle.lastPendingSkill && battle.lastPendingSkill.gifUrl) {
+    if (battle.state === "choosing_reaction" && battle.lastPendingSkill && battle.lastPendingSkill.gifUrl) {
       embed.setImage(battle.lastPendingSkill.gifUrl);
     } else if (battle.state === "finished") {
       if (battle.winnerId === "players") {
@@ -76,8 +76,8 @@ class EmbedManager {
     }
 
     if (battle.state === "choosing_action") {
-      const turnText = (battle.isPve && battle.currentPlayerTurnId === battle.player2Id) ? `Turno de: ${currentPlayer.name} (Boss pensando...)` : `Turno de: ${currentPlayer.name} | Escolha uma habilidade!`;
-      embed.setFooter({ text: turnText });
+        const turnText = (battle.isPve && battle.currentPlayerTurnId === battle.player2Id) ? `Turno de: ${currentPlayer.name} (Boss pensando...)` : `Turno de: ${currentPlayer.name} | Escolha uma habilidade!`;
+        embed.setFooter({ text: turnText });
     } else if (battle.state === "choosing_reaction") {
       const damage = battle.lastPendingDamage || 0;
       const turnText = (battle.isPve && battle.getOpponentId() === battle.player2Id) ? `Turno de: ${opponentPlayer.name} (Boss reagindo...)` : `Turno de: ${opponentPlayer.name} | Dano Previsto: ${damage} HP | Reaja ou Pule!`;
@@ -90,6 +90,45 @@ class EmbedManager {
   static formatCharStats(char) {
     let stats = `❤️ HP: \`${char.health}/${char.maxHealth}\`\n⚡ Energia: \`${char.energy}/${char.maxEnergy}\``;
     
+    // Lógica para exibir os stacks do Levi
+    if (char.id === "levi") {
+      const marks = char.stacks["marks"] || 0;
+      let markDisplay = "";
+      for (let i = 0; i < marks; i++) {
+        markDisplay += "⚔️";
+      }
+      // Adiciona um placeholder opcional se não houver stacks, conforme solicitado
+      if (marks === 0) {
+        markDisplay = "(Nenhum stack)"; // Ou deixe vazio se preferir
+      }
+      stats += `\n🗡️ Stacks: ${markDisplay}`;
+
+      if (char.furyModeArmado) {
+        stats += `\n⚡ **FURY MODE PRONTO!**\nPróximo ataque: **+150% Dano**`;
+      }
+    }
+
+    if (char.id === "sung_jin_woo") {
+      const shadowEmojis = { igris: "⚔️", beru: "🐜", tank: "🛡️" };
+      const shadowNames = { igris: "Igris", beru: "Beru", tank: "Tank" };
+      const shadowName = char.activeShadow
+        ? `${shadowEmojis[char.activeShadow]} ${shadowNames[char.activeShadow]}`
+        : "❓ Nenhuma (selecione no turno)";
+      stats += `\n👥 **Sombra:** ${shadowName}`;
+
+      if (char.activeShadow === "igris") {
+        const marks = char.stacks["blood_marks"] || 0;
+        let markDisplay = marks > 0 ? "🗡️".repeat(marks) : "(nenhuma)";
+        stats += `\n🩸 **Marcas de Sangue:** ${markDisplay} \`${marks}/3\``;
+      }
+
+      const posBuff = char.buffs.find(b => b.id === "sjw_postura_inabalavel");
+      if (posBuff) stats += `\n🛡️ **Postura Inabalável** (\`${posBuff.duration}\` turno(s)) — 30% redução`;
+
+      const counterBuff = char.buffs.find(b => b.id === "sjw_contra_ataque_brutal");
+      if (counterBuff) stats += `\n⚔️ **Contra-Ataque Brutal** (\`${counterBuff.duration}\` turno(s))`;
+    }
+
     if (char.statusEffects.length > 0) {
       const statusStr = char.statusEffects.map(s => {
         const name = s.type === "burn" ? "Queimadura" : "Sangramento";
@@ -103,8 +142,17 @@ class EmbedManager {
       stats += `\n👥 **Clones:** \`${char.stacks["kage_bunshin"]}/3\``;
     }
     
+    if (char.id === "eva_01") {
+      const sync = char.stacks["sync"] || 0;
+      stats += `\n🧬 **Sincronização:** \`${sync * 10}%\``;
+    }
+
     if (char.buffs.some(b => b.id === "kaioken")) {
       stats += `\n🔴 **Kaioken Ativo!**`;
+    }
+
+    if (char.buffs.some(b => b.id === "chainsaw_man")) {
+      stats += `\n🪚 **MODO VERDADEIRO CHAINSAW MAN ATIVO!** (+80% Dano)`;
     }
 
     if (char.isStunned) {
@@ -167,38 +215,46 @@ class EmbedManager {
   }
 
   static createInventoryEmbed(player, user, type = "chars") {
+    const playerRepository = require("../database/repositories/playerRepository");
+    const slots = playerRepository.getSlots(user.id);
+    const charSlots = slots.charSlots;
+    const artifactSlots = slots.artifactSlots;
+
     const embed = new EmbedBuilder()
       .setTitle(`🎒 Inventário de ${user.username}`)
-      .setThumbnail(user.displayAvatarURL())
-;
+      .setThumbnail(user.displayAvatarURL());
 
     if (type === "chars") {
       embed.setColor("#9B59B6");
       const instances = player.ownedChars || [];
+      const displayedInstances = instances.slice(0, charSlots);
       const rarityGroups = {};
-      const displayedInstances = instances.slice(0, 10);
 
       displayedInstances.forEach(inst => {
         const charData = CharacterManager.getCharacter(inst.character_id, inst);
         const rarity = charData.rarity;
         if (!rarityGroups[rarity]) rarityGroups[rarity] = [];
-        
+
         const EvolutionManager = require("./EvolutionManager");
         const nextLevelXP = EvolutionManager.getXPRequired(inst.level);
         const xpPercent = Math.floor((inst.xp / nextLevelXP) * 10);
         const bar = "█".repeat(xpPercent) + "░".repeat(10 - xpPercent);
-        
+
         let artifactIcons = "";
         if (charData.equippedArtifacts && charData.equippedArtifacts.length > 0) {
           artifactIcons = " " + charData.equippedArtifacts.map(a => a.emoji).join("");
         }
-        
+
         rarityGroups[rarity].push(`• **${charData.name}** [Lvl ${inst.level}]${artifactIcons} (ID: ${inst.id})\n \`${bar}\` \`${inst.xp}/${nextLevelXP}\``);
       });
 
+      const usedSlots = instances.length;
+      const slotBar = usedSlots >= charSlots ? "🔴" : usedSlots >= charSlots * 0.8 ? "🟡" : "🟢";
+      embed.setDescription(`${slotBar} **Slots de Personagem:** \`${usedSlots}/${charSlots}\`` + (charSlots < playerRepository.SLOT_MAX ? `\n🔓 Desbloqueie +5 slots por **${playerRepository.SLOT_COST} Fragmentos Zenith**` : `\n✅ Slots máximos atingidos!`));
+
       const rarities = Object.keys(rarityGroups).sort();
       if (rarities.length === 0) {
-        embed.setDescription("Seu inventário de personagens está vazio.");
+        embed.addFields({ name: "Personagens", value: "Seu inventário de personagens está vazio.", inline: false });
       } else {
         rarities.forEach(rarity => {
           embed.addFields({
@@ -208,12 +264,12 @@ class EmbedManager {
           });
         });
       }
-      
-      const footerText = instances.length > 10 
-        ? `Mostrando 10 de ${instances.length} personagens | Use !inv para alternar`
-        : `Total: ${instances.length} personagens | Use !inv para alternar`;
-      
-      embed.setFooter({ text: footerText });
+
+      if (instances.length > charSlots) {
+        embed.addFields({ name: "⚠️ Slots Cheios!", value: `Você tem **${instances.length - charSlots}** personagem(ns) além do limite que não aparecem. Desbloqueie mais slots!`, inline: false });
+      }
+
+      embed.setFooter({ text: `Total: ${instances.length}/${charSlots} slots | Use !inv para alternar` });
     } else {
       embed.setColor("#E67E22");
       const items = player.items || [];
@@ -225,7 +281,11 @@ class EmbedManager {
         return acc;
       }, []);
 
-      const artifacts = (player.artifacts || []).filter(a => !equippedArtifactIds.includes(a.id));
+      const allArtifacts = player.artifacts || [];
+      const artifacts = allArtifacts.filter(a => !equippedArtifactIds.includes(a.id));
+      const usedArtSlots = allArtifacts.length;
+      const slotBar = usedArtSlots >= artifactSlots ? "🔴" : usedArtSlots >= artifactSlots * 0.8 ? "🟡" : "🟢";
+
       const itemNames = {
         "soul_stone_1": `${Emojis.SOUL_STONE_1} Pedra da Alma I (+20 XP)`,
         "soul_stone_2": `${Emojis.SOUL_STONE_2} Pedra da Alma II (+50 XP)`,
@@ -233,7 +293,7 @@ class EmbedManager {
         "fr": `💎 Fragmento de Relíquia (FR)`
       };
 
-      let soulStonesList = items.length > 0 
+      let soulStonesList = items.length > 0
         ? items.map(i => `• **${itemNames[i.item_id] || i.item_id}** x${i.quantity}`).join("\n")
         : "Nenhuma pedra da alma.";
 
@@ -241,18 +301,26 @@ class EmbedManager {
       soulStonesList = `• **${Emojis.ZENITH_FRAGMENT} Fragmento Zenith** x${zenithFragments}\n` + soulStonesList;
 
       const ArtifactManager = require("./ArtifactManager");
-      const artifactList = artifacts.length > 0
-        ? artifacts.map(a => {
+      const artifactList = artifacts.slice(0, artifactSlots).length > 0
+        ? artifacts.slice(0, artifactSlots).map(a => {
             const artifactData = ArtifactManager.getArtifact(a.artifact_id, a);
             return `• ${artifactData.emoji} **${artifactData.name}** (ID: ${a.id})`;
           }).join("\n")
         : "Nenhum artefato.";
 
-      embed.setDescription(`**Pedras da Alma**\n${soulStonesList}\n\n**Artefatos**\n${artifactList}`);
-      embed.setFooter({ text: "Use as pedras para upar seus personagens!" });
+      const artSlotInfo = `${slotBar} **Slots de Artefato:** \`${usedArtSlots}/${artifactSlots}\`` + (artifactSlots < playerRepository.SLOT_MAX ? `\n🔓 Desbloqueie +5 slots por **${playerRepository.SLOT_COST} Fragmentos Zenith**` : `\n✅ Slots máximos atingidos!`);
+      embed.setDescription(`${artSlotInfo}\n\n**Pedras da Alma**\n${soulStonesList}\n\n**Artefatos no Inventário**\n${artifactList}`);
+
+      if (allArtifacts.length > artifactSlots) {
+        embed.addFields({ name: "⚠️ Slots Cheios!", value: `Você tem **${allArtifacts.length - artifactSlots}** artefato(s) além do limite. Desbloqueie mais slots!`, inline: false });
+      }
     }
 
-    const row = new ActionRowBuilder().addComponents(
+    const canUnlockChar = charSlots < playerRepository.SLOT_MAX;
+    const canUnlockArt = artifactSlots < playerRepository.SLOT_MAX;
+
+    const rows = [];
+    rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`inv_chars_${user.id}`)
         .setLabel("Personagens")
@@ -261,9 +329,26 @@ class EmbedManager {
         .setCustomId(`inv_items_${user.id}`)
         .setLabel("Itens e Artefatos")
         .setStyle(type === "items" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    );
+    ));
 
-    return { embeds: [embed], components: [row] };
+    if (type === "chars" && canUnlockChar) {
+      rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`inv_unlock_char_${user.id}`)
+          .setLabel(`🔓 +5 Slots Personagem (${playerRepository.SLOT_COST} Zenith)`)
+          .setStyle(ButtonStyle.Success)
+      ));
+    }
+    if (type === "items" && canUnlockArt) {
+      rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`inv_unlock_artifact_${user.id}`)
+          .setLabel(`🔓 +5 Slots Artefato (${playerRepository.SLOT_COST} Zenith)`)
+          .setStyle(ButtonStyle.Success)
+      ));
+    }
+
+    return { embeds: [embed], components: rows };
   }
 
   static createLevelUpEmbed(charData, oldLevel, newLevel, xpGained) {

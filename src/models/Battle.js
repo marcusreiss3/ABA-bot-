@@ -38,20 +38,28 @@ class Battle {
   getOpponentPlayer() {
     if (this.type === "boss-rush") {
       if (this.currentPlayerTurnId === this.player1Id) {
-        // Boss ataca o alvo atual (definido no turno ou padrão)
         const target = this.partyCharacters.find(c => c.ownerId === this.player2Id);
         return target || this.character2;
       } else {
-        // Jogador do time ataca o Boss
         return this.character1;
       }
     }
     if (this.isPve) {
-      if (this.currentPlayerTurnId !== this.player2Id) return this.character2;
-      return this.character1; 
+      // Se o Boss (player2) estiver atacando
+      if (this.currentPlayerTurnId === this.player2Id) {
+        if (this.partyCharacters) {
+          const targetId = this.getOpponentId();
+          const target = this.partyCharacters.find(c => c.ownerId === targetId);
+          return target || this.character1;
+        }
+        return this.character1;
+      }
+      // Se o Player estiver atacando, o alvo é o Boss
+      return this.character2;
     }
     return this.currentPlayerTurnId === this.player1Id ? this.character2 : this.character1;
   }
+
 
   getOpponentId() {
     if (this.type === "boss-rush") {
