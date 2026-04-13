@@ -74,7 +74,8 @@ client.on("messageCreate", async (message) => {
 
   // Comando !equipartifact desativado. Use !equip.
   if (command === "!equipartifact" || command === "!equipart") {
-    message.reply("Este comando foi movido! Agora use apenas `!equip` e escolha a opção 'Equipar Artefato'.");
+    const EmbedManager = require("./services/EmbedManager");
+    message.reply({ embeds: [EmbedManager.createStatusEmbed("Este comando foi movido! Agora use apenas `!equip` e escolha a opção 'Equipar Artefato'.", false)] });
   }
 
   if (command === "!modo-historia" || command === "!pve" || command === "!historia") {

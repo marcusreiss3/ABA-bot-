@@ -14,7 +14,8 @@ module.exports = {
     const validItems = items.filter(i => EvolutionManager.ITEMS[i.item_id]);
 
     if (validItems.length === 0) {
-      return message.reply("❌ Você não possui itens de evolução (Pedras da Alma).");
+      const EmbedManager = require("../services/EmbedManager");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não possui itens de evolução (Pedras da Alma).", false)] });
     }
 
     const itemOptions = validItems.map(i => {

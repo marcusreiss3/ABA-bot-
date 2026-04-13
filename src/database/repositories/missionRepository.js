@@ -1,114 +1,140 @@
+const db = require("../db");
 const missionConfig = require("../../config/missionConfig");
+
+// Cache em memória para evitar queries a cada checagem de progresso
+let cache = null;
+
+function loadCache() {
+  const dailyRow  = db.prepare("SELECT mission_ids, last_rotation FROM mission_state WHERE type = 'daily'").get();
+  const weeklyRow = db.prepare("SELECT mission_ids, last_rotation FROM mission_state WHERE type = 'weekly'").get();
+
+  const allDaily  = missionConfig.daily;
+  const allWeekly = missionConfig.weekly;
+
+  // Reconstrói lista de missões ativas a partir dos IDs salvos
+  const hydrate = (ids, pool) => ids
+    .map(id => pool.find(m => m.id === id))
+    .filter(Boolean);
+
+  cache = {
+    daily:              dailyRow  ? hydrate(JSON.parse(dailyRow.mission_ids),  allDaily)  : [],
+    weekly:             weeklyRow ? hydrate(JSON.parse(weeklyRow.mission_ids), allWeekly) : [],
+    lastDailyRotation:  dailyRow  ? dailyRow.last_rotation  : null,
+    lastWeeklyRotation: weeklyRow ? weeklyRow.last_rotation : null,
+  };
+}
+
+function saveMissionState(type, missions, lastRotation) {
+  const ids = JSON.stringify(missions.map(m => m.id));
+  db.prepare(`
+    INSERT OR REPLACE INTO mission_state (type, mission_ids, last_rotation)
+    VALUES (?, ?, ?)
+  `).run(type, ids, lastRotation);
+}
+
+// Retorna a chave do sábado mais recente (meia-noite) como string de data
+function getMostRecentSaturdayKey() {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Dom ... 6=Sáb
+  const daysSinceSat = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
+  const lastSat = new Date(now);
+  lastSat.setHours(0, 0, 0, 0);
+  lastSat.setDate(lastSat.getDate() - daysSinceSat);
+  return lastSat.toDateString();
+}
 
 class MissionRepository {
   constructor() {
-    this.globalMissions = {
-      daily: [],
-      weekly: [],
-      lastDailyRotation: null,
-      lastWeeklyRotation: null
-    };
-    this.playerProgress = new Map(); // userId -> { missionId -> currentProgress }
-    this.playerClaimed = new Map(); // userId -> Set(missionId)
+    loadCache();
   }
 
-  // Sorteia 3 missões aleatórias de uma lista
   getRandomMissions(list, count) {
     const shuffled = [...list].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
   }
 
-  // Verifica e realiza a rotação se necessário
+  // Verifica e realiza rotações necessárias
   checkRotation() {
-    const now = new Date();
-    const today = now.toDateString();
-    
-    // Rotação Diária (Meia-noite)
-    if (this.globalMissions.lastDailyRotation !== today) {
-      this.globalMissions.daily = this.getRandomMissions(missionConfig.daily, 3);
-      this.globalMissions.lastDailyRotation = today;
+    const today = new Date().toDateString();
+
+    // Rotação diária — meia-noite de cada dia
+    if (cache.lastDailyRotation !== today) {
+      cache.daily = this.getRandomMissions(missionConfig.daily, 3);
+      cache.lastDailyRotation = today;
+      saveMissionState("daily", cache.daily, today);
       this.resetDailyProgress();
     }
 
-    // Rotação Semanal (Domingo à meia-noite)
-    const dayOfWeek = now.getDay(); // 0 = Domingo
-    const weekNumber = Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000));
-    
-    // Se não houver missões semanais (primeira execução), sorteia agora
-    if (this.globalMissions.weekly.length === 0) {
-      this.globalMissions.weekly = this.getRandomMissions(missionConfig.weekly, 3);
-      this.globalMissions.lastWeeklyRotation = weekNumber;
-    }
-    // Rotação normal no domingo
-    else if (this.globalMissions.lastWeeklyRotation !== weekNumber && dayOfWeek === 0) {
-      this.globalMissions.weekly = this.getRandomMissions(missionConfig.weekly, 3);
-      this.globalMissions.lastWeeklyRotation = weekNumber;
-      this.resetWeeklyProgress();
+    // Rotação semanal — sábado à meia-noite
+    const currentSatKey = getMostRecentSaturdayKey();
+    if (cache.lastWeeklyRotation !== currentSatKey) {
+      const isFirstRun = cache.weekly.length === 0;
+      cache.weekly = this.getRandomMissions(missionConfig.weekly, 3);
+      cache.lastWeeklyRotation = currentSatKey;
+      saveMissionState("weekly", cache.weekly, currentSatKey);
+      if (!isFirstRun) this.resetWeeklyProgress();
     }
   }
 
   resetDailyProgress() {
-    // Limpa apenas o progresso das missões diárias antigas
-    const dailyIds = missionConfig.daily.map(m => m.id);
-    this.playerProgress.forEach((progress, userId) => {
-      dailyIds.forEach(id => delete progress[id]);
-    });
-    this.playerClaimed.forEach((claimed, userId) => {
-      dailyIds.forEach(id => claimed.delete(id));
-    });
+    const ids = missionConfig.daily.map(m => m.id);
+    const ph  = ids.map(() => "?").join(",");
+    db.prepare(`DELETE FROM mission_progress WHERE mission_id IN (${ph})`).run(...ids);
+    db.prepare(`DELETE FROM mission_claimed  WHERE mission_id IN (${ph})`).run(...ids);
   }
 
   resetWeeklyProgress() {
-    // Limpa apenas o progresso das missões semanais antigas
-    const weeklyIds = missionConfig.weekly.map(m => m.id);
-    this.playerProgress.forEach((progress, userId) => {
-      weeklyIds.forEach(id => delete progress[id]);
-    });
-    this.playerClaimed.forEach((claimed, userId) => {
-      weeklyIds.forEach(id => claimed.delete(id));
-    });
+    const ids = missionConfig.weekly.map(m => m.id);
+    const ph  = ids.map(() => "?").join(",");
+    db.prepare(`DELETE FROM mission_progress WHERE mission_id IN (${ph})`).run(...ids);
+    db.prepare(`DELETE FROM mission_claimed  WHERE mission_id IN (${ph})`).run(...ids);
   }
 
-  // Força a rotação (Admin)
+  // Força rotação manual (Admin)
   forceRotation(type) {
     if (type === "daily") {
-      this.globalMissions.daily = this.getRandomMissions(missionConfig.daily, 3);
+      cache.daily = this.getRandomMissions(missionConfig.daily, 3);
+      cache.lastDailyRotation = new Date().toDateString();
+      saveMissionState("daily", cache.daily, cache.lastDailyRotation);
       this.resetDailyProgress();
     } else if (type === "weekly") {
-      this.globalMissions.weekly = this.getRandomMissions(missionConfig.weekly, 3);
+      cache.weekly = this.getRandomMissions(missionConfig.weekly, 3);
+      cache.lastWeeklyRotation = getMostRecentSaturdayKey();
+      saveMissionState("weekly", cache.weekly, cache.lastWeeklyRotation);
       this.resetWeeklyProgress();
     }
   }
 
-  // Adiciona progresso a uma missão
   addProgress(userId, missionId, amount = 1) {
-    if (!this.playerProgress.has(userId)) {
-      this.playerProgress.set(userId, {});
-    }
-    const progress = this.playerProgress.get(userId);
-    progress[missionId] = (progress[missionId] || 0) + amount;
+    db.prepare(`
+      INSERT INTO mission_progress (player_id, mission_id, progress)
+      VALUES (?, ?, ?)
+      ON CONFLICT(player_id, mission_id) DO UPDATE SET progress = progress + excluded.progress
+    `).run(userId, missionId, amount);
   }
 
   getProgress(userId, missionId) {
-    const progress = this.playerProgress.get(userId);
-    return progress ? (progress[missionId] || 0) : 0;
+    const row = db.prepare(
+      "SELECT progress FROM mission_progress WHERE player_id = ? AND mission_id = ?"
+    ).get(userId, missionId);
+    return row ? row.progress : 0;
   }
 
   isClaimed(userId, missionId) {
-    const claimed = this.playerClaimed.get(userId);
-    return claimed ? claimed.has(missionId) : false;
+    return !!db.prepare(
+      "SELECT 1 FROM mission_claimed WHERE player_id = ? AND mission_id = ?"
+    ).get(userId, missionId);
   }
 
   claimReward(userId, missionId) {
-    if (!this.playerClaimed.has(userId)) {
-      this.playerClaimed.set(userId, new Set());
-    }
-    this.playerClaimed.get(userId).add(missionId);
+    db.prepare(
+      "INSERT OR IGNORE INTO mission_claimed (player_id, mission_id) VALUES (?, ?)"
+    ).run(userId, missionId);
   }
 
   getGlobalMissions() {
     this.checkRotation();
-    return this.globalMissions;
+    return cache;
   }
 }
 

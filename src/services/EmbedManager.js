@@ -183,8 +183,6 @@ class EmbedManager {
       charCounts[inst.character_id] = (charCounts[inst.character_id] || 0) + 1;
     });
 
-    const charsList = "Consulte seu inventário com `!inv`";
-
     const equippedInstance = instances.find(i => i.id === player.equipped_instance_id);
     let equippedName = "Nenhum";
     let equippedArtifactsList = "Nenhum";
@@ -205,7 +203,7 @@ class EmbedManager {
         { name: "Nível", value: `\`${player.level}\``, inline: true },
         { name: "XP", value: `\`${player.xp}\``, inline: true },
         { name: "Ouro", value: `\`${player.gold}\``, inline: true },
-        { name: "Fragmentos Zenith", value: `${Emojis.ZENITH_FRAGMENT} \`${player.zenith_fragments || 0}\``, inline: true },
+        { name: "Fragmentos Zenith", value: `${Emojis.ZENITH} \`${player.zenith_fragments || 0}\``, inline: true },
         { name: "🏆 Rank", value: `\`${player.rank || "Discípulo I"}\``, inline: true },
         { name: "📈 PA", value: `\`${player.pa || 0}/100\``, inline: true },
         { name: "Equipado", value: `\`${equippedName}\``, inline: false },
@@ -249,8 +247,14 @@ class EmbedManager {
       });
 
       const usedSlots = instances.length;
-      const slotBar = usedSlots >= charSlots ? "🔴" : usedSlots >= charSlots * 0.8 ? "🟡" : "🟢";
-      embed.setDescription(`${slotBar} **Slots de Personagem:** \`${usedSlots}/${charSlots}\`` + (charSlots < playerRepository.SLOT_MAX ? `\n🔓 Desbloqueie +5 slots por **${playerRepository.SLOT_COST} Fragmentos Zenith**` : `\n✅ Slots máximos atingidos!`));
+      const slotsFull = usedSlots >= charSlots;
+      const slotsMaxed = charSlots >= playerRepository.SLOT_MAX;
+      const slotDesc = slotsMaxed
+        ? `✅ **Personagens:** \`${usedSlots}/${charSlots}\` — Slots máximos atingidos!`
+        : slotsFull
+          ? `⚠️ **Personagens:** \`${usedSlots}/${charSlots}\` — Slots cheios! 🔓 +5 por ${Emojis.ZENITH} **${playerRepository.SLOT_COST}**`
+          : `🥋 **Personagens:** \`${usedSlots}/${charSlots}\` — 🔓 +5 slots por ${Emojis.ZENITH} **${playerRepository.SLOT_COST}**`;
+      embed.setDescription(slotDesc);
 
       const rarities = Object.keys(rarityGroups).sort();
       if (rarities.length === 0) {
@@ -284,36 +288,53 @@ class EmbedManager {
       const allArtifacts = player.artifacts || [];
       const artifacts = allArtifacts.filter(a => !equippedArtifactIds.includes(a.id));
       const usedArtSlots = allArtifacts.length;
-      const slotBar = usedArtSlots >= artifactSlots ? "🔴" : usedArtSlots >= artifactSlots * 0.8 ? "🟡" : "🟢";
 
-      const itemNames = {
-        "soul_stone_1": `${Emojis.SOUL_STONE_1} Pedra da Alma I (+20 XP)`,
-        "soul_stone_2": `${Emojis.SOUL_STONE_2} Pedra da Alma II (+50 XP)`,
-        "soul_stone_3": `${Emojis.SOUL_STONE_3} Pedra da Alma III (+150 XP)`,
-        "fr": `💎 Fragmento de Relíquia (FR)`
-      };
+      // ── Recursos (moedas) ─────────────────────────────────────
+      const zenithQty = player.zenith_fragments || 0;
+      const frQty     = items.find(i => i.item_id === "fr")?.quantity || 0;
+      const recursosValue = [
+        `${Emojis.ZENITH} **Fragmentos Zenith:** \`${zenithQty}\``,
+        `${Emojis.ARTIFACT} **Fragmentos de Relíquia:** \`${frQty}\``,
+      ].join("\n");
 
-      let soulStonesList = items.length > 0
-        ? items.map(i => `• **${itemNames[i.item_id] || i.item_id}** x${i.quantity}`).join("\n")
-        : "Nenhuma pedra da alma.";
+      // ── Pedras da Alma (sempre exibe as 3 linhas) ────────────
+      const stoneMap = [
+        { id: "soul_stone_1", label: "Pedra da Alma I",   emoji: Emojis.SOUL_STONE_1 },
+        { id: "soul_stone_2", label: "Pedra da Alma II",  emoji: Emojis.SOUL_STONE_2 },
+        { id: "soul_stone_3", label: "Pedra da Alma III", emoji: Emojis.SOUL_STONE_3 },
+      ];
+      const pedrasValue = stoneMap.map(s => {
+        const qty = items.find(i => i.item_id === s.id)?.quantity || 0;
+        return `${s.emoji} **${s.label}:** \`${qty}\``;
+      }).join("\n");
 
-      const zenithFragments = player.zenith_fragments || 0;
-      soulStonesList = `• **${Emojis.ZENITH_FRAGMENT} Fragmento Zenith** x${zenithFragments}\n` + soulStonesList;
-
+      // ── Artefatos ─────────────────────────────────────────────
       const ArtifactManager = require("./ArtifactManager");
-      const artifactList = artifacts.slice(0, artifactSlots).length > 0
-        ? artifacts.slice(0, artifactSlots).map(a => {
-            const artifactData = ArtifactManager.getArtifact(a.artifact_id, a);
-            return `• ${artifactData.emoji} **${artifactData.name}** (ID: ${a.id})`;
+      const artifactLines = artifacts.slice(0, artifactSlots);
+      const artifactValue = artifactLines.length > 0
+        ? artifactLines.map(a => {
+            const d = ArtifactManager.getArtifact(a.artifact_id, a);
+            return `${d.emoji} **${d.name}** — ID: \`${a.id}\``;
           }).join("\n")
-        : "Nenhum artefato.";
+        : "*Nenhum artefato no inventário.*";
 
-      const artSlotInfo = `${slotBar} **Slots de Artefato:** \`${usedArtSlots}/${artifactSlots}\`` + (artifactSlots < playerRepository.SLOT_MAX ? `\n🔓 Desbloqueie +5 slots por **${playerRepository.SLOT_COST} Fragmentos Zenith**` : `\n✅ Slots máximos atingidos!`);
-      embed.setDescription(`${artSlotInfo}\n\n**Pedras da Alma**\n${soulStonesList}\n\n**Artefatos no Inventário**\n${artifactList}`);
+      const artSlotsMaxed = artifactSlots >= playerRepository.SLOT_MAX;
+      const artSlotsFull  = usedArtSlots >= artifactSlots;
+      const artSlotSuffix = artSlotsMaxed
+        ? "✅ Máximo atingido"
+        : `🔓 +5 por ${Emojis.ZENITH} **${playerRepository.SLOT_COST}**`;
 
-      if (allArtifacts.length > artifactSlots) {
-        embed.addFields({ name: "⚠️ Slots Cheios!", value: `Você tem **${allArtifacts.length - artifactSlots}** artefato(s) além do limite. Desbloqueie mais slots!`, inline: false });
-      }
+      embed.setDescription(`> Use \`!use\` para consumir Pedras da Alma e evoluir seus personagens.`);
+      embed.addFields(
+        { name: `${Emojis.MOCHILA} Recursos`,           value: recursosValue, inline: true },
+        { name: `${Emojis.TODAS_PEDRAS} Pedras da Alma`, value: pedrasValue,  inline: true },
+        { name: `\u200b`, value: `\u200b`, inline: false },
+        {
+          name: `${Emojis.ARTIFACT} Artefatos — \`${usedArtSlots}/${artifactSlots}\` ${artSlotsFull && !artSlotsMaxed ? "⚠️ " : ""}${artSlotSuffix}`,
+          value: artifactValue,
+          inline: false
+        },
+      );
     }
 
     const canUnlockChar = charSlots < playerRepository.SLOT_MAX;

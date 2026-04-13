@@ -1220,8 +1220,12 @@ module.exports = {
       const battleId = parts[1];
       const battle = BattleEngine.getBattle(battleId);
 
-      if (!battle) return interaction.reply({ content: "Combate não encontrado ou já encerrado.", ephemeral: true });
-      
+      // Batalha já encerrada: ignora silenciosamente se o canal está sendo deletado
+      if (!battle) {
+        try { await interaction.reply({ content: "Este combate já foi encerrado.", ephemeral: true }); } catch (_) {}
+        return;
+      }
+
       // Verificar se o jogador faz parte da batalha
       const isP1 = battle.player1Id === interaction.user.id;
       const isP2 = battle.player2Id === interaction.user.id;
@@ -1229,30 +1233,35 @@ module.exports = {
       const isTeam2 = battle.team2 && battle.team2.includes(interaction.user.id);
 
       if (!isP1 && !isP2 && !isParty && !isTeam2) {
-        return interaction.reply({ content: "Você não faz parte deste combate!", ephemeral: true });
+        try { await interaction.reply({ content: "Você não faz parte deste combate!", ephemeral: true }); } catch (_) {}
+        return;
       }
 
       const result = BattleEngine.abandonBattle(battleId, interaction.user.id);
-      
-      if (result === "voted") {
-        return interaction.reply({ content: `✅ Você votou para abandonar! (${battle.abandonVotes.size}/2)`, ephemeral: true });
-      } else if (result) {
-        const embed = EmbedManager.createBattleEmbed(result);
-        
-        // Deletar canal temporário se existir no abandono
-        if (result.channelId) {
-          setTimeout(async () => {
-            try {
-              const channel = await interaction.client.channels.fetch(result.channelId);
-              if (channel) await channel.delete("Combate abandonado");
-            } catch (e) { console.error("Erro ao deletar canal:", e); }
-          }, 10000);
-        }
 
-        return interaction.update({ embeds: [embed], components: [] });
-      } else {
-        return interaction.reply({ content: "Erro ao tentar abandonar o combate.", ephemeral: true });
+      try {
+        if (result === "voted") {
+          await interaction.reply({ content: `✅ Você votou para abandonar! (${battle.abandonVotes.size}/2)`, ephemeral: true });
+        } else if (result) {
+          const embed = EmbedManager.createBattleEmbed(result);
+
+          if (result.channelId) {
+            setTimeout(async () => {
+              try {
+                const channel = await interaction.client.channels.fetch(result.channelId);
+                if (channel) await channel.delete("Combate abandonado");
+              } catch (e) { console.error("Erro ao deletar canal:", e); }
+            }, 10000);
+          }
+
+          await interaction.update({ embeds: [embed], components: [] });
+        } else {
+          await interaction.reply({ content: "Erro ao tentar abandonar o combate.", ephemeral: true });
+        }
+      } catch (e) {
+        if (e.code !== 10003 && e.code !== 10062) console.error("Erro no abandon:", e);
       }
+      return;
     }
 
     // 1.2 Lógica de Boss Rush
@@ -1353,37 +1362,39 @@ module.exports = {
       const battleId = parts[1];
       const actionId = parts.slice(2).join("_");
       const battle = BattleEngine.getBattle(battleId);
-      if (!battle) return interaction.reply({ content: `Batalha expirada.`, ephemeral: true });
-      if (battle.state === "finished") return interaction.reply({ content: "A batalha terminou!", ephemeral: true });
+      const safeReply = async (content) => {
+        try { await interaction.reply({ content, ephemeral: true }); } catch (_) {}
+      };
+      if (!battle) return safeReply("Batalha expirada.");
+      if (battle.state === "finished") return safeReply("A batalha terminou!");
 
       let updatedBattle = null;
 
       if (isMenu && type === "menu") {
-        if (interaction.user.id !== battle.currentPlayerTurnId) return interaction.reply({ content: "Não é seu turno!", ephemeral: true });
+        if (interaction.user.id !== battle.currentPlayerTurnId) return safeReply("Não é seu turno!");
         const selectedSkillId = interaction.values[0];
         updatedBattle = BattleEngine.processAction(battleId, interaction.user.id, selectedSkillId);
-        if (!updatedBattle) return interaction.reply({ content: "Ação inválida.", ephemeral: true });
+        if (!updatedBattle) return safeReply("Ação inválida.");
       }
 
       if (isButton && type === "recover") {
-        if (interaction.user.id !== battle.currentPlayerTurnId) return interaction.reply({ content: "Não é seu turno!", ephemeral: true });
+        if (interaction.user.id !== battle.currentPlayerTurnId) return safeReply("Não é seu turno!");
         updatedBattle = BattleEngine.processRecoverEnergy(battleId, interaction.user.id);
-        if (!updatedBattle) return interaction.reply({ content: "Erro ao recuperar energia.", ephemeral: true });
+        if (!updatedBattle) return safeReply("Erro ao recuperar energia.");
       }
 
       if (isButton && type === "reaction") {
-        if (interaction.user.id !== battle.getOpponentId()) return interaction.reply({ content: "Não é sua vez!", ephemeral: true });
+        if (interaction.user.id !== battle.getOpponentId()) return safeReply("Não é sua vez!");
         updatedBattle = BattleEngine.processReaction(battleId, interaction.user.id, actionId);
-        if (!updatedBattle) return interaction.reply({ content: "Erro na reação.", ephemeral: true });
+        if (!updatedBattle) return safeReply("Erro na reação.");
       }
       if (updatedBattle) {
         const embed = EmbedManager.createBattleEmbed(updatedBattle);
         let components = [];
-        if (updatedBattle.state === "finished" || updatedBattle.state === "waiting_next_floor") {
-          components = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), false, updatedBattle);
+        if (updatedBattle.state === "finished") {
+          components = []; // Sem botões — batalha encerrada
 
-          // Deletar canal temporário se estiver finalizado (não deletar se estiver esperando próximo andar)
-          if (updatedBattle.state === "finished" && updatedBattle.channelId) {
+          if (updatedBattle.channelId) {
             setTimeout(async () => {
               try {
                 const channel = await interaction.client.channels.fetch(updatedBattle.channelId);
@@ -1391,6 +1402,8 @@ module.exports = {
               } catch (e) { console.error("Erro ao deletar canal:", e); }
             }, 10000);
           }
+        } else if (updatedBattle.state === "waiting_next_floor") {
+          components = ButtonManager.createActionComponents(battleId, updatedBattle.getCurrentPlayer(), false, updatedBattle);
         } else if (updatedBattle.state === "choosing_reaction") {
           const isBossTurn = updatedBattle.isPve && updatedBattle.getOpponentId() === updatedBattle.player2Id;
           components = ButtonManager.createReactionButtons(battleId, updatedBattle.getOpponentPlayer(), isBossTurn);
@@ -1447,7 +1460,12 @@ module.exports = {
                   }, 1500);
                 } else {
                   const isBossTurn = reactionBattle.isPve && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id;
-                  const reactionComponents = (reactionBattle.state === "finished" || reactionBattle.state === "waiting_next_floor") ? ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), false, reactionBattle) : ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
+                  let reactionComponents;
+                  if (reactionBattle.state === "finished") {
+                    reactionComponents = [];
+                  } else {
+                    reactionComponents = ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
+                  }
                   await battleMessage.edit({ embeds: [reactionEmbed], components: reactionComponents });
                 }
               } catch (e) { console.error("Erro na reação do boss:", e); }

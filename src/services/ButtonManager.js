@@ -4,6 +4,9 @@ class ButtonManager {
   static createActionComponents(battleId, character, isDisabled = false, battle = null) {
     const rows = [];
 
+    // Batalha encerrada: sem botões
+    if (battle && battle.state === "finished") return rows;
+
     // --- Menu de Seleção de Sombra: Sung Jin-Woo ---
     if (character.id === "sung_jin_woo" && battle && !battle.sjwShadowChosen && !isDisabled) {
       const shadowMenu = new StringSelectMenuBuilder()

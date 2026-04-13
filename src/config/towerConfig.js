@@ -8,12 +8,12 @@ module.exports = {
         name: "Saibaman",
         anime: "Dragon Ball",
         level: 1,
-        health: 100,
+        health: 60,
         energy: 80,
-        imageUrl: "https://i.ibb.co/v6YmR0K/saibaman.png",
+        imageUrl: "https://i.ibb.co/ZzCShXXZ/imagem-2026-04-13-000145492.png",
         skills: [
-          { id: "acid", name: "Ácido", description: "Cospe um jato de ácido corrosivo.", type: "attack", cost: 10, damage: 15, damageType: 'elemental' },
-          { id: "self_destruct", name: "Auto-Destruição", description: "O Saibaman se explode, causando dano massivo.", type: "attack", cost: 50, damage: 100, damageType: 'fisico', cooldown: 10 }
+          { id: "acid", name: "Ácido", description: "Cospe um jato de ácido corrosivo.", type: "attack", cost: 10, damage: 25, damageType: 'elemental' },
+          { id: "self_destruct", name: "Auto-Destruição", description: "O Saibaman se explode, causando dano massivo.", type: "attack", cost: 50, damage: 160, damageType: 'fisico', cooldown: 10 }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 3 }
@@ -25,12 +25,12 @@ module.exports = {
         name: "Buggy o Palhaço",
         anime: "One Piece",
         level: 5,
-        health: 300,
+        health: 150,
         energy: 90,
-        imageUrl: "https://i.ibb.co/8Y6yR0K/buggy.png",
+        imageUrl: "https://i.ibb.co/W4zbscC8/image.png",
         skills: [
-          { id: "bara_bara_hou", name: "Bara Bara Hou", description: "Buggy lança sua mão como um projétil.", type: "attack", cost: 15, damage: 25, damageType: 'fisico' },
-          { id: "muggy_ball", name: "Muggy Ball", description: "Uma bala de canhão potente e explosiva.", type: "attack", cost: 30, damage: 50, damageType: 'elemental', cooldown: 2 }
+          { id: "bara_bara_hou", name: "Bara Bara Hou", description: "Buggy lança sua mão como um projétil.", type: "attack", cost: 15, damage: 40, damageType: 'fisico' },
+          { id: "muggy_ball", name: "Muggy Ball", description: "Uma bala de canhão potente e explosiva.", type: "attack", cost: 30, damage: 80, damageType: 'elemental', cooldown: 2 }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 5 }
@@ -42,12 +42,12 @@ module.exports = {
         name: "Equipe Rocket",
         anime: "Pokémon",
         level: 1,
-        health: 600,
+        health: 300,
         energy: 100,
-        imageUrl: "https://i.ibb.co/9Y6yR0K/team_rocket.png",
+        imageUrl: "https://i.ibb.co/hRnNysMq/image.png",
         skills: [
-          { id: "poison_sting", name: "Picada Venenosa", description: "Ataque venenoso que causa sangramento.", type: "attack", cost: 15, damage: 20, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.05 } },
-          { id: "fury_swipes", name: "Golpes de Fúria", description: "Uma sequência de arranhões furiosos.", type: "attack", cost: 25, damage: 45, damageType: 'fisico' }
+          { id: "poison_sting", name: "Picada Venenosa", description: "Ataque venenoso que causa sangramento.", type: "attack", cost: 15, damage: 35, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.05 } },
+          { id: "fury_swipes", name: "Golpes de Fúria", description: "Uma sequência de arranhões furiosos.", type: "attack", cost: 25, damage: 70, damageType: 'fisico' }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 6 }
@@ -59,11 +59,11 @@ module.exports = {
         name: "Zabuza Momochi",
         anime: "Naruto",
         level: 4,
-        health: 1900,
+        health: 800,
         energy: 120,
-        imageUrl: "https://i.ibb.co/AY6yR0K/zabuza.png",
+        imageUrl: "https://i.ibb.co/Kx6tpC71/imagem-2026-04-13-000846945.png",
         skills: [
-          { id: "water_dragon", name: "Dragão de Água", description: "Um dragão de água que esmaga o oponente.", type: "attack", cost: 30, damage: 60, damageType: 'elemental' },
+          { id: "water_dragon", name: "Dragão de Água", description: "Um dragão de água que esmaga o oponente.", type: "attack", cost: 30, damage: 100, damageType: 'elemental' },
           { id: "hidden_mist", name: "Névoa Oculta", description: "Zabuza se esconde na névoa, reduzindo o dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.2 } }
         ]
       },
@@ -76,12 +76,12 @@ module.exports = {
         name: "Stain (Assassino de Heróis)",
         anime: "My Hero Academia",
         level: 5,
-        health: 3000,
+        health: 1200,
         energy: 140,
-        imageUrl: "https://i.ibb.co/BY6yR0K/stain.png",
+        imageUrl: "https://i.ibb.co/Y42BcR1m/stain.png",
         skills: [
-          { id: "bloodcurdle", name: "Bloodcurdle", description: "Paralisa o oponente ao lamber seu sangue.", type: "attack", cost: 35, damage: 30, damageType: 'fisico', effect: { type: "stun", duration: 1 }, cooldown: 3 },
-          { id: "katana_slash", name: "Corte de Katana", description: "Um corte preciso com sua katana.", type: "attack", cost: 15, damage: 50, damageType: 'fisico' }
+          { id: "bloodcurdle", name: "Bloodcurdle", description: "Paralisa o oponente ao lamber seu sangue.", type: "attack", cost: 35, damage: 55, damageType: 'fisico', effect: { type: "stun", duration: 1 }, cooldown: 3 },
+          { id: "katana_slash", name: "Corte de Katana", description: "Um corte preciso com sua katana.", type: "attack", cost: 15, damage: 85, damageType: 'fisico' }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 2 }
@@ -93,11 +93,11 @@ module.exports = {
         name: "Hisoka Morrow",
         anime: "Hunter x Hunter",
         level: 25,
-        health: 4000,
+        health: 1600,
         energy: 160,
-        imageUrl: "https://i.ibb.co/CY6yR0K/hisoka.png",
+        imageUrl: "https://i.ibb.co/sJHrDnjk/image.png",
         skills: [
-          { id: "bungee_gum", name: "Bungee Gum", description: "Sua aura possui propriedades de borracha e chiclete.", type: "attack", cost: 25, damage: 70, damageType: 'fisico' },
+          { id: "bungee_gum", name: "Bungee Gum", description: "Sua aura possui propriedades de borracha e chiclete.", type: "attack", cost: 25, damage: 120, damageType: 'fisico' },
           { id: "texture_surprise", name: "Texture Surprise", description: "Usa sua técnica para enganar o oponente.", type: "reaction", cost: 30, effect: { type: "damage_reduction", value: 0.1 }, cooldown: 2 }
         ]
       },
@@ -110,12 +110,12 @@ module.exports = {
         name: "Ulquiorra Cifer",
         anime: "Bleach",
         level: 30,
-        health: 6000,
+        health: 2400,
         energy: 200,
-        imageUrl: "https://i.ibb.co/DY6yR0K/ulquiorra.png",
+        imageUrl: "https://i.ibb.co/WNfbwhTq/ulquiorra.png",
         skills: [
-          { id: "cero", name: "Cero", description: "Um feixe de energia espiritual massivo.", type: "attack", cost: 30, damage: 100, damageType: 'elemental' },
-          { id: "luz_de_la_luna", name: "Luz de la Luna", description: "Ulquiorra cria uma lança de energia.", type: "attack", cost: 45, damage: 150, damageType: 'elemental', cooldown: 2 }
+          { id: "cero", name: "Cero", description: "Um feixe de energia espiritual massivo.", type: "attack", cost: 30, damage: 170, damageType: 'elemental' },
+          { id: "luz_de_la_luna", name: "Luz de la Luna", description: "Ulquiorra cria uma lança de energia.", type: "attack", cost: 45, damage: 270, damageType: 'elemental', cooldown: 2 }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
@@ -127,11 +127,11 @@ module.exports = {
         name: "Garou",
         anime: "One Punch Man",
         level: 35,
-        health: 7500,
+        health: 3000,
         energy: 250,
-        imageUrl: "https://i.ibb.co/EY6yR0K/garou.png",
+        imageUrl: "https://i.ibb.co/7NB2B7fd/image.png",
         skills: [
-          { id: "water_stream", name: "Water Stream Rock Smashing Fist", description: "Uma técnica marcial que desvia e contra-ataca.", type: "attack", cost: 20, damage: 120, damageType: 'fisico' },
+          { id: "water_stream", name: "Water Stream Rock Smashing Fist", description: "Uma técnica marcial que desvia e contra-ataca.", type: "attack", cost: 20, damage: 200, damageType: 'fisico' },
           { id: "adaptation", name: "Adaptação", description: "Garou se adapta ao estilo do oponente.", type: "reaction", cost: 40, effect: { type: "damage_reduction", value: 0.05 }, cooldown: 3 }
         ]
       },
@@ -144,12 +144,12 @@ module.exports = {
         name: "Donquixote Doflamingo",
         anime: "One Piece",
         level: 40,
-        health: 10000,
+        health: 4000,
         energy: 300,
-        imageUrl: "https://i.ibb.co/FY6yR0K/doflamingo.png",
+        imageUrl: "https://i.ibb.co/LzYz4CfF/donflamingo.png",
         skills: [
-          { id: "parasite", name: "Parasite", description: "Doflamingo controla o oponente com fios.", type: "attack", cost: 40, damage: 100, damageType: 'fisico', effect: { type: "stun", duration: 1 }, cooldown: 4 },
-          { id: "god_thread", name: "God Thread", description: "Dez fios extremamente afiados e potentes.", type: "attack", cost: 60, damage: 250, damageType: 'fisico', cooldown: 2 }
+          { id: "parasite", name: "Parasite", description: "Doflamingo controla o oponente com fios.", type: "attack", cost: 40, damage: 170, damageType: 'fisico', effect: { type: "stun", duration: 1 }, cooldown: 4 },
+          { id: "god_thread", name: "God Thread", description: "Dez fios extremamente afiados e potentes.", type: "attack", cost: 60, damage: 420, damageType: 'fisico', cooldown: 2 }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 2 }
@@ -161,12 +161,12 @@ module.exports = {
         name: "Android 17",
         anime: "Dragon Ball Super",
         level: 45,
-        health: 15000,
+        health: 6000,
         energy: 400,
-        imageUrl: "https://i.ibb.co/GY6yR0K/android17.png",
+        imageUrl: "https://i.ibb.co/CpFBHb9T/image.png",
         skills: [
           { id: "barrier", name: "Barreira de Energia", description: "Uma barreira impenetrável que anula o dano.", type: "reaction", cost: 30, effect: { type: "damage_reduction", value: 0.0 }, cooldown: 2 },
-          { id: "photon_flash", name: "Photon Flash", description: "Uma rajada de energia concentrada.", type: "attack", cost: 50, damage: 350, damageType: 'elemental' }
+          { id: "photon_flash", name: "Photon Flash", description: "Uma rajada de energia concentrada.", type: "attack", cost: 50, damage: 600, damageType: 'elemental' }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 3 }

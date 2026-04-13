@@ -10,9 +10,9 @@ module.exports = {
           name: "Raditz",
           shortName: "Raditz",
           level: 1,
-          health: 100,
+          health: 80,
           energy: 100,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/7xZgw8Hd/raditz.png",
           dialogue: "[Raditz]- Um verme como você ousa me enfrentar? Prepare-se para ser esmagado!",
           reward: { zenith: 250, stoneId: "soul_stone_1", stoneQty: 5 }
         },
@@ -23,7 +23,7 @@ module.exports = {
           level: 5,
           health: 300,
           energy: 120,
-          imageUrl: "https://i.imgur.com/7p6m0S0.png",
+          imageUrl: "https://i.ibb.co/PGwNtrsD/image.png",
           dialogue: "[Vegeta]- Eu sou o Príncipe dos Saiyajins! Não permitirei que um estranho interfira nos meus planos!",
           reward: { zenith: 250, stoneId: "soul_stone_1", stoneQty: 8 }
         },
@@ -34,7 +34,7 @@ module.exports = {
           level: 7,
           health: 500,
           energy: 150,
-          imageUrl: "https://i.imgur.com/3Fz1k1X.png",
+          imageUrl: "https://i.ibb.co/b593Fj9p/image.png",
           dialogue: "[Freeza]- O que? Quem é você?! Chegou para morrer aqui também?! Sinta o desespero perante o Imperador do Universo!",
           reward: { zenith: 250, stoneId: "soul_stone_1", stoneQty: 8 }
         },
@@ -45,7 +45,7 @@ module.exports = {
           level: 10,
           health: 700,
           energy: 180,
-          imageUrl: "https://i.imgur.com/xH5Uv7G.png",
+          imageUrl: "https://i.ibb.co/1YTLCdwK/image.png",
           dialogue: "[Cell]- Um novo espécime apareceu? Espero que você me proporcione o entretenimento que os outros falharam em dar.",
           reward: { zenith: 250, stoneId: "soul_stone_1", stoneQty: 10 }
         },
@@ -56,7 +56,7 @@ module.exports = {
           level: 12,
           health: 900,
           energy: 200,
-          imageUrl: "https://i.imgur.com/6X2B9Hw.png",
+          imageUrl: "https://i.ibb.co/0RHMm9kg/image.png",
           dialogue: "[Majin Boo]- Buu vai te transformar em chocolate! Buu vai te comer!",
           reward: { zenith: 250, stoneId: "soul_stone_1", stoneQty: 12 },
           unlocksWorld: "naruto"
@@ -75,7 +75,7 @@ module.exports = {
           level: 15,
           health: 1100,
           energy: 220,
-          imageUrl: "https://i.imgur.com/K3G2M1n.png",
+          imageUrl: "https://i.ibb.co/dJJ3xDj2/imagem-2026-04-12-233526593.png",
           dialogue: "[Orochimaru]- Que corpo interessante você tem... Sinto que ele seria um excelente receptáculo para minhas ambições.",
           reward: { zenith: 250, stoneId: "soul_stone_2", stoneQty: 5 }
         },
@@ -86,18 +86,18 @@ module.exports = {
           level: 18,
           health: 1400,
           energy: 250,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/ymb4c8pH/image.png",
           dialogue: "[Gaara]- Minha areia tem sede de sangue. Você será o próximo sacrifício para provar minha existência.",
           reward: { zenith: 250, stoneId: "soul_stone_2", stoneQty: 5 }
         },
         {
-          id: "itachi",
+          id: "itachi_npc",
           name: "Itachi Uchiha",
           shortName: "Itachi",
           level: 21,
           health: 1800,
           energy: 280,
-          imageUrl: "https://i.imgur.com/v8F9X7y.png",
+          imageUrl: "https://i.ibb.co/yBRwVXq4/image.png",
           dialogue: "[Itachi]- Você já está sob meu genjutsu. Por que lutar contra o inevitável?",
           reward: { zenith: 250, stoneId: "soul_stone_2", stoneQty: 6 }
         },
@@ -108,7 +108,7 @@ module.exports = {
           level: 24,
           health: 2200,
           energy: 300,
-          imageUrl: "https://i.imgur.com/9n9V2Uu.png",
+          imageUrl: "https://i.ibb.co/KY6T2gy/image.png",
           dialogue: "[Pain]- O mundo conhecerá a dor. E você será o primeiro a senti-la neste novo ciclo.",
           reward: { zenith: 250, stoneId: "soul_stone_2", stoneQty: 6 }
         },
@@ -119,7 +119,7 @@ module.exports = {
           level: 27,
           health: 2600,
           energy: 350,
-          imageUrl: "https://i.imgur.com/L6M7V8W.png",
+          imageUrl: "https://i.ibb.co/7dgk4Mw2/imagem-2026-04-12-234440150.png",
           dialogue: "[Madara]- Você quer dançar? Espero que consiga acompanhar o ritmo do meu Susano'o!",
           reward: { zenith: 250, stoneId: "soul_stone_2", stoneQty: 7 },
           unlocksWorld: "aot"
@@ -138,7 +138,7 @@ module.exports = {
           level: 30,
           health: 3000,
           energy: 400,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/xb0ryrG/annie.png",
           dialogue: "[Levi]- Fique atento! Ela é rápida e pode endurecer partes do corpo. Não deixe que ela te esmague!",
           reward: { zenith: 250, stoneId: "soul_stone_3", stoneQty: 3 }
         },
@@ -149,7 +149,7 @@ module.exports = {
           level: 35,
           health: 4000,
           energy: 450,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/Td0Xwgz/image.png",
           dialogue: "[Mikasa]- Esse titã é pequeno, mas suas garras e mandíbula podem destruir qualquer coisa. Cuidado com sua velocidade!",
           reward: { zenith: 250, stoneId: "soul_stone_3", stoneQty: 4 }
         },
@@ -160,7 +160,7 @@ module.exports = {
           level: 140,
           health: 40000,
           energy: 500,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/LDCL4DSv/imagem-2026-04-12-235141200.png",
           dialogue: "[Hange]- A pele dele é como uma armadura impenetrável! Precisamos encontrar uma brecha ou usar força bruta!",
           reward: { zenith: 250, stoneId: "soul_stone_3", stoneQty: 4 }
         },
@@ -171,7 +171,7 @@ module.exports = {
           level: 160,
           health: 60000,
           energy: 600,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/nqL0drt6/image.png",
           dialogue: "[Armin]- Ele é gigante e emite um calor insuportável! Se chegarmos perto demais, seremos queimados vivos!",
           reward: { zenith: 250, stoneId: "soul_stone_3", stoneQty: 5 }
         },
@@ -182,7 +182,7 @@ module.exports = {
           level: 200,
           health: 100000,
           energy: 1000,
-          imageUrl: "https://i.imgur.com/8Q6Z1Z6.png",
+          imageUrl: "https://i.ibb.co/jZvTkPh4/image.png",
           dialogue: "[Eren]- Eu vou continuar avançando... até que todos os meus inimigos sejam destruídos. Nada pode me parar agora!",
           reward: { zenith: 250, stoneId: "soul_stone_3", stoneQty: 6 }
         }

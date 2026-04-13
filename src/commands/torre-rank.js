@@ -10,7 +10,8 @@ module.exports = {
     const ranking = playerRepository.getTowerRanking();
 
     if (ranking.length === 0) {
-      return message.reply("Ainda não há jogadores no ranking da Torre Infinita.");
+      const EmbedManager = require("../services/EmbedManager");
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed("Ainda não há jogadores no ranking da Torre Infinita.", false)] });
     }
 
     const embed = new EmbedBuilder()

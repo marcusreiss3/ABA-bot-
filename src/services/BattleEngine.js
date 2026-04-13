@@ -3,6 +3,7 @@ const CharacterManager = require("./CharacterManager");
 const playerRepository = require("../database/repositories/playerRepository");
 const storyConfig = require("../config/storyConfig.js");
 const towerConfig = require("../config/towerConfig.js");
+const Emojis = require("../config/emojis.js");
 
 class BattleEngine {
   constructor() {
@@ -20,18 +21,6 @@ class BattleEngine {
         // Party no PVE: Líder, depois membros, depois boss
         turnOrder = [...partyMembers, player2Id];
         
-        // Criar instâncias de personagens para os membros da party
-        const partyCharacters = partyMembers.map(memberId => {
-          const player = playerRepository.getPlayer(memberId);
-          const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
-          const char = CharacterManager.getCharacter(charInstance.character_id, charInstance);
-          char.ownerId = memberId;
-          return char;
-        });
-        
-        // Substituir character1 pela lista da party ou guardar na battle
-        // Para manter compatibilidade, character1 será o líder
-        // Mas vamos guardar a party na battle
         character1.ownerId = player1Id;
       } else {
         turnOrder = [player1Id, player2Id];
@@ -366,6 +355,7 @@ class BattleEngine {
         attacker.name = "EVA-01";
         attacker.id = "eva_01";
         attacker.rarity = "AL";
+        attacker.imageUrl = eva.imageUrl;
         attacker.maxHealth = eva.maxHealth;
         attacker.health = eva.maxHealth;
         attacker.baseMaxHealth = eva.baseMaxHealth;
@@ -452,15 +442,15 @@ class BattleEngine {
       if (skill.id === "sjw_corte_preciso") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 1);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 60;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+60** de dano bônus!`;
+          markBonus = 40;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+40** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_investida_cavaleiro") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 2);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 60;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+60** de dano bônus!`;
+          markBonus = 40;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+40** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_execucao_carmesim") {
@@ -523,11 +513,25 @@ class BattleEngine {
       attacker.sjwMarkBonus = 0;
     }
 
+    // Feedback de Taxa de Sincronização do EVA-01
+    if (attacker.id === "eva_01") {
+      const sync = attacker.stacks["sync"] || 0;
+      if (skill.id === "positron_beam") {
+        battle.lastActionMessage += `\n🔵 **Sincronização EVA-01: ${sync * 10}%** — Bônus de dano do Rifle Posítron: **+${Math.round(sync * 10)}%**`;
+      } else {
+        battle.lastActionMessage += `\n🔵 **Sincronização EVA-01: ${sync * 10}%**${sync >= 10 ? " (MÁXIMO!)" : ""}`;
+      }
+    }
+
     if (skill.effect && skill.effect.type === "ignore_reaction") {
         const damage = battle.lastPendingDamage;
         const finalDamage = defender.takeDamage(damage, skill.damageType);
         battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
         battle.lastActionMessage += `\n✨ **${attacker.name}** usou **${skill.name}** e ignorou a reação de **${defender.name}**!`;
+        if (skill.effect.bleed) {
+          defender.addStatusEffect({ type: "bleed", duration: skill.effect.bleed.duration, value: skill.effect.bleed.value });
+          battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skill.effect.bleed.duration} turno(s)!`;
+        }
         battle.lastPendingSkill = null; // ← LINHA ADICIONADA: limpa o flag antes de chamar endTurnUpdate
         battle.switchTurn();
         this.endTurnUpdate(battle);
@@ -601,13 +605,14 @@ class BattleEngine {
     let reactionId = "skip";
 
     if (availableReactions.length > 0) {
-      // Só reage se o dano for relevante (> 8% do HP máximo ou > 15% do HP atual)
-      const damageThresholdMax = boss.maxHealth * 0.08;
-      const damageThresholdCurrent = boss.health * 0.15;
-      const shouldReact = incomingDamage > damageThresholdMax || incomingDamage > damageThresholdCurrent;
+      // Threshold alto: só reage se o dano ultrapassar 22% do HP máximo
+      const damageThresholdMax = boss.maxHealth * 0.22;
+      // Chance base 45%, sobe para 65% se boss tiver muita energia (> 70% do máximo)
+      const hasHighEnergy = boss.energy > boss.maxEnergy * 0.70;
+      const reactionChance = hasHighEnergy ? 0.65 : 0.45;
+      const shouldReact = incomingDamage > damageThresholdMax && Math.random() < reactionChance;
 
       if (shouldReact) {
-        // Priorizar a reação com maior redução de dano
         const bestReaction = availableReactions.reduce((best, r) => {
           const reduction = r.effect && r.effect.type === "damage_reduction" ? (1 - r.effect.value) : 0;
           const bestReduction = best.effect && best.effect.type === "damage_reduction" ? (1 - best.effect.value) : 0;
@@ -615,8 +620,8 @@ class BattleEngine {
         });
         reactionId = bestReaction.id;
       }
-      // Se HP estiver crítico (< 20%), sempre reage se puder
-      if (boss.health < boss.maxHealth * 0.20) {
+      // Só reage em HP muito crítico (< 10%), com 65% de chance
+      if (boss.health < boss.maxHealth * 0.10 && Math.random() < 0.65) {
         reactionId = availableReactions[0].id;
       }
     }
@@ -709,6 +714,12 @@ class BattleEngine {
         // Boss no Boss Rush é imune a atordoamento
         if (battle.type === "boss-rush" && defender.ownerId === battle.player1Id && !skillUsed.effect.ignore_immunity) {
           battle.lastActionMessage += `\n✨ **${defender.name}** é imune a atordoamento!`;
+        // Boss em party PvE consome carga anti-stun se tiver
+        } else if (battle.isPve && battle.partyCharacters && battle.partyCharacters.length > 1
+            && defender === battle.character2 && !skillUsed.effect.ignore_immunity
+            && (battle.bossStunCharges || 0) > 0) {
+          battle.bossStunCharges--;
+          battle.lastActionMessage += `\n🛡️ **${defender.name}** absorveu o atordoamento! (Cargas restantes: ${battle.bossStunCharges})`;
         } else {
           defender.isStunned = true;
           defender.stunDuration = skillUsed.effect.duration || 1;
@@ -871,7 +882,7 @@ class BattleEngine {
         playerRepository.updateTowerRecord(memberId, floorNum);
       });
 
-      rewardMsg += `\n- Todos: ${fragmentsZenith} Fragmentos Zenith + ${rewards.stoneQty}x ${rewards.stoneId.toUpperCase().replace(/_/g, " ")}`;
+      rewardMsg += `\n- Todos: ${Emojis.ZENITH} **${fragmentsZenith} Fragmentos Zenith** + ${this._formatItem(rewards.stoneId, rewards.stoneQty)}`;
       battle.lastActionMessage += rewardMsg;
 
       // Verificar se há próximo andar
@@ -910,10 +921,10 @@ class BattleEngine {
               const range = rewards[itemId];
               const qty = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
               playerRepository.addItem(memberId, itemId, qty);
-              memberRewards.push(`${qty}x ${itemId.toUpperCase().replace(/_/g, " ")}`);
+              memberRewards.push(this._formatItem(itemId, qty));
             }
             playerRepository.updatePlayerChallengeProgress(memberId, battle.challengeDifficulty, now);
-            rewardMsg += `\n- <@${memberId}>: ${memberRewards.join(", ")}`;
+            rewardMsg += `\n- <@${memberId}>: ${memberRewards.join(" + ")}`;
           } else {
             rewardMsg += `\n- <@${memberId}>: *Em cooldown — sem recompensa desta vez.*`;
           }
@@ -972,14 +983,34 @@ class BattleEngine {
         playerRepository.updateStoryProgress(memberId, cleanBossId);
       }
       
-      rewardMsg += `\n- <@${memberId}>: ${zenithAmount} Fragmentos Zenith + ${bossReward.stoneQty}x ${bossReward.stoneId.toUpperCase().replace(/_/g, " ")}`;
+      rewardMsg += `\n- <@${memberId}>: ${Emojis.ZENITH} **${zenithAmount} Fragmentos Zenith** + ${this._formatItem(bossReward.stoneId, bossReward.stoneQty)}`;
     });
 
     battle.lastActionMessage += rewardMsg;
   }
 
+  _formatItem(itemId, qty) {
+    const names = {
+      "soul_stone_1": `${Emojis.SOUL_STONE_1} Pedra da Alma I`,
+      "soul_stone_2": `${Emojis.SOUL_STONE_2} Pedra da Alma II`,
+      "soul_stone_3": `${Emojis.SOUL_STONE_3} Pedra da Alma III`,
+      "fr":           `${Emojis.ARTIFACT} Fragmento de Relíquia`,
+    };
+    return `**${qty}x** ${names[itemId] || itemId}`;
+  }
+
   processBossTurn(battle) {
     if (!battle || battle.state !== "choosing_action") return null;
+
+    // Em party PvE: seleciona alvo aleatório entre membros vivos e acumula carga anti-stun
+    if (battle.isPve && battle.partyCharacters && battle.partyCharacters.length > 1) {
+      const living = battle.partyCharacters.filter(c => c.isAlive());
+      battle.bossCurrentTarget = living.length > 0
+        ? living[Math.floor(Math.random() * living.length)]
+        : battle.partyCharacters[0];
+      // Uma carga anti-stun por rodada do boss
+      battle.bossStunCharges = Math.min((battle.bossStunCharges || 0) + 1, 2);
+    }
 
     const attacker = battle.getCurrentPlayer();
 
@@ -1052,6 +1083,9 @@ class BattleEngine {
       this.activeBattles.delete(battle.id);
       return;
     }
+
+    // Limpa alvo do boss ao encerrar turno
+    if (battle.bossCurrentTarget) battle.bossCurrentTarget = null;
 
     const nextPlayer = battle.getCurrentPlayer();
     

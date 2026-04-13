@@ -48,9 +48,11 @@ class Battle {
       // Se o Boss (player2) estiver atacando
       if (this.currentPlayerTurnId === this.player2Id) {
         if (this.partyCharacters) {
-          const targetId = this.getOpponentId();
-          const target = this.partyCharacters.find(c => c.ownerId === targetId);
-          return target || this.character1;
+          // Usa alvo pré-selecionado (definido em processBossTurn para garantir consistência)
+          if (this.bossCurrentTarget) return this.bossCurrentTarget;
+          // Fallback: primeiro membro vivo
+          const living = this.partyCharacters.filter(c => c.isAlive());
+          return living.length > 0 ? living[0] : this.partyCharacters[0];
         }
         return this.character1;
       }
@@ -68,6 +70,10 @@ class Battle {
     }
     if (this.isPve) {
       if (this.currentPlayerTurnId !== this.player2Id) return this.player2Id;
+      // Boss está atacando — em party, retorna o ID do membro alvo (não necessariamente o líder)
+      if (this.partyCharacters && this.bossCurrentTarget) {
+        return this.bossCurrentTarget.ownerId;
+      }
       return this.player1Id;
     }
     return this.currentPlayerTurnId === this.player1Id ? this.player2Id : this.player1Id;

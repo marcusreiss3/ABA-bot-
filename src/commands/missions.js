@@ -47,7 +47,7 @@ function createWeeklyMissionsEmbed(userId) {
 
   const embed = new EmbedBuilder()
     .setTitle("📅 Missões Semanais")
-    .setDescription("Complete os desafios semanais para ganhar recompensas! As missões mudam aos domingos à meia-noite.")
+    .setDescription("Complete os desafios semanais para ganhar recompensas! As missões mudam aos sábados à meia-noite.")
     .setColor("#5865F2")
     .setThumbnail(player.avatarURL || null);
 

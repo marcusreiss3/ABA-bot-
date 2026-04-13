@@ -1,28 +1,30 @@
 const { EmbedBuilder } = require("discord.js");
+const EmbedManager = require("../services/EmbedManager");
 
 module.exports = {
   name: "kick",
   description: "Expulsa um jogador da sua party",
   async execute(message, args) {
+    const err = (msg) => message.reply({ embeds: [EmbedManager.createStatusEmbed(msg, false)] });
     const leaderId = message.author.id;
     const mentionedUser = message.mentions.users.first();
 
     if (!mentionedUser) {
-      return message.reply("❌ Você precisa mencionar o jogador que deseja expulsar. Exemplo: `!kick @jogador`.");
+      return err("Você precisa mencionar o jogador que deseja expulsar. Exemplo: `!kick @jogador`.");
     }
 
     const party = global.parties.get(leaderId);
     if (!party) {
-      return message.reply("❌ Você não é o líder de nenhuma party.");
+      return err("Você não é o líder de nenhuma party.");
     }
 
     if (mentionedUser.id === leaderId) {
-      return message.reply("❌ Você não pode se expulsar da sua própria party. Use `!party-desfazer` para encerrá-la.");
+      return err("Você não pode se expulsar da sua própria party. Use `!party-desfazer` para encerrá-la.");
     }
 
     const memberIndex = party.members.indexOf(mentionedUser.id);
     if (memberIndex === -1) {
-      return message.reply(`❌ **${mentionedUser.username}** não está na sua party.`);
+      return err(`**${mentionedUser.username}** não está na sua party.`);
     }
 
     // Remover o membro

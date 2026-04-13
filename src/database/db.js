@@ -121,4 +121,32 @@ db.prepare(`
 try { db.prepare("ALTER TABLE players ADD COLUMN char_slots INTEGER DEFAULT 10").run(); } catch (_) {}
 try { db.prepare("ALTER TABLE players ADD COLUMN artifact_slots INTEGER DEFAULT 10").run(); } catch (_) {}
 
+// Tabela de estado global das missões (quais estão ativas e quando foi a última rotação)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS mission_state (
+    type TEXT PRIMARY KEY,
+    mission_ids TEXT,
+    last_rotation TEXT
+  )
+`).run();
+
+// Tabela de progresso individual por missão
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS mission_progress (
+    player_id TEXT,
+    mission_id TEXT,
+    progress INTEGER DEFAULT 0,
+    PRIMARY KEY (player_id, mission_id)
+  )
+`).run();
+
+// Tabela de missões já resgatadas por jogador
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS mission_claimed (
+    player_id TEXT,
+    mission_id TEXT,
+    PRIMARY KEY (player_id, mission_id)
+  )
+`).run();
+
 module.exports = db;
