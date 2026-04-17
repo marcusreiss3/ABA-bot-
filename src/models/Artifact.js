@@ -9,6 +9,7 @@ class Artifact {
     this.effectUnit = data.effectUnit;
     this.conditionType = data.conditionType || null;
     this.conditionValue = data.conditionValue || null;
+    this.secondaryEffect = data.secondaryEffect || null;
   }
 }
 

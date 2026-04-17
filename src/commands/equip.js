@@ -6,28 +6,38 @@ module.exports = {
   description: "Escolha entre equipar um personagem ou um artefato",
   async execute(message, args) {
     const embed = new EmbedBuilder()
-      .setTitle("🛡️ Sistema de Equipamentos")
-      .setDescription("O que você deseja gerenciar hoje?\n\nEscolha uma das opções abaixo para equipar um **Personagem** principal ou gerenciar os **Artefatos** de seus personagens.")
-      .setColor("#0099ff")
+      .setTitle("⚔️ Câmara de Equipamentos")
+      .setDescription(
+        `> *\"Aquele que escolhe bem suas armas, já venceu metade da batalha.\"*\n\n` +
+        `**${message.author.username}**, o que deseja preparar para o combate?`
+      )
+      .setColor("#1a1a2e")
       .setThumbnail(message.author.displayAvatarURL())
-      .setFooter({ text: "Anime Battle Arena • Selecione uma opção" });
+      .addFields(
+        { name: "🥋 Combatente",  value: "Defina seu guerreiro principal",       inline: true },
+        { name: "🛡️ Relíquias",   value: "Gerencie artefatos dos personagens",   inline: true },
+        { name: "🎖️ Título",      value: "Exiba sua conquista no perfil",        inline: true }
+      )
+      .setFooter({ text: "Anime Battle Arena • Câmara de Equipamentos" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`equip_choice_char_${message.author.id}`)
-        .setLabel("Equipar Personagem")
+        .setLabel("Combatente")
         .setEmoji("🥋")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId(`equip_choice_artifact_${message.author.id}`)
-        .setLabel("Equipar Artefato")
+        .setLabel("Relíquias")
         .setEmoji("🛡️")
-        .setStyle(ButtonStyle.Success)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`equip_choice_title_${message.author.id}`)
+        .setLabel("Título")
+        .setEmoji("🎖️")
+        .setStyle(ButtonStyle.Secondary)
     );
 
-    await message.reply({
-      embeds: [embed],
-      components: [row]
-    });
+    await message.reply({ embeds: [embed], components: [row] });
   }
 };

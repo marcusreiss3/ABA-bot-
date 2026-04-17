@@ -6,23 +6,23 @@ class ArtifactManager {
     let artifact = null;
 
     switch (artifactId) {
-      case "hp_boost_small":
+      case "capsula_curativa":
         artifact = new Artifact({
-          id: "hp_boost_small",
+          id: "capsula_curativa",
           instanceId: instanceData.id || instanceData.lastInsertRowid,
-          name: "Amuleto da Vitalidade Menor",
-          emoji: Emojis.ARTIFACT_HP_SMALL,
+          name: "Cápsula Curativa",
+          emoji: Emojis.CAPSULA_CURATIVA,
           effectType: "maxHealth",
           effectValue: 0.10,
           effectUnit: "percentage",
         });
         break;
-      case "dragonball_damage_boost":
+      case "esfera_4_estrelas":
         artifact = new Artifact({
-          id: "dragonball_damage_boost",
+          id: "esfera_4_estrelas",
           instanceId: instanceData.id || instanceData.lastInsertRowid,
-          name: "Essência Saiyajin",
-          emoji: Emojis.ARTIFACT_DRAGONBALL_DMG,
+          name: "Esfera de 4 Estrelas",
+          emoji: Emojis.ESFERA_4_ESTRELAS,
           effectType: "damage",
           effectValue: 0.15,
           effectUnit: "percentage",
@@ -30,23 +30,23 @@ class ArtifactManager {
           conditionValue: "dragonball",
         });
         break;
-      case "general_damage_boost":
+      case "mascara_hollow":
         artifact = new Artifact({
-          id: "general_damage_boost",
+          id: "mascara_hollow",
           instanceId: instanceData.id || instanceData.lastInsertRowid,
-          name: "Luvas do Poder",
-          emoji: Emojis.ARTIFACT_GENERAL_DMG,
+          name: "Máscara de Hollow",
+          emoji: Emojis.MASCARA_HOLLOW,
           effectType: "damage",
           effectValue: 0.10,
           effectUnit: "percentage",
         });
         break;
-      case "itadori_damage_boost":
+      case "dedo_sukuna":
         artifact = new Artifact({
-          id: "itadori_damage_boost",
+          id: "dedo_sukuna",
           instanceId: instanceData.id || instanceData.lastInsertRowid,
-          name: "Marca do Tigre",
-          emoji: Emojis.ARTIFACT_ITADORI_DMG,
+          name: "Dedo do Sukuna",
+          emoji: Emojis.DEDO_SUKUNA,
           effectType: "damage",
           effectValue: 0.30,
           effectUnit: "percentage",
@@ -54,30 +54,161 @@ class ArtifactManager {
           conditionValue: "itadori",
         });
         break;
-      case "energy_cost_reduction":
+      case "pedra_filosofal":
         artifact = new Artifact({
-          id: "energy_cost_reduction",
+          id: "pedra_filosofal",
           instanceId: instanceData.id || instanceData.lastInsertRowid,
-          name: "Pingente da Sabedoria",
-          emoji: Emojis.ARTIFACT_ENERGY_COST_RED,
+          name: "Pedra Filosofal",
+          emoji: Emojis.PEDRA_FILOSOFAL,
           effectType: "energyCost",
           effectValue: 5,
           effectUnit: "flat",
         });
         break;
-      // Adicionar novos artefatos aqui
+
+      // ── Novos Artefatos ───────────────────────────────────────────────────
+      case "hogyoku":
+        artifact = new Artifact({
+          id: "hogyoku",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Hōgyoku",
+          emoji: Emojis.HOGYOKU,
+          effectType: "stacking_damage",  // +5% por ataque, máx 30% (6 stacks)
+          effectValue: 0.05,
+          effectUnit: "percentage",
+        });
+        break;
+      case "chakra_nova_caudas":
+        artifact = new Artifact({
+          id: "chakra_nova_caudas",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Chakra da Nova Caudas",
+          emoji: Emojis.CHAKRA_NOVA_CAUDAS,
+          effectType: "maxEnergy",
+          effectValue: 0.15,
+          effectUnit: "percentage",
+        });
+        break;
+      case "sharingan":
+        artifact = new Artifact({
+          id: "sharingan",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Sharingan",
+          emoji: Emojis.SHARINGAN,
+          effectType: "damage",
+          effectValue: 0.20,
+          effectUnit: "percentage",
+          conditionType: "anime",
+          conditionValue: "naruto",
+        });
+        break;
+      case "marca_maldicao":
+        artifact = new Artifact({
+          id: "marca_maldicao",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Marca da Maldição",
+          emoji: Emojis.MARCA_MALDICAO,
+          effectType: "curse_mark",  // +30% dano, -10% HP máx
+          effectValue: 0.30,
+          effectUnit: "percentage",
+        });
+        break;
+      case "controle_infinito":
+        artifact = new Artifact({
+          id: "controle_infinito",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Controle do Infinito",
+          emoji: Emojis.CONTROLE_INFINITO,
+          effectType: "damageReduction",  // -15% dano recebido
+          effectValue: 0.15,
+          effectUnit: "percentage",
+        });
+        break;
+      case "haki_do_rei":
+        artifact = new Artifact({
+          id: "haki_do_rei",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Haki do Rei",
+          emoji: Emojis.HAKI_DO_REI,
+          effectType: "damage",
+          effectValue: 0.20,
+          effectUnit: "percentage",
+          conditionType: "hpAdvantage",  // ativo quando atacante tem mais HP que o defensor
+        });
+        break;
+      case "pesos_lee":
+        artifact = new Artifact({
+          id: "pesos_lee",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Pesos do Rock Lee",
+          emoji: Emojis.PESOS_LEE,
+          effectType: "damage",
+          effectValue: 0.15,
+          effectUnit: "percentage",
+          conditionType: "damageType",   // apenas dano físico
+          conditionValue: "fisico",
+        });
+        break;
+      case "roda_mahoraga":
+        artifact = new Artifact({
+          id: "roda_mahoraga",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Roda do Mahoraga",
+          emoji: Emojis.RODA_MAHORAGA,
+          effectType: "stacking_defense",  // +5% defesa ao tomar dano, máx 25% (5 stacks)
+          effectValue: 0.05,
+          effectUnit: "percentage",
+        });
+        break;
+      case "seis_olhos":
+        artifact = new Artifact({
+          id: "seis_olhos",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Seis Olhos",
+          emoji: Emojis.SEIS_OLHOS,
+          effectType: "damage",
+          effectValue: 0.25,
+          effectUnit: "percentage",
+          conditionType: "character",
+          conditionValue: "satoru_gojo",
+          secondaryEffect: { type: "damageReduction", value: 0.10 },
+        });
+        break;
+      case "knight_killer":
+        artifact = new Artifact({
+          id: "knight_killer",
+          instanceId: instanceData.id || instanceData.lastInsertRowid,
+          name: "Knight Killer",
+          emoji: Emojis.KNIGHT_KILLER,
+          effectType: "damage",
+          effectValue: 0.25,
+          effectUnit: "percentage",
+          conditionType: "character",
+          conditionValue: "sung_jin_woo",
+          secondaryEffect: { type: "maxEnergy", value: 0.05 },
+        });
+        break;
     }
     return artifact;
   }
 
   static getAllArtifacts() {
-    // Retorna uma lista de todos os IDs de artefatos disponíveis
     return [
-      "hp_boost_small",
-      "dragonball_damage_boost",
-      "general_damage_boost",
-      "itadori_damage_boost",
-      "energy_cost_reduction",
+      "capsula_curativa",
+      "esfera_4_estrelas",
+      "mascara_hollow",
+      "dedo_sukuna",
+      "pedra_filosofal",
+      "hogyoku",
+      "chakra_nova_caudas",
+      "sharingan",
+      "marca_maldicao",
+      "controle_infinito",
+      "haki_do_rei",
+      "pesos_lee",
+      "roda_mahoraga",
+      "seis_olhos",
+      "knight_killer",
     ];
   }
 }

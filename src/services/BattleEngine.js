@@ -1,6 +1,7 @@
 const Battle = require("../models/Battle");
 const CharacterManager = require("./CharacterManager");
 const playerRepository = require("../database/repositories/playerRepository");
+const titleRepository = require("../database/repositories/titleRepository");
 const storyConfig = require("../config/storyConfig.js");
 const towerConfig = require("../config/towerConfig.js");
 const Emojis = require("../config/emojis.js");
@@ -271,6 +272,11 @@ class BattleEngine {
 
     if (!skill) return null;
 
+    // Track last skill used by human player (for tutorial dialogue)
+    if (!battle.isPve || playerId === battle.player1Id) {
+      battle.lastPlayerSkillId = skillId;
+    }
+
     let finalSkillCost = skill.cost;
     attacker.equippedArtifacts.forEach(artifact => {
       if (artifact.effectType === "energyCost") {
@@ -524,8 +530,28 @@ class BattleEngine {
     }
 
     if (skill.effect && skill.effect.type === "ignore_reaction") {
-        const damage = battle.lastPendingDamage;
+        let damage = battle.lastPendingDamage;
+        // Artefatos passivos de redução ainda funcionam mesmo ignorando reação
+        defender.equippedArtifacts.forEach(artifact => {
+          if (artifact.effectType === "damageReduction") {
+            damage = Math.floor(damage * (1 - artifact.effectValue));
+          }
+          if (artifact.effectType === "stacking_defense") {
+            const stacks = defender.stacks["mahoraga"] || 0;
+            if (stacks > 0) damage = Math.floor(damage * (1 - stacks * artifact.effectValue));
+          }
+          if (artifact.secondaryEffect && artifact.secondaryEffect.type === "damageReduction") {
+            const ok = !artifact.conditionType ||
+              (artifact.conditionType === "character" && defender.id === artifact.conditionValue);
+            if (ok) damage = Math.floor(damage * (1 - artifact.secondaryEffect.value));
+          }
+        });
         const finalDamage = defender.takeDamage(damage, skill.damageType);
+        // Hogyoku e Mahoraga stacks
+        if (finalDamage > 0) {
+          attacker.equippedArtifacts.forEach(a => { if (a.effectType === "stacking_damage") attacker.addStack("hogyoku", 6); });
+          defender.equippedArtifacts.forEach(a => { if (a.effectType === "stacking_defense") defender.addStack("mahoraga", 5); });
+        }
         battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
         battle.lastActionMessage += `\n✨ **${attacker.name}** usou **${skill.name}** e ignorou a reação de **${defender.name}**!`;
         if (skill.effect.bleed) {
@@ -605,9 +631,7 @@ class BattleEngine {
     let reactionId = "skip";
 
     if (availableReactions.length > 0) {
-      // Threshold alto: só reage se o dano ultrapassar 22% do HP máximo
       const damageThresholdMax = boss.maxHealth * 0.22;
-      // Chance base 45%, sobe para 65% se boss tiver muita energia (> 70% do máximo)
       const hasHighEnergy = boss.energy > boss.maxEnergy * 0.70;
       const reactionChance = hasHighEnergy ? 0.65 : 0.45;
       const shouldReact = incomingDamage > damageThresholdMax && Math.random() < reactionChance;
@@ -620,13 +644,45 @@ class BattleEngine {
         });
         reactionId = bestReaction.id;
       }
-      // Só reage em HP muito crítico (< 10%), com 65% de chance
       if (boss.health < boss.maxHealth * 0.10 && Math.random() < 0.65) {
         reactionId = availableReactions[0].id;
       }
     }
 
-    return this.processReaction(battle.id, boss.ownerId || battle.player2Id, reactionId);
+    const bossPlayerId = boss.ownerId || battle.player2Id;
+    const result = this.processReaction(battle.id, bossPlayerId, reactionId);
+
+    // Force-fallback: if processReaction returned null (state mismatch or id mismatch),
+    // manually skip the reaction so the fight never gets permanently stuck.
+    if (!result) {
+      console.warn(`[BATTLE] processBossReaction fallback triggered for battle ${battle.id} (state=${battle.state}, bossId=${bossPlayerId})`);
+      if (battle.state === "choosing_reaction") {
+        battle.lastActionMessage += "\n⏩ O Boss não conseguiu reagir.";
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        battle.state = "choosing_action";
+        battle.lastActivityAt = Date.now();
+        return battle;
+      }
+      return null;
+    }
+
+    return result;
+  }
+
+  getStalledBattles(thresholdMs = 3 * 60 * 1000) {
+    const now = Date.now();
+    const stalled = [];
+    for (const battle of this.activeBattles.values()) {
+      if (!battle.isPve) continue;
+      if (battle.state === "finished") continue;
+      if (!battle.channelId) continue;
+      const lastActivity = battle.lastActivityAt || battle.startedAt || 0;
+      if (now - lastActivity > thresholdMs) {
+        stalled.push(battle);
+      }
+    }
+    return stalled;
   }
 
   processReaction(battleId, playerId, skillId) {
@@ -672,8 +728,39 @@ class BattleEngine {
       }
     }
 
+    // ── Artefatos de redução de dano passiva do defensor ─────────────────
+    defender.equippedArtifacts.forEach(artifact => {
+      // Controle do Infinito: -15% dano recebido
+      if (artifact.effectType === "damageReduction") {
+        damageToApply = Math.floor(damageToApply * (1 - artifact.effectValue));
+      }
+      // Roda do Mahoraga: stacks acumulados de defesa
+      if (artifact.effectType === "stacking_defense") {
+        const stacks = defender.stacks["mahoraga"] || 0;
+        if (stacks > 0) damageToApply = Math.floor(damageToApply * (1 - stacks * artifact.effectValue));
+      }
+      // Seis Olhos (secondary damageReduction — só aplica se for o personagem certo)
+      if (artifact.secondaryEffect && artifact.secondaryEffect.type === "damageReduction") {
+        const conditionOk = !artifact.conditionType ||
+          (artifact.conditionType === "character" && defender.id === artifact.conditionValue);
+        if (conditionOk) damageToApply = Math.floor(damageToApply * (1 - artifact.secondaryEffect.value));
+      }
+    });
+
     const finalDamage = defender.takeDamage(damageToApply, skillUsed.damageType);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
+
+    // ── Stacks pós-ataque ─────────────────────────────────────────────────
+    if (finalDamage > 0) {
+      // Hogyoku: +1 stack por ataque bem-sucedido (máx 6)
+      attacker.equippedArtifacts.forEach(artifact => {
+        if (artifact.effectType === "stacking_damage") attacker.addStack("hogyoku", 6);
+      });
+      // Roda do Mahoraga: +1 stack ao tomar dano (máx 5)
+      defender.equippedArtifacts.forEach(artifact => {
+        if (artifact.effectType === "stacking_defense") defender.addStack("mahoraga", 5);
+      });
+    }
 
     // --- Sung Jin-Woo: mecânicas de defesa (Tank) ao ser atacado ---
     if (defender.id === "sung_jin_woo" && finalDamage > 0) {
@@ -724,6 +811,10 @@ class BattleEngine {
           defender.isStunned = true;
           defender.stunDuration = skillUsed.effect.duration || 1;
           battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO** por ${defender.stunDuration} turno(s)!`;
+          if (skillUsed.effect.bleed) {
+            defender.addStatusEffect({ type: "bleed", duration: skillUsed.effect.bleed.duration, value: skillUsed.effect.bleed.value });
+            battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skillUsed.effect.bleed.duration} turno(s)!`;
+          }
         }
       } else if (skillUsed.effect.type === "burn" || skillUsed.effect.type === "bleed") {
         defender.addStatusEffect({ ...skillUsed.effect });
@@ -779,6 +870,8 @@ class BattleEngine {
             missionRepository.addProgress(battle.player1Id, "play_boss_rush");
             // Missão: Vença um Boss Rush como Boss (Semanal)
             missionRepository.addProgress(battle.player1Id, "win_boss_rush_as_boss");
+            // Título: Imperador da Ruína
+            titleRepository.addProgress(battle.player1Id, "boss_rush_emperor");
           }
         }
       } else if (battle.isPve && defender.id === battle.character2.id) {
@@ -811,6 +904,8 @@ class BattleEngine {
           if (battle.isRanked) {
             missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
             missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+            // Título: Soberano da Carnificina
+            titleRepository.addProgress(battle.winnerId, "pvp_champion");
           } else {
             missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
             missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
@@ -858,6 +953,8 @@ class BattleEngine {
   }
 
   handlePveRewards(battle) {
+    if (battle.isTutorial) return; // Tutorial battle — rewards handled separately in tutorial.js
+
     const leaderId = battle.player1Id;
     const bossId = battle.character2.id;
     const partyMembers = battle.partyMembers || [leaderId];
@@ -871,18 +968,23 @@ class BattleEngine {
 
       let rewardMsg = `\n\n✨ **RECOMPENSAS DO ANDAR ${floorNum}:**`;
       
+      let levelUpMsg = "";
       partyMembers.forEach(memberId => {
         const player = playerRepository.getPlayer(memberId);
-        playerRepository.updatePlayer(memberId, { 
-          zenith_fragments: (player.zenith_fragments || 0) + fragmentsZenith 
+        playerRepository.updatePlayer(memberId, {
+          zenith_fragments: (player.zenith_fragments || 0) + fragmentsZenith
         });
         playerRepository.addItem(memberId, rewards.stoneId, rewards.stoneQty);
-        
-        // Salvar recorde da torre para o ranking
         playerRepository.updateTowerRecord(memberId, floorNum);
+        // Título: Exterminador de Titãs (boss derrotado na torre)
+        titleRepository.addProgress(memberId, "npc_slayer");
+
+        const xpResult = playerRepository.addPlayerXP(memberId, 80);
+        if (xpResult.leveledUp) levelUpMsg += `\n🆙 <@${memberId}> subiu para o **Nível ${xpResult.newLevel}**!`;
       });
 
       rewardMsg += `\n- Todos: ${Emojis.ZENITH} **${fragmentsZenith} Fragmentos Zenith** + ${this._formatItem(rewards.stoneId, rewards.stoneQty)}`;
+      if (levelUpMsg) rewardMsg += levelUpMsg;
       battle.lastActionMessage += rewardMsg;
 
       // Verificar se há próximo andar
@@ -931,6 +1033,14 @@ class BattleEngine {
         } else {
           rewardMsg += `\n- <@${memberId}>: *Membro em cooldown na party (apenas líder recebeu).*`;
         }
+        // XP de conta + títulos para todos que participaram, independente de cooldown
+        const challengeAccountXP = { facil: 80, medio: 130, dificil: 200 }[battle.challengeDifficulty] || 80;
+        const xpResult = playerRepository.addPlayerXP(memberId, challengeAccountXP);
+        if (xpResult.leveledUp) rewardMsg += `\n🆙 <@${memberId}> subiu para o **Nível ${xpResult.newLevel}**!`;
+        // Título: Exterminador de Titãs
+        titleRepository.addProgress(memberId, "npc_slayer");
+        // Título: Conquistador do Abismo (apenas no difícil)
+        if (battle.challengeDifficulty === "dificil") titleRepository.addProgress(memberId, "challenge_master");
       });
 
       battle.lastActionMessage += rewardMsg;
@@ -984,6 +1094,11 @@ class BattleEngine {
       }
       
       rewardMsg += `\n- <@${memberId}>: ${Emojis.ZENITH} **${zenithAmount} Fragmentos Zenith** + ${this._formatItem(bossReward.stoneId, bossReward.stoneQty)}`;
+
+      const xpResult = playerRepository.addPlayerXP(memberId, 100);
+      if (xpResult.leveledUp) rewardMsg += `\n🆙 <@${memberId}> subiu para o **Nível ${xpResult.newLevel}**!`;
+      // Título: Exterminador de Titãs
+      titleRepository.addProgress(memberId, "npc_slayer");
     });
 
     battle.lastActionMessage += rewardMsg;
@@ -1023,8 +1138,19 @@ class BattleEngine {
       return this.processAction(battle.id, battle.player2Id, healSkills[0].id);
     }
 
-    // Encontra o ataque mais forte que consegue usar agora
-    const bestAffordable = affordableAttacks.sort((a, b) => b.damage - a.damage)[0];
+    // Seleção ponderada: ataques mais fortes têm maior chance, mas todos podem ser escolhidos
+    const chooseWeightedAttack = (attacks) => {
+      const totalWeight = attacks.reduce((sum, s) => sum + (s.damage || 1), 0);
+      let rand = Math.random() * totalWeight;
+      for (const skill of attacks) {
+        rand -= (skill.damage || 1);
+        if (rand <= 0) return skill;
+      }
+      return attacks[attacks.length - 1];
+    };
+
+    const chosenAttack = affordableAttacks.length > 0 ? chooseWeightedAttack(affordableAttacks) : null;
+    const bestAffordable = chosenAttack;
 
     if (bestAffordable) {
       // Verifica se economizando energia consegue usar um ataque bem mais forte (30%+ mais dano)
@@ -1078,7 +1204,18 @@ class BattleEngine {
   }
 
 
-  endTurnUpdate(battle) {
+  endTurnUpdate(battle, _depth = 0) {
+    // Guard against infinite recursion (e.g., all party members dead simultaneously)
+    if (_depth > 15) {
+      console.error(`[BATTLE] endTurnUpdate loop limit reached for battle ${battle.id} — forcing end`);
+      battle.state = "finished";
+      battle.lastActionMessage += "\n⚠️ Combate encerrado por erro interno.";
+      this.activeBattles.delete(battle.id);
+      return;
+    }
+
+    battle.lastActivityAt = Date.now();
+
     if (battle.state === "finished") {
       this.activeBattles.delete(battle.id);
       return;
@@ -1088,12 +1225,12 @@ class BattleEngine {
     if (battle.bossCurrentTarget) battle.bossCurrentTarget = null;
 
     const nextPlayer = battle.getCurrentPlayer();
-    
+
     // Se o jogador estiver morto em qualquer modo (PVE, Boss Rush, etc), pula o turno
-    if (!nextPlayer.isAlive()) {
-      battle.lastActionMessage += `\n💀 **${nextPlayer.name}** está derrotado, pulando turno...`;
+    if (!nextPlayer || !nextPlayer.isAlive()) {
+      battle.lastActionMessage += nextPlayer ? `\n💀 **${nextPlayer.name}** está derrotado, pulando turno...` : `\n💀 Jogador não encontrado, pulando turno...`;
       battle.switchTurn();
-      return this.endTurnUpdate(battle);
+      return this.endTurnUpdate(battle, _depth + 1);
     }
 
     nextPlayer.updateCooldowns();
@@ -1102,14 +1239,13 @@ class BattleEngine {
     // Lógica para pular o turno de reação se a habilidade "Imaginário: Roxo" foi usada
     if (battle.lastPendingSkill && battle.lastPendingSkill.effect && battle.lastPendingSkill.effect.type === "ignore_reaction") {
       battle.lastActionMessage += `\n🚫 O turno de reação de **${nextPlayer.name}** foi ignorado devido ao **Imaginário: Roxo**!`;
-      battle.lastPendingSkill = null; // Resetar para não ignorar reações futuras
+      battle.lastPendingSkill = null;
       battle.switchTurn();
-      this.endTurnUpdate(battle);
+      this.endTurnUpdate(battle, _depth + 1);
       return;
     }
 
     if (nextPlayer.isStunned) {
-      // ✅ CORREÇÃO: Reduzir a duração apenas quando o turno é efetivamente pulado
       nextPlayer.stunDuration--;
       battle.lastActionMessage += `\n💤 **${nextPlayer.name}** pulou o turno por atordoamento! (Restam: ${nextPlayer.stunDuration} turnos)`;
 
@@ -1118,7 +1254,7 @@ class BattleEngine {
       }
 
       battle.switchTurn();
-      this.endTurnUpdate(battle);
+      this.endTurnUpdate(battle, _depth + 1);
       return;
     }
 
@@ -1134,15 +1270,24 @@ class BattleEngine {
     let damage = skill.damage;
     attacker.equippedArtifacts.forEach(artifact => {
       if (artifact.effectType === "damage") {
-        if (!artifact.conditionType || 
-            (artifact.conditionType === "anime" && attacker.anime === artifact.conditionValue) ||
-            (artifact.conditionType === "character" && attacker.id === artifact.conditionValue)) {
-          if (artifact.effectUnit === "percentage") {
-            damage *= (1 + artifact.effectValue);
-          } else if (artifact.effectUnit === "flat") {
-            damage += artifact.effectValue;
-          }
+        const conditionMet = !artifact.conditionType ||
+          (artifact.conditionType === "anime"      && attacker.anime === artifact.conditionValue) ||
+          (artifact.conditionType === "character"  && attacker.id   === artifact.conditionValue) ||
+          (artifact.conditionType === "damageType" && skill.damageType === artifact.conditionValue) ||
+          (artifact.conditionType === "hpAdvantage" && attacker.health > defender.health);
+        if (conditionMet) {
+          if (artifact.effectUnit === "percentage") damage *= (1 + artifact.effectValue);
+          else if (artifact.effectUnit === "flat")  damage += artifact.effectValue;
         }
+      }
+      // Hogyoku: +5% por ataque, máx 30%
+      if (artifact.effectType === "stacking_damage") {
+        const stacks = attacker.stacks["hogyoku"] || 0;
+        if (stacks > 0) damage *= (1 + stacks * artifact.effectValue);
+      }
+      // Marca da Maldição: +30% dano (HP penalty já aplicado no applyArtifactEffects)
+      if (artifact.effectType === "curse_mark") {
+        damage *= (1 + artifact.effectValue);
       }
     });
     

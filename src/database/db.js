@@ -120,6 +120,28 @@ db.prepare(`
 // Adicionar colunas de slots ao players (se ainda não existirem — SQLite não tem IF NOT EXISTS em ALTER TABLE)
 try { db.prepare("ALTER TABLE players ADD COLUMN char_slots INTEGER DEFAULT 10").run(); } catch (_) {}
 try { db.prepare("ALTER TABLE players ADD COLUMN artifact_slots INTEGER DEFAULT 10").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE players ADD COLUMN fragment_slots INTEGER DEFAULT 10").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE player_characters ADD COLUMN protected INTEGER DEFAULT 0").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE players ADD COLUMN equipped_title TEXT DEFAULT NULL").run(); } catch (_) {}
+
+// Tabela de progresso de títulos (conquistas permanentes)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS title_progress (
+    player_id TEXT,
+    title_id  TEXT,
+    progress  INTEGER DEFAULT 0,
+    PRIMARY KEY (player_id, title_id)
+  )
+`).run();
+
+// Tabela de títulos já resgatados por jogador
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS title_claimed (
+    player_id TEXT,
+    title_id  TEXT,
+    PRIMARY KEY (player_id, title_id)
+  )
+`).run();
 
 // Tabela de estado global das missões (quais estão ativas e quando foi a última rotação)
 db.prepare(`
@@ -146,6 +168,16 @@ db.prepare(`
     player_id TEXT,
     mission_id TEXT,
     PRIMARY KEY (player_id, mission_id)
+  )
+`).run();
+
+// Tabela de personagens no Limbo (slots cheios durante invocação)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS limbo_characters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
   )
 `).run();
 

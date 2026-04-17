@@ -11,11 +11,164 @@ const towerConfig = require("../config/towerConfig.js");
 const RankManager = require("../services/RankManager");
 const missionRepository = require("../database/repositories/missionRepository");
 const missionsCommand = require("../commands/missions");
+const fendaAncestralCommand = require("../commands/fenda-ancestral");
+const nexusZenithCommand = require("../commands/nexus-zenith");
+const limboCommand = require("../commands/limbo");
+const protegerCommand = require("../commands/proteger");
+const tutorialCommand = require("../commands/tutorial");
+const titleRepository = require("../database/repositories/titleRepository");
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
+
+// --- Stall Recovery Helpers ---
+
+async function sendStallEmbed(message, battleId, battle) {
+  try {
+    const leaderId = (battle.partyMembers && battle.partyMembers[0]) || battle.player1Id;
+    const battleEmbed = EmbedManager.createBattleEmbed(battle);
+    const stallEmbed = new EmbedBuilder()
+      .setColor("#FF6600")
+      .setTitle("⚠️ Combate Travado?")
+      .setDescription(
+        `O boss não está respondendo. Se o combate estiver parado, <@${leaderId}> pode forçar a retomada.\n` +
+        `*Aguarde alguns segundos antes de usar o botão.*`
+      );
+    const fixRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`fixcombat_${battleId}_${leaderId}`)
+        .setLabel("🔧 Consertar Combate")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`${battleId}_abandon`)
+        .setLabel("🏳️ Abandonar")
+        .setStyle(ButtonStyle.Secondary)
+    );
+    await message.edit({ embeds: [battleEmbed, stallEmbed], components: [fixRow] });
+  } catch (e) {
+    console.error("[STALL_EMBED] Erro ao enviar embed de recuperação:", e);
+  }
+}
 
 module.exports = {
   execute: async (interaction) => {
-    // 0.0 Lógica de Escolha Inicial de Equipamento (Botões)
+    // 0.0 Tutorial (must be before all other handlers)
+    if (interaction.isButton() && interaction.customId.startsWith("tutorial_")) {
+      return tutorialCommand.handleInteraction(interaction);
+    }
+
+    // 0.0 Fix Combat (stall recovery — must be first)
+    if (interaction.isButton() && interaction.customId.startsWith("fixcombat_")) {
+      const parts = interaction.customId.split("_");
+      // format: fixcombat_<battleId>_<leaderId>
+      const battleId = parts[1];
+      const leaderId = parts[2];
+
+      if (interaction.user.id !== leaderId) {
+        return interaction.reply({ content: "❌ Apenas o líder da party pode consertar o combate!", ephemeral: true });
+      }
+
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle || battle.state === "finished") {
+        return interaction.reply({ content: "Este combate já foi encerrado.", ephemeral: true });
+      }
+      if (!battle.isPve) {
+        return interaction.reply({ content: "Este botão só funciona em combates PVE.", ephemeral: true });
+      }
+
+      // Cooldown: 15s between fix attempts
+      const now = Date.now();
+      if (battle.lastFixAttempt && (now - battle.lastFixAttempt) < 15000) {
+        const remainingSec = Math.ceil((15000 - (now - battle.lastFixAttempt)) / 1000);
+        return interaction.reply({ content: `⏳ Aguarde **${remainingSec}s** antes de tentar novamente.`, ephemeral: true });
+      }
+      battle.lastFixAttempt = now;
+
+      await interaction.deferUpdate();
+
+      try {
+        let resultBattle = null;
+
+        if (battle.bossProcessing) {
+          // Boss já está sendo processado pelo timeout automático — aguardar
+          await interaction.followUp({ content: "⏳ O boss já está reagindo, aguarde um momento...", ephemeral: true });
+          return;
+        }
+        if (battle.state === "choosing_reaction") {
+          battle.bossProcessing = true;
+          resultBattle = BattleEngine.processBossReaction(battle);
+          battle.bossProcessing = false;
+        } else if (battle.state === "choosing_action" && battle.currentPlayerTurnId === battle.player2Id) {
+          battle.bossProcessing = true;
+          resultBattle = BattleEngine.processBossTurn(battle);
+          battle.bossProcessing = false;
+        } else {
+          // Not stuck on boss side — just refresh display
+          resultBattle = battle;
+        }
+
+        if (!resultBattle) {
+          await interaction.followUp({ content: "❌ Não foi possível recuperar o combate. Tente abandonar com o botão 🏳️.", ephemeral: true });
+          return;
+        }
+
+        const embed = EmbedManager.createBattleEmbed(resultBattle);
+        let components = [];
+        if (resultBattle.state !== "finished") {
+          if (resultBattle.state === "choosing_reaction") {
+            const isBossReacting = resultBattle.getOpponentId() === resultBattle.player2Id;
+            components = ButtonManager.createReactionButtons(battleId, resultBattle.getOpponentPlayer(), isBossReacting);
+          } else {
+            const isBossTurn = resultBattle.currentPlayerTurnId === resultBattle.player2Id;
+            components = ButtonManager.createActionComponents(battleId, resultBattle.getCurrentPlayer(), isBossTurn, resultBattle);
+          }
+        }
+
+        await interaction.editReply({ embeds: [embed], components });
+
+        // If boss still needs to act, trigger automation
+        if (resultBattle.isPve && resultBattle.state === "choosing_action" && resultBattle.currentPlayerTurnId === resultBattle.player2Id) {
+          const fixMsg = interaction.message;
+          setTimeout(async () => {
+            try {
+              const attackBattle = BattleEngine.processBossTurn(resultBattle);
+              if (!attackBattle) return;
+              const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
+              const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
+              const attackComponents = attackBattle.state === "finished" ? [] :
+                (attackBattle.state === "choosing_reaction"
+                  ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting)
+                  : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
+              await fixMsg.edit({ embeds: [attackEmbed], components: attackComponents });
+            } catch (e) { console.error("[FIX_COMBAT] Boss automation após fix:", e); }
+          }, 1500);
+        }
+      } catch (e) {
+        console.error("[FIX_COMBAT] Erro:", e);
+        try { await interaction.followUp({ content: "❌ Erro ao tentar consertar o combate.", ephemeral: true }); } catch (_) {}
+      }
+      return;
+    }
+
+    // 0.0 Fenda Ancestral (gacha)
+    if (interaction.isButton() && interaction.customId.startsWith("fenda_")) {
+      return fendaAncestralCommand.handleInteraction(interaction);
+    }
+
+    // 0.0b Nexus Zenith (gacha de personagens)
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith("nexus_")) {
+      return nexusZenithCommand.handleInteraction(interaction);
+    }
+
+    // 0.0c Limbo (botões e selects)
+    if ((interaction.isStringSelectMenu() || interaction.isButton()) && interaction.customId.startsWith("limbo_")) {
+      return limboCommand.handleInteraction(interaction);
+    }
+
+    // 0.0d Proteger personagem
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("proteger_toggle_")) {
+      return protegerCommand.handleInteraction(interaction);
+    }
+
+    // 0.1 Lógica de Escolha Inicial de Equipamento (Botões)
     if (interaction.isButton() && interaction.customId.startsWith("equip_choice_")) {
       const [_, __, type, userId] = interaction.customId.split("_");
       if (interaction.user.id !== userId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
@@ -57,11 +210,14 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-          .setTitle("Equipar Personagem")
-          .setDescription("Escolha abaixo qual personagem você deseja equipar para suas batalhas.")
-          .setColor("#0099ff")
-          .addFields({ name: "Atualmente Equipado", value: `\`${equippedName}\`` })
-          .setFooter({ text: "Use o menu abaixo para selecionar." });
+          .setTitle("🥋 Escolha seu Combatente")
+          .setDescription(
+            `> *\"Um guerreiro sem propósito é apenas um homem com uma espada.\"*\n\n` +
+            `Selecione o personagem que irá representá-lo nas batalhas.`
+          )
+          .setColor("#16213e")
+          .addFields({ name: "⚔️ Em Campo Agora", value: `\`${equippedName}\``, inline: false })
+          .setFooter({ text: "Anime Battle Arena • Selecione seu combatente" });
 
         return interaction.update({ embeds: [embed], components: [row] });
       }
@@ -78,17 +234,21 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-          .setTitle("🛡️ Gerenciamento de Artefatos")
-          .setDescription("Escolha abaixo o personagem que você deseja gerenciar os artefatos.")
-          .setColor("#3498DB")
+          .setTitle("🛡️ Forja de Relíquias")
+          .setDescription(
+            `> *\"As relíquias não fazem o guerreiro — mas amplificam o que ele já é.\"*\n\n` +
+            `Escolha em qual combatente deseja encaixar ou remover uma relíquia.`
+          )
+          .setColor("#0f3460")
           .setThumbnail(interaction.user.displayAvatarURL())
-          .setFooter({ text: "Anime Battle Arena • Sistema de Artefatos" });
+          .setFooter({ text: "Anime Battle Arena • Forja de Relíquias" });
 
         const characterOptions = ownedChars.map(charInstance => {
           const charData = CharacterManager.getCharacter(charInstance.character_id, charInstance);
+          const slotsUsed = [charInstance.equipped_artifact_1, charInstance.equipped_artifact_2, charInstance.equipped_artifact_3].filter(Boolean).length;
           return {
-            label: `${charData.name} (Lvl ${charInstance.level})`,
-            description: `ID: ${charInstance.id} • Clique para gerenciar`,
+            label: `${charData.name} (Lv ${charInstance.level})`,
+            description: `Relíquias: ${slotsUsed}/3 • ID #${charInstance.id}`,
             value: charInstance.id.toString()
           };
         });
@@ -102,18 +262,143 @@ module.exports = {
 
         return interaction.update({ embeds: [embed], components: [charSelectRow] });
       }
+
+      if (type === "title") {
+        const claimedTitles = Object.keys(titleRepository.TITLES).filter(tid => titleRepository.isClaimed(userId, tid));
+
+        if (claimedTitles.length === 0) {
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você ainda não desbloqueou nenhum título. Use `!titulos` para ver seu progresso.", false)], components: [] });
+        }
+
+        const player = playerRepository.getPlayer(userId);
+        const options = claimedTitles.map(tid => {
+          const t = titleRepository.TITLES[tid];
+          const isEquipped = player.equipped_title === tid;
+          return { label: `${t.emoji} ${t.name}`, value: tid, description: isEquipped ? "✅ Equipado atualmente" : "Clique para equipar" };
+        });
+
+        const currentTitle = player.equipped_title ? titleRepository.TITLES[player.equipped_title] : null;
+        const embed = new EmbedBuilder()
+          .setTitle("🎖️ Salão dos Títulos")
+          .setDescription(
+            `> *\"Um título não é dado — é conquistado com sangue e determinação.\"*\n\n` +
+            `Escolha a insígnia que carregará em batalha.`
+          )
+          .setColor("#b8860b")
+          .addFields({ name: "Insígnia Atual", value: currentTitle ? `${currentTitle.emoji} **${currentTitle.name}**` : "*Sem título equipado*", inline: false })
+          .setFooter({ text: "Anime Battle Arena • Salão dos Títulos" });
+
+        const row = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder().setCustomId(`equip_title_select_${userId}`).setPlaceholder("Selecione um título...").addOptions(options)
+        );
+
+        return interaction.update({ embeds: [embed], components: [row] });
+      }
+    }
+
+    // 0. Equipar título selecionado
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("equip_title_select_")) {
+      const userId = interaction.customId.split("_")[3];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
+
+      const newTitleId = interaction.values[0];
+      const player = playerRepository.getPlayer(userId);
+      const oldTitleId = player.equipped_title;
+      const title = titleRepository.TITLES[newTitleId];
+
+      if (oldTitleId && oldTitleId !== newTitleId) {
+        const oldTitle = titleRepository.TITLES[oldTitleId];
+        if (oldTitle?.roleId) {
+          const member = interaction.guild?.members.cache.get(userId) || await interaction.guild?.members.fetch(userId).catch(() => null);
+          if (member) await member.roles.remove(oldTitle.roleId).catch(() => {});
+        }
+      }
+
+      if (title?.roleId) {
+        const member = interaction.guild?.members.cache.get(userId) || await interaction.guild?.members.fetch(userId).catch(() => null);
+        if (member) await member.roles.add(title.roleId).catch(() => {});
+      }
+
+      playerRepository.updatePlayer(userId, { equipped_title: newTitleId });
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("🎖️ Insígnia Equipada!")
+          .setDescription(`${title.emoji} **${title.name}**\n\n*Sua conquista agora é exibida para todos verem. Use \`!profile\` para conferir.*`)
+          .setColor("#b8860b")
+          .setFooter({ text: "Anime Battle Arena • Salão dos Títulos" })
+        ],
+        components: []
+      });
+    }
+
+    // 0. Paginação de títulos
+    if (interaction.isButton() && interaction.customId.startsWith("titulos_page_")) {
+      const parts = interaction.customId.split("_"); // titulos_page_<page>_<userId>
+      const userId = parts[parts.length - 1];
+      const page = parseInt(parts[2]);
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu painel de títulos!", ephemeral: true });
+      const titulosCommand = require("../commands/titulos");
+      return interaction.update(titulosCommand.buildPage(userId, page));
+    }
+
+    // 0. Resgatar título (!titulos button)
+    if (interaction.isButton() && interaction.customId.startsWith("claim_title_")) {
+      const parts = interaction.customId.split("_"); // claim_title_<titleId>_<userId>
+      const userId = parts[parts.length - 1];
+      const titleId = parts.slice(2, parts.length - 1).join("_");
+
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu painel de títulos!", ephemeral: true });
+
+      const title = titleRepository.TITLES[titleId];
+      if (!title) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Título inválido.", false)], ephemeral: true });
+
+      if (titleRepository.isClaimed(userId, titleId)) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você já resgatou este título!", false)], ephemeral: true });
+      }
+
+      const progress = titleRepository.getProgress(userId, titleId);
+      if (progress < title.goal) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você ainda não completou este título!", false)], ephemeral: true });
+      }
+
+      titleRepository.claimTitle(userId, titleId);
+      playerRepository.updatePlayer(userId, { zenith_fragments: (playerRepository.getPlayer(userId).zenith_fragments || 0) + title.zenith });
+
+      // Refresh the page to remove the claim button and show claimed status
+      const titulosCommand = require("../commands/titulos");
+      const TITLE_IDS = Object.keys(titleRepository.TITLES);
+      const page = TITLE_IDS.indexOf(titleId);
+      const pageData = titulosCommand.buildPage(userId, page);
+      await interaction.update(pageData);
+
+      return interaction.followUp({
+        embeds: [new EmbedBuilder()
+          .setColor("#FFD700")
+          .setTitle("🎖️ Título Desbloqueado!")
+          .setDescription(`Parabéns! Você desbloqueou o título **${title.emoji} ${title.name}**!\n+**${title.zenith} Fragmentos Zenith** adicionados.\n\nUse \`!equip\` → **Equipar Título** para exibi-lo no perfil.`)
+        ],
+        ephemeral: true
+      });
     }
 
     // 0. Lógica de Equipar Personagem (Menu)
     if (interaction.isStringSelectMenu() && interaction.customId === "equip_select") {
+      const userId = interaction.user.id;
       const instanceId = parseInt(interaction.values[0]);
-      playerRepository.updatePlayer(interaction.user.id, { equipped_instance_id: instanceId });
+      playerRepository.updatePlayer(userId, { equipped_instance_id: instanceId });
       const instance = playerRepository.getCharacterInstance(instanceId);
       const charData = CharacterManager.getCharacter(instance.character_id, instance);
-      return interaction.update({
+      await interaction.update({
         embeds: [EmbedManager.createStatusEmbed(`Você equipou **${charData.name} [Lvl ${instance.level}]** com sucesso!`, true)],
         components: []
       });
+      // Tutorial hook: advance to battle_intro if in tutorial channel
+      const tutorialUserId = tutorialCommand.getTutorialUserByChannel(interaction.channel.id);
+      if (tutorialUserId && tutorialUserId === userId) {
+        tutorialCommand.onEquipComplete(userId, interaction.client, interaction.channel.id);
+      }
+      return;
     }
 
     // 0.1 Lógica de Botões do Inventário
@@ -128,11 +413,11 @@ module.exports = {
         return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(result.reason, false)], ephemeral: true });
       }
 
-      const typeLabel = slotType === "char" ? "personagens" : "artefatos";
+      const typeLabel = slotType === "char" ? "personagens" : slotType === "fragment" ? "fragmentos" : "artefatos";
       await interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`✅ Desbloqueado! Agora você tem **${result.newSlots} slots de ${typeLabel}**! (-${playerRepository.SLOT_COST} Fragmentos Zenith)`, true)], ephemeral: true });
 
       // Atualizar embed do inventário
-      const viewType = slotType === "char" ? "chars" : "items";
+      const viewType = slotType === "char" ? "chars" : slotType === "fragment" ? "fragments" : "items";
       const player = playerRepository.getPlayer(userId);
       player.ownedChars = playerRepository.getPlayerCharacters(userId);
       player.items = playerRepository.getPlayerItems(userId);
@@ -141,7 +426,7 @@ module.exports = {
       return interaction.message.edit(invResult);
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith("inv_")) {
+    if (interaction.isButton() && interaction.customId.startsWith("inv_") && !interaction.customId.startsWith("inv_discard_") && !interaction.customId.startsWith("inv_unlock_") && !interaction.customId.startsWith("inv_bulk_")) {
       const parts = interaction.customId.split("_"); // inv_chars_userId or inv_items_userId
       const type = parts[1];
       const userId = parts[2];
@@ -154,6 +439,643 @@ module.exports = {
       return interaction.update(result);
     }
 
+    // 0.15 Forjar relíquia via fragmentos
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_craft_select_")) {
+      const userId = interaction.customId.split("inv_craft_select_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const FragmentMap = require("../config/fragmentMap");
+      const itemId = interaction.values[0];
+      const fragData = FragmentMap[itemId];
+      if (!fragData) return interaction.reply({ content: "❌ Fragmento inválido.", ephemeral: true });
+
+      const items = playerRepository.getPlayerItems(userId);
+      const qty = items.find(i => i.item_id === itemId)?.quantity || 0;
+      if (qty < 100) return interaction.reply({ content: "❌ Você não tem fragmentos suficientes (precisa de 100).", ephemeral: true });
+
+      playerRepository.removeItem(userId, itemId, 100);
+      playerRepository.addArtifact(userId, fragData.artifactId);
+
+      const player = playerRepository.getPlayer(userId);
+      player.ownedChars = playerRepository.getPlayerCharacters(userId);
+      player.items = playerRepository.getPlayerItems(userId);
+      player.artifacts = playerRepository.getPlayerArtifacts(userId);
+
+      await interaction.reply({
+        embeds: [EmbedManager.createStatusEmbed(`✅ Relíquia **${fragData.name}** forjada com sucesso! ${fragData.emoji}`, true)],
+        ephemeral: true,
+      });
+      const invResult = EmbedManager.createInventoryEmbed(player, interaction.user, "fragments");
+      return interaction.message.edit(invResult);
+    }
+
+    // 0.16 Descarte de fragmentos — passo 1: botão abre select de qual fragmento
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_frag_")) {
+      const userId = interaction.customId.split("inv_discard_frag_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const FragmentMap = require("../config/fragmentMap");
+      const items = playerRepository.getPlayerItems(userId);
+      const opts = Object.entries(FragmentMap)
+        .map(([itemId, data]) => ({ itemId, qty: items.find(i => i.item_id === itemId)?.quantity || 0, ...data }))
+        .filter(f => f.qty > 0)
+        .sort((a, b) => b.qty - a.qty)
+        .map(f => ({ label: `${f.name} (${f.qty} fragmentos)`, value: f.itemId }));
+
+      if (opts.length === 0) return interaction.update({
+        embeds: [EmbedManager.createStatusEmbed("Você não possui fragmentos para descartar.", false)],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`inv_fragments_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary)
+        )],
+      });
+
+      return interaction.update({
+        embeds: [EmbedManager.createStatusEmbed("Selecione qual fragmento deseja descartar:", true)],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_discard_qty_${userId}`)
+              .setPlaceholder("Selecione o fragmento...")
+              .addOptions(opts),
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_fragments_${userId}`).setLabel("← Cancelar").setStyle(ButtonStyle.Secondary)
+          ),
+        ],
+      });
+    }
+
+    // 0.17 Descarte de fragmentos — passo 2: selecionou o fragmento, escolher quantidade
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_discard_qty_")) {
+      const userId = interaction.customId.split("inv_discard_qty_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const FragmentMap = require("../config/fragmentMap");
+      const itemId = interaction.values[0];
+      const fragData = FragmentMap[itemId];
+      if (!fragData) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("❌ Fragmento inválido.", false)], components: [] });
+
+      const items = playerRepository.getPlayerItems(userId);
+      const qty = items.find(i => i.item_id === itemId)?.quantity || 0;
+      if (qty === 0) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui esse fragmento.", false)], components: [] });
+
+      const half    = Math.floor(qty / 2);
+      const quarter = Math.floor(qty / 4);
+      const qtyOpts = [{ label: `Descartar tudo (${qty})`, value: `${itemId}:${qty}` }];
+      if (half > 0 && half !== qty)        qtyOpts.push({ label: `Descartar metade (${half})`,   value: `${itemId}:${half}` });
+      if (quarter > 0 && quarter !== half) qtyOpts.push({ label: `Descartar 25% (${quarter})`,   value: `${itemId}:${quarter}` });
+
+      return interaction.update({
+        embeds: [EmbedManager.createStatusEmbed(`**${fragData.name}** — Você tem **${qty}** fragmentos. Quantos deseja descartar?`, true)],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_discard_confirm_${userId}`)
+              .setPlaceholder("Escolha a quantidade...")
+              .addOptions(qtyOpts),
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_discard_frag_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary)
+          ),
+        ],
+      });
+    }
+
+    // 0.18 Descarte de fragmentos — passo 3: execução
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_discard_confirm_")) {
+      const userId = interaction.customId.split("inv_discard_confirm_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const FragmentMap = require("../config/fragmentMap");
+      const [itemId, qtyStr] = interaction.values[0].split(":");
+      const qty = parseInt(qtyStr);
+      const fragData = FragmentMap[itemId];
+      if (!fragData || isNaN(qty) || qty <= 0) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("❌ Dados inválidos.", false)], components: [] });
+
+      const removed = playerRepository.removeItem(userId, itemId, qty);
+      if (!removed) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("❌ Você não possui fragmentos suficientes.", false)], components: [] });
+
+      const player = playerRepository.getPlayer(userId);
+      player.ownedChars = playerRepository.getPlayerCharacters(userId);
+      player.items = playerRepository.getPlayerItems(userId);
+      player.artifacts = playerRepository.getPlayerArtifacts(userId);
+
+      const invResult = EmbedManager.createInventoryEmbed(player, interaction.user, "fragments");
+      // Injeta mensagem de sucesso no topo da descrição
+      const embed = invResult.embeds[0];
+      const currentDesc = embed.data?.description || "";
+      embed.setDescription(`> ✅ **${qty}x ${fragData.name}** descartado.\n\n` + currentDesc);
+
+      return interaction.update(invResult);
+    }
+
+    // ── Helpers reutilizados nos handlers de descarte em massa ───────────────
+    function applyBulkFilter(chars, equippedId, type) {
+      // Nunca inclui o equipado nem os protegidos
+      const sellable = chars.filter(i => i.id !== equippedId && !i.protected);
+      if (type === "all")      return sellable;
+      if (type === "ec_all")   return sellable.filter(i => CharacterManager.getCharacter(i.character_id, i).rarity === "EC");
+      if (type === "al_all")   return sellable.filter(i => CharacterManager.getCharacter(i.character_id, i).rarity === "AL");
+      if (type === "lvl1")     return sellable.filter(i => i.level <= 1);
+      if (type === "lvl2")     return sellable.filter(i => i.level <= 2);
+      if (type === "lvl5")     return sellable.filter(i => i.level <= 5);
+      if (type === "ec_lvl5")  return sellable.filter(i => i.level <= 5  && CharacterManager.getCharacter(i.character_id, i).rarity === "EC");
+      if (type === "ec_lvl10") return sellable.filter(i => i.level <= 10 && CharacterManager.getCharacter(i.character_id, i).rarity === "EC");
+      if (type === "dupes") {
+        const seen = {}, toSell = [];
+        for (const i of sellable) {
+          const c = CharacterManager.getCharacter(i.character_id, i);
+          if (c.rarity !== "EC") continue;
+          if (seen[i.character_id]) toSell.push(i); else seen[i.character_id] = true;
+        }
+        return toSell;
+      }
+      return [];
+    }
+    const BULK_FILTER_NAMES = {
+      all: "Todos (exceto protegidos)", ec_all: "Todos EC", al_all: "Todos AL",
+      lvl1: "Nível 1", lvl2: "Nível ≤ 2", lvl5: "Nível ≤ 5",
+      ec_lvl5: "EC Nível ≤ 5", ec_lvl10: "EC Nível ≤ 10", dupes: "Duplicatas EC",
+    };
+    const RARITY_ICON_MAP = { EM: "👁️", AL: "🌟", EC: "◆" };
+
+    // 0.18b Descarte em Massa — passo 1: select de filtro
+    if (interaction.isButton() && interaction.customId.startsWith("inv_bulk_sell_") && !interaction.customId.startsWith("inv_bulk_sell_confirm_")) {
+      const userId = interaction.customId.split("inv_bulk_sell_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const FILTERS = [
+        { value: "all",      label: "⚠️ Todos (exceto protegidos)", description: "Remove tudo exceto equipado e 🔒 protegidos" },
+        { value: "ec_all",   label: "Todos Eco Comum (EC)",          description: "Remove todos EC (exceto protegidos)" },
+        { value: "al_all",   label: "Todos Aura Lendária (AL)",      description: "Remove todos AL (exceto protegidos)" },
+        { value: "lvl1",     label: "Todos Nível 1",                 description: "Remove nível 1 (exceto protegidos)" },
+        { value: "lvl2",     label: "Todos Nível ≤ 2",               description: "Remove nível 1-2 (exceto protegidos)" },
+        { value: "lvl5",     label: "Todos Nível ≤ 5",               description: "Remove até nível 5 (exceto protegidos)" },
+        { value: "ec_lvl5",  label: "EC com Nível ≤ 5",              description: "Remove EC até nível 5 (exceto protegidos)" },
+        { value: "ec_lvl10", label: "EC com Nível ≤ 10",             description: "Remove EC até nível 10 (exceto protegidos)" },
+        { value: "dupes",    label: "Duplicatas EC (manter 1)",      description: "Mantém 1 de cada EC, remove o restante" },
+      ];
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("🗑️ Descarte em Massa")
+          .setDescription("Selecione o filtro abaixo. O personagem **equipado** nunca é removido.")
+          .setColor("#e74c3c")],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_bulk_sell_filter_${userId}`)
+              .setPlaceholder("Escolha o filtro...")
+              .addOptions(FILTERS),
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_discard_char_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+    }
+
+    // 0.18c Descarte em Massa — passo 2: preview + confirmar
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_bulk_sell_filter_")) {
+      const userId = interaction.customId.split("inv_bulk_sell_filter_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const filterType = interaction.values[0];
+      const player     = playerRepository.getPlayer(userId);
+      const allChars   = playerRepository.getPlayerCharacters(userId);
+      const toRemove   = applyBulkFilter(allChars, player.equipped_instance_id, filterType);
+
+      if (toRemove.length === 0) {
+        return interaction.update({
+          embeds: [new EmbedBuilder()
+            .setTitle("🗑️ Descarte em Massa — Sem Resultados")
+            .setDescription(`Nenhum personagem encontrado para **${BULK_FILTER_NAMES[filterType]}**.`)
+            .setColor("#e74c3c")],
+          components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_bulk_sell_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+          )],
+        });
+      }
+
+      const previewLines = toRemove.slice(0, 15).map(i => {
+        const c = CharacterManager.getCharacter(i.character_id, i);
+        return `${RARITY_ICON_MAP[c.rarity] || "◆"} **${c.name}** Lv.${i.level}`;
+      });
+      if (toRemove.length > 15) previewLines.push(`*...e mais ${toRemove.length - 15} personagens*`);
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle(`🗑️ Confirmar Descarte — ${BULK_FILTER_NAMES[filterType]}`)
+          .setDescription(
+            `**${toRemove.length} personagem(ns)** serão removidos permanentemente.\n\n` +
+            previewLines.join("\n")
+          )
+          .setColor("#e74c3c")
+          .setFooter({ text: "Esta ação é permanente e irrecuperável." })],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_bulk_sell_confirm_${userId}_${filterType}`)
+            .setLabel(`Confirmar — Descartar ${toRemove.length}`)
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`inv_bulk_sell_${userId}`)
+            .setLabel("← Voltar")
+            .setStyle(ButtonStyle.Secondary),
+        )],
+      });
+    }
+
+    // 0.18d Descarte em Massa — passo 3: execução
+    if (interaction.isButton() && interaction.customId.startsWith("inv_bulk_sell_confirm_")) {
+      const rest           = interaction.customId.split("inv_bulk_sell_confirm_")[1];
+      const underscoreIdx  = rest.indexOf("_");
+      const userId         = rest.slice(0, underscoreIdx);
+      const filterType     = rest.slice(underscoreIdx + 1);
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const player   = playerRepository.getPlayer(userId);
+      const allChars = playerRepository.getPlayerCharacters(userId);
+      const toRemove = applyBulkFilter(allChars, player.equipped_instance_id, filterType);
+
+      for (const inst of toRemove) playerRepository.removeCharacterInstance(inst.id);
+
+      const playerUpdated = playerRepository.getPlayer(userId);
+      playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
+      playerUpdated.items      = playerRepository.getPlayerItems(userId);
+      playerUpdated.artifacts  = playerRepository.getPlayerArtifacts(userId);
+
+      const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "chars");
+      const embed = invResult.embeds[0];
+      const currentDesc = embed.data?.description || "";
+      embed.setDescription(`> 🗑️ **${toRemove.length} personagem(ns)** descartado(s)!\n\n` + currentDesc);
+
+      return interaction.update(invResult);
+    }
+
+    // 0.19 Descartar — menu de opções (um por vez ou venda em massa)
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_char_") && !interaction.customId.startsWith("inv_discard_char_confirm_") && !interaction.customId.startsWith("inv_discard_char_select_") && !interaction.customId.startsWith("inv_discard_single_")) {
+      const userId = interaction.customId.split("inv_discard_char_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const embed = new EmbedBuilder()
+        .setTitle("🗑️ Descartar Personagens")
+        .setDescription(
+          "Como deseja descartar?\n\n" +
+          "**Um por vez** — Escolhe e confirma um personagem específico.\n" +
+          "**Em Massa** — Remove vários de uma vez usando filtros."
+        )
+        .setColor("#e74c3c");
+
+      return interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`inv_discard_single_${userId}`).setLabel("🗑️ Um por vez").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`inv_bulk_sell_${userId}`).setLabel("🗑️ Em Massa").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`inv_chars_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+        )],
+      });
+    }
+
+    // 0.19b Descarte individual — passo 1: select de personagem
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_single_")) {
+      const userId = interaction.customId.split("inv_discard_single_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const instances   = playerRepository.getPlayerCharacters(userId);
+      const player      = playerRepository.getPlayer(userId);
+      const discardable = instances.filter(i => i.id !== player.equipped_instance_id);
+
+      if (discardable.length === 0) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui personagens para descartar (o equipado não pode ser descartado).", false)], components: [] });
+      }
+
+      const opts = discardable.slice(0, 25).map(i => {
+        const c = CharacterManager.getCharacter(i.character_id, i);
+        return {
+          label: `${c.name} [Lvl ${i.level}]`,
+          description: `Raridade: ${c.rarity} · ID: ${i.id}`,
+          value: i.id.toString(),
+        };
+      });
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("🗑️ Descartar — Um por vez")
+          .setDescription("Selecione qual personagem deseja descartar.\n⚠️ **Esta ação é permanente e irrecuperável.**")
+          .setColor("#e74c3c")],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_discard_char_select_${userId}`)
+              .setPlaceholder("Escolha o personagem...")
+              .addOptions(opts),
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_discard_char_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+    }
+
+    // 0.20 Descarte de personagem — passo 2: confirmar
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_discard_char_select_")) {
+      const userId = interaction.customId.split("inv_discard_char_select_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const instanceId = parseInt(interaction.values[0]);
+      const instance   = playerRepository.getCharacterInstance(instanceId);
+      if (!instance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
+
+      const c = CharacterManager.getCharacter(instance.character_id, instance);
+      const rarityIcon = { EM: "👁️", AL: "🌟", EC: "◆" }[c.rarity] || "◆";
+
+      const embed = new EmbedBuilder()
+        .setTitle("⚠️ Confirmar Descarte")
+        .setDescription(`Você tem certeza que deseja descartar **${rarityIcon} ${c.name}** (Nível ${instance.level})?\n\n> ❌ Este personagem será **permanentemente removido**.\n> Ele não pode ser recuperado após o descarte.`)
+        .setColor("#e74c3c")
+        .setThumbnail(c.imageUrl || null);
+
+      return interaction.update({
+        embeds: [embed],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`inv_discard_char_confirm_${userId}_${instanceId}`)
+              .setLabel(`Confirmar — Descartar ${c.name}`)
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`inv_discard_single_${userId}`)
+              .setLabel("← Voltar")
+              .setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+    }
+
+    // 0.21 Descarte de personagem — passo 3: execução
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_char_confirm_")) {
+      const rest = interaction.customId.split("inv_discard_char_confirm_")[1];
+      const [userId, instanceIdStr] = rest.split("_");
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const instanceId = parseInt(instanceIdStr);
+      const instance   = playerRepository.getCharacterInstance(instanceId);
+      const player     = playerRepository.getPlayer(userId);
+
+      if (!instance || instance.player_id !== userId) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
+      }
+      if (player.equipped_instance_id === instanceId) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Não é possível descartar o personagem atualmente equipado.", false)], components: [] });
+      }
+
+      const c = CharacterManager.getCharacter(instance.character_id, instance);
+      playerRepository.removeCharacterInstance(instanceId);
+
+      // Recarrega aba de personagens com mensagem de sucesso
+      const playerUpdated = playerRepository.getPlayer(userId);
+      playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
+      playerUpdated.items      = playerRepository.getPlayerItems(userId);
+      playerUpdated.artifacts  = playerRepository.getPlayerArtifacts(userId);
+
+      const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "chars");
+      const embed = invResult.embeds[0];
+      const currentDesc = embed.data?.description || "";
+      embed.setDescription(`> 🗑️ **${c.name}** foi descartado.\n\n` + currentDesc);
+
+      return interaction.update(invResult);
+    }
+
+    // ── Helpers de descarte de artefatos ─────────────────────────────────────
+    function getEquippedArtifactIds(ownedChars) {
+      return (ownedChars || []).reduce((acc, c) => {
+        if (c.equipped_artifact_1) acc.push(c.equipped_artifact_1);
+        if (c.equipped_artifact_2) acc.push(c.equipped_artifact_2);
+        if (c.equipped_artifact_3) acc.push(c.equipped_artifact_3);
+        return acc;
+      }, []);
+    }
+
+    // 0.22 Descartar artefato — menu de opções
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_art_")
+        && !interaction.customId.startsWith("inv_discard_art_single_")
+        && !interaction.customId.startsWith("inv_discard_art_select_")
+        && !interaction.customId.startsWith("inv_discard_art_confirm_")
+        && !interaction.customId.startsWith("inv_discard_art_dupes_")) {
+      const userId = interaction.customId.split("inv_discard_art_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("🗑️ Descartar Artefatos")
+          .setDescription(
+            "Como deseja descartar?\n\n" +
+            "**Um por vez** — Escolhe e confirma um artefato específico.\n" +
+            "**Repetidos** — Remove duplicatas mantendo um exemplar de cada tipo."
+          )
+          .setColor("#e74c3c")],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`inv_discard_art_single_${userId}`).setLabel("🗑️ Um por vez").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`inv_discard_art_dupes_${userId}`).setLabel("🗑️ Repetidos").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`inv_items_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+        )],
+      });
+    }
+
+    // 0.22b Descartar artefato individual — passo 1: select
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_art_single_")) {
+      const userId = interaction.customId.split("inv_discard_art_single_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const allArtifacts  = playerRepository.getPlayerArtifacts(userId);
+      const ownedChars    = playerRepository.getPlayerCharacters(userId);
+      const equippedIds   = getEquippedArtifactIds(ownedChars);
+      const discardable   = allArtifacts.filter(a => !equippedIds.includes(a.id));
+
+      if (discardable.length === 0) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você não possui artefatos para descartar (os equipados não podem ser removidos).", false)], components: [] });
+      }
+
+      const opts = discardable.slice(0, 25).map(a => {
+        const d = ArtifactManager.getArtifact(a.artifact_id, a);
+        return { label: d.name, description: `ID: ${a.id}`, value: a.id.toString() };
+      });
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("🗑️ Descartar Artefato — Um por vez")
+          .setDescription("Selecione qual artefato deseja descartar.\n⚠️ **Esta ação é permanente e irrecuperável.**")
+          .setColor("#e74c3c")],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_discard_art_select_${userId}`)
+              .setPlaceholder("Escolha o artefato...")
+              .addOptions(opts),
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_discard_art_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+    }
+
+    // 0.22c Descartar artefato individual — passo 2: confirmar
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("inv_discard_art_select_")) {
+      const userId     = interaction.customId.split("inv_discard_art_select_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const instanceId = parseInt(interaction.values[0]);
+      const artifact   = playerRepository.getArtifactInstance(instanceId);
+      if (!artifact) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Artefato não encontrado.", false)], components: [] });
+
+      const d = ArtifactManager.getArtifact(artifact.artifact_id, artifact);
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle("⚠️ Confirmar Descarte")
+          .setDescription(`Você tem certeza que deseja descartar **${d.name}**?\n\n> ❌ Este artefato será **permanentemente removido**.\n> Ele não pode ser recuperado após o descarte.`)
+          .setColor("#e74c3c")],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_art_confirm_${userId}_${instanceId}`)
+            .setLabel(`Confirmar — Descartar ${d.name}`)
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_art_single_${userId}`)
+            .setLabel("← Voltar")
+            .setStyle(ButtonStyle.Secondary),
+        )],
+      });
+    }
+
+    // 0.22d Descartar artefato individual — passo 3: execução
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_art_confirm_")) {
+      const rest       = interaction.customId.split("inv_discard_art_confirm_")[1];
+      const [userId, instanceIdStr] = rest.split("_");
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const instanceId = parseInt(instanceIdStr);
+      const artifact   = playerRepository.getArtifactInstance(instanceId);
+      if (!artifact || artifact.player_id !== userId) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Artefato não encontrado.", false)], components: [] });
+      }
+
+      const ownedChars  = playerRepository.getPlayerCharacters(userId);
+      const equippedIds = getEquippedArtifactIds(ownedChars);
+      if (equippedIds.includes(instanceId)) {
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Não é possível descartar um artefato que está equipado.", false)], components: [] });
+      }
+
+      const d = ArtifactManager.getArtifact(artifact.artifact_id, artifact);
+      playerRepository.removeArtifactInstance(instanceId);
+
+      const playerUpdated = playerRepository.getPlayer(userId);
+      playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
+      playerUpdated.items      = playerRepository.getPlayerItems(userId);
+      playerUpdated.artifacts  = playerRepository.getPlayerArtifacts(userId);
+
+      const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "items");
+      const embed = invResult.embeds[0];
+      embed.setDescription(`> 🗑️ **${d.name}** foi descartado.\n\n` + (embed.data?.description || ""));
+      return interaction.update(invResult);
+    }
+
+    // 0.22e Descartar artefatos repetidos — passo 1: preview
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_art_dupes_")
+        && !interaction.customId.startsWith("inv_discard_art_dupes_confirm_")) {
+      const userId = interaction.customId.split("inv_discard_art_dupes_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const allArtifacts  = playerRepository.getPlayerArtifacts(userId);
+      const ownedChars    = playerRepository.getPlayerCharacters(userId);
+      const equippedIds   = getEquippedArtifactIds(ownedChars);
+      const discardable   = allArtifacts.filter(a => !equippedIds.includes(a.id));
+
+      // Keep one of each artifact_id, remove the rest
+      const seen = {};
+      const toRemove = [];
+      for (const a of discardable) {
+        if (seen[a.artifact_id]) {
+          toRemove.push(a);
+        } else {
+          seen[a.artifact_id] = true;
+        }
+      }
+
+      if (toRemove.length === 0) {
+        return interaction.update({
+          embeds: [new EmbedBuilder()
+            .setTitle("🗑️ Repetidos — Sem Resultados")
+            .setDescription("Você não possui artefatos repetidos para descartar.")
+            .setColor("#e74c3c")],
+          components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`inv_discard_art_${userId}`).setLabel("← Voltar").setStyle(ButtonStyle.Secondary),
+          )],
+        });
+      }
+
+      const previewLines = toRemove.slice(0, 15).map(a => {
+        const d = ArtifactManager.getArtifact(a.artifact_id, a);
+        return `${d.emoji || "🔮"} **${d.name}** — ID: \`${a.id}\``;
+      });
+      if (toRemove.length > 15) previewLines.push(`*...e mais ${toRemove.length - 15} artefatos*`);
+
+      return interaction.update({
+        embeds: [new EmbedBuilder()
+          .setTitle(`🗑️ Confirmar — Descartar Repetidos`)
+          .setDescription(
+            `**${toRemove.length} artefato(s)** repetido(s) serão removidos (mantendo 1 de cada tipo).\n\n` +
+            previewLines.join("\n")
+          )
+          .setColor("#e74c3c")
+          .setFooter({ text: "Esta ação é permanente e irrecuperável." })],
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_art_dupes_confirm_${userId}`)
+            .setLabel(`Confirmar — Descartar ${toRemove.length}`)
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_art_${userId}`)
+            .setLabel("← Voltar")
+            .setStyle(ButtonStyle.Secondary),
+        )],
+      });
+    }
+
+    // 0.22f Descartar artefatos repetidos — passo 2: execução
+    if (interaction.isButton() && interaction.customId.startsWith("inv_discard_art_dupes_confirm_")) {
+      const userId = interaction.customId.split("inv_discard_art_dupes_confirm_")[1];
+      if (interaction.user.id !== userId) return interaction.reply({ content: "Este não é o seu inventário!", ephemeral: true });
+
+      const allArtifacts  = playerRepository.getPlayerArtifacts(userId);
+      const ownedChars    = playerRepository.getPlayerCharacters(userId);
+      const equippedIds   = getEquippedArtifactIds(ownedChars);
+      const discardable   = allArtifacts.filter(a => !equippedIds.includes(a.id));
+
+      const seen = {};
+      const toRemove = [];
+      for (const a of discardable) {
+        if (seen[a.artifact_id]) {
+          toRemove.push(a);
+        } else {
+          seen[a.artifact_id] = true;
+        }
+      }
+
+      for (const a of toRemove) playerRepository.removeArtifactInstance(a.id);
+
+      const playerUpdated = playerRepository.getPlayer(userId);
+      playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
+      playerUpdated.items      = playerRepository.getPlayerItems(userId);
+      playerUpdated.artifacts  = playerRepository.getPlayerArtifacts(userId);
+
+      const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "items");
+      const embed = invResult.embeds[0];
+      embed.setDescription(`> 🗑️ **${toRemove.length} artefato(s) repetido(s)** descartados!\n\n` + (embed.data?.description || ""));
+      return interaction.update(invResult);
+    }
+
     // 0.2 Lógica de Seleção de Personagem para Artefato
     if (interaction.isStringSelectMenu() && interaction.customId === "equip_artifact_char_select") {
       const characterInstanceId = parseInt(interaction.values[0]);
@@ -164,10 +1086,17 @@ module.exports = {
       const selectedCharInstance = player.ownedChars.find(c => c.id === characterInstanceId);
       if (!selectedCharInstance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Personagem não encontrado.", false)], components: [] });
       const charData = CharacterManager.getCharacter(selectedCharInstance.character_id, selectedCharInstance);
-      const availableArtifacts = player.artifacts.filter(pa => ![selectedCharInstance.equipped_artifact_1, selectedCharInstance.equipped_artifact_2, selectedCharInstance.equipped_artifact_3].includes(pa.id)).map(pa => {
-        const artifactData = ArtifactManager.getArtifact(pa.artifact_id, pa);
-        return { label: `${artifactData.emoji} ${artifactData.name}`, description: `ID: ${pa.id}`, value: pa.id.toString() };
-      });
+      const allEquippedIds = new Set(
+        player.ownedChars.flatMap(c => [c.equipped_artifact_1, c.equipped_artifact_2, c.equipped_artifact_3].filter(Boolean))
+      );
+      const availableArtifacts = player.artifacts
+        .filter(pa => !allEquippedIds.has(pa.id))
+        .map(pa => {
+          const artifactData = ArtifactManager.getArtifact(pa.artifact_id, pa);
+          if (!artifactData) return null; // artifact_id desconhecido (item removido do jogo)
+          return { label: artifactData.name, description: `ID: ${pa.id}`, value: pa.id.toString() };
+        })
+        .filter(Boolean);
       const artifactSelectMenu = new StringSelectMenuBuilder().setCustomId(`equip_artifact_select_${characterInstanceId}`).setPlaceholder("Escolha um artefato para equipar").addOptions(availableArtifacts.length > 0 ? availableArtifacts : [{ label: "Nenhum artefato disponível", value: "none", description: "Você não tem artefatos para equipar ou todos já estão equipados." }]);
       const equipRow = new ActionRowBuilder().addComponents(artifactSelectMenu);
       const unequipButtons = [];
@@ -176,13 +1105,25 @@ module.exports = {
         if (equippedArtifactInstanceId) {
           const artifactInstance = playerRepository.getArtifactInstance(equippedArtifactInstanceId);
           const artifactData = ArtifactManager.getArtifact(artifactInstance.artifact_id, artifactInstance);
-          unequipButtons.push(new ButtonBuilder().setCustomId(`unequip_artifact_${characterInstanceId}_${i}_${equippedArtifactInstanceId}`).setLabel(`Remover ${artifactData.emoji} ${artifactData.name}`).setStyle(ButtonStyle.Danger));
+          unequipButtons.push(new ButtonBuilder().setCustomId(`unequip_artifact_${characterInstanceId}_${i}_${equippedArtifactInstanceId}`).setLabel(`Remover: ${artifactData.name}`).setStyle(ButtonStyle.Danger));
         }
       }
       const unequipRow = unequipButtons.length > 0 ? new ActionRowBuilder().addComponents(unequipButtons) : null;
       const components = [equipRow];
       if (unequipRow) components.push(unequipRow);
-      const manageEmbed = new EmbedBuilder().setTitle(`🛡️ Gerenciando: ${charData.name}`).setDescription(`Gerencie os artefatos equipados neste personagem.\n\n**Slots Disponíveis:** \`${3 - charData.equippedArtifacts.length}/3\``).setColor("#F1C40F").setThumbnail(charData.imageUrl || null).addFields({ name: "📦 Artefatos Atuais", value: charData.equippedArtifacts.length > 0 ? charData.equippedArtifacts.map((a, idx) => `Slot ${idx + 1}: ${a.emoji} **${a.name}**`).join("\n") : "Nenhum artefato equipado." }).setFooter({ text: "Selecione um artefato abaixo para equipar ou use os botões para remover." });
+      const rarityColor = { EM: "#9b59b6", AL: "#f1c40f", EC: "#2ecc71" };
+      const slotsUsed = charData.equippedArtifacts.length;
+      const slotsBar = "◆".repeat(slotsUsed) + "◇".repeat(3 - slotsUsed);
+      const artifactList = slotsUsed > 0
+        ? charData.equippedArtifacts.map((a, idx) => `\`Slot ${idx + 1}\`  ${a.emoji} **${a.name}**`).join("\n")
+        : "*Nenhuma relíquia forjada neste combatente.*";
+      const manageEmbed = new EmbedBuilder()
+        .setTitle(`${charData.name}  —  Relíquias`)
+        .setDescription(`> *Forje o poder das relíquias neste guerreiro.*\n\n**Slots** \`[${slotsBar}] ${slotsUsed}/3\``)
+        .setColor(rarityColor[charData.rarity] || "#2c3e50")
+        .setThumbnail(charData.imageUrl || null)
+        .addFields({ name: "Relíquias Equipadas", value: artifactList, inline: false })
+        .setFooter({ text: "Selecione uma relíquia abaixo para equipar • Use os botões para remover" });
       return interaction.update({ embeds: [manageEmbed], components: components });
     }
 
@@ -194,6 +1135,30 @@ module.exports = {
       if (interaction.values[0] === "none") return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Nenhum artefato selecionado.", false)], components: [] });
       const charInstance = playerRepository.getCharacterInstance(characterInstanceId);
       if (!charInstance) return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Personagem não encontrado (ID: ${characterInstanceId}).`, false)], components: [] });
+      // Verificar se o artefato já está equipado em qualquer personagem do jogador
+      const allCharsCheck = playerRepository.getPlayerCharacters(interaction.user.id);
+      const artifactAlreadyEquipped = allCharsCheck.some(c =>
+        [c.equipped_artifact_1, c.equipped_artifact_2, c.equipped_artifact_3].includes(artifactInstanceId)
+      );
+      if (artifactAlreadyEquipped) {
+        const artifactRawCheck = playerRepository.getArtifactInstance(artifactInstanceId);
+        const artData = artifactRawCheck ? ArtifactManager.getArtifact(artifactRawCheck.artifact_id, artifactRawCheck) : null;
+        const artName = artData ? artData.name : "este artefato";
+        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`**${artName}** já está equipado em outro personagem. Remova-o de lá primeiro.`, false)], components: [] });
+      }
+      // Verificar artefato do mesmo tipo duplicado no personagem
+      const artifactRawCheck = playerRepository.getArtifactInstance(artifactInstanceId);
+      if (artifactRawCheck) {
+        const slotsInUse = [charInstance.equipped_artifact_1, charInstance.equipped_artifact_2, charInstance.equipped_artifact_3].filter(Boolean);
+        for (const slotId of slotsInUse) {
+          const slotArt = playerRepository.getArtifactInstance(slotId);
+          if (slotArt && slotArt.artifact_id === artifactRawCheck.artifact_id) {
+            const artData = ArtifactManager.getArtifact(slotArt.artifact_id, slotArt);
+            return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Este personagem já possui **${artData.name}** equipado. Não é possível equipar dois artefatos iguais.`, false)], components: [] });
+          }
+        }
+      }
+
       let equippedSlot = null;
       for (let i = 1; i <= 3; i++) { if (!charInstance[`equipped_artifact_${i}`]) { equippedSlot = i; break; } }
       if (!equippedSlot) return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Este personagem já tem 3 artefatos equipados. Remova um antes de equipar outro.", false)], components: [] });
@@ -202,7 +1167,14 @@ module.exports = {
       const charData = CharacterManager.getCharacter(updatedCharInstance.character_id, updatedCharInstance);
       const artifactRaw = playerRepository.getArtifactInstance(artifactInstanceId);
       const artifactData = ArtifactManager.getArtifact(artifactRaw.artifact_id, artifactRaw);
-      const successEmbed = new EmbedBuilder().setTitle("✅ Artefato Equipado!").setDescription(`O artefato **${artifactData.name}** foi equipado com sucesso em **${charData.name}**!`).setColor("#2ECC71").setThumbnail(charData.imageUrl || null).addFields({ name: "Slot Utilizado", value: `Slot ${equippedSlot}`, inline: true }).setFooter({ text: "Anime Battle Arena • Artefatos" });
+      const rarityColor = { EM: "#9b59b6", AL: "#f1c40f", EC: "#2ecc71" };
+      const successEmbed = new EmbedBuilder()
+        .setTitle(`${artifactData.emoji || "🛡️"} Relíquia Forjada!`)
+        .setDescription(`**${artifactData.name}** foi fundida ao poder de **${charData.name}**.\n\n*O guerreiro ficou mais forte.*`)
+        .setColor(rarityColor[charData.rarity] || "#2ecc71")
+        .setThumbnail(charData.imageUrl || null)
+        .addFields({ name: "Slot", value: `\`◆ Slot ${equippedSlot}\``, inline: true })
+        .setFooter({ text: "Anime Battle Arena • Forja de Relíquias" });
       return interaction.update({ embeds: [successEmbed], components: [] });
     }
 
@@ -271,7 +1243,7 @@ module.exports = {
         new StringSelectMenuBuilder()
           .setCustomId(`use_char_select_${playerId}_${itemId}`)
           .setPlaceholder("Escolha um personagem...")
-          .addOptions(charOptions)
+          .addOptions(charOptions.slice(0, 25))
       );
 
       return interaction.update({ embeds: [embed], components: [row] });
@@ -462,8 +1434,9 @@ module.exports = {
       }
 
       const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
-      const bossInstance = { character_id: bossId, level: 1 }; 
-      
+      const bossInstance = { character_id: bossId, level: 1 };
+
+      await interaction.deferUpdate();
       const guild = interaction.guild;
       const channel = await guild.channels.create({
         name: `desafio-${interaction.user.username}`,
@@ -481,12 +1454,12 @@ module.exports = {
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
       
       await channel.send({
-        content: `⚔️ **DESAFIO INICIADO!** ⚔️\n<@${playerId}> vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
+        content: `⚔️ **DESAFIO INICIADO!** ⚔️\n${partyMembers.map(id => `<@${id}>`).join(" ")} vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
         embeds: [embed],
         components: components
       });
 
-      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Desafio iniciado no canal <#${channel.id}>!`, true)], components: [] });
+      return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Desafio iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
 
 
@@ -940,8 +1913,9 @@ module.exports = {
         }
       }
 
-      const bossInstance = { character_id: bossId, level: 1 }; 
-      
+      const bossInstance = { character_id: bossId, level: 1 };
+
+      await interaction.deferUpdate();
       const guild = interaction.guild;
       const channel = await guild.channels.create({
         name: `historia-${interaction.user.username}`,
@@ -958,12 +1932,12 @@ module.exports = {
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
       
       await channel.send({
-        content: `📖 **JORNADA INICIADA!** 📖\n<@${playerId}> vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
+        content: `📖 **JORNADA INICIADA!** 📖\n${partyMembers.map(id => `<@${id}>`).join(" ")} vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
         embeds: [embed],
         components: components
       });
 
-      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Jornada iniciada no canal <#${channel.id}>!`, true)], components: [] });
+      return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Jornada iniciada no canal <#${channel.id}>!`, true)], components: [] });
     }
 
     // --- Lógica da Torre Infinita ---
@@ -997,6 +1971,7 @@ module.exports = {
       }
 
       // Criar canal temporário
+      await interaction.deferUpdate();
       const guild = interaction.guild;
       const channel = await guild.channels.create({
         name: `torre-andar-${floorNum}`,
@@ -1020,12 +1995,12 @@ module.exports = {
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
       await channel.send({
-        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\nPreparem-se para o combate contra **${floorData.boss.name}**!`,
+        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n${partyMembers.map(id => `<@${id}>`).join(" ")}\nPreparem-se para o combate contra **${floorData.boss.name}**!`,
         embeds: [embed],
         components: components
       });
 
-      return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Combate iniciado no canal <#${channel.id}>!`, true)], components: [] });
+      return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Combate iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
 
     if (type === "tower" && parts[1] === "next") {
@@ -1169,7 +2144,7 @@ module.exports = {
       if (interaction.user.id !== p2IdChallenge) return interaction.reply({ content: "Você não é o desafiado!", ephemeral: true });
 
       if (action === "refuse") {
-        return interaction.update({ content: `❌ <@${p2IdChallenge}> recusou o desafio de PVP de <@${p1IdChallenge}>.`, embeds: [], components: [] });
+        return interaction.update({ content: "", embeds: [EmbedManager.createStatusEmbed(`<@${p2IdChallenge}> recusou o desafio de PVP de <@${p1IdChallenge}>.`, false)], components: [] });
       }
 
       if (action === "accept") {
@@ -1189,6 +2164,7 @@ module.exports = {
         const inst2 = playerRepository.getCharacterInstance(p2.equipped_instance_id);
 
         // Criar canal temporário para PVP Casual também (conforme pedido: "quando usa o boss rush ou o pvp ele deve criar um canal temporário")
+        await interaction.deferUpdate();
         const guild = interaction.guild;
         const channel = await guild.channels.create({
           name: `pvp-${p1.id.slice(-4)}-vs-${p2.id.slice(-4)}`,
@@ -1210,7 +2186,7 @@ module.exports = {
           components: components
         });
 
-        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Batalha iniciada no canal <#${channel.id}>!`, true)], components: [] });
+        return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Batalha iniciada no canal <#${channel.id}>!`, true)], components: [] });
       }
     }
 
@@ -1295,6 +2271,7 @@ module.exports = {
         }
 
         // Criar canal temporário para Boss Rush
+        await interaction.deferUpdate();
         const guild = interaction.guild;
         const channel = await guild.channels.create({
           name: `boss-rush-${bossId.slice(-4)}`,
@@ -1316,7 +2293,7 @@ module.exports = {
           components: components
         });
 
-        return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`Boss Rush iniciado no canal <#${channel.id}>!`, true)], components: [] });
+        return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Boss Rush iniciado no canal <#${channel.id}>!`, true)], components: [] });
       }
     }
 
@@ -1394,7 +2371,10 @@ module.exports = {
         if (updatedBattle.state === "finished") {
           components = []; // Sem botões — batalha encerrada
 
-          if (updatedBattle.channelId) {
+          if (updatedBattle.isTutorial) {
+            // Tutorial battle: don't delete channel — tutorial handles its own cleanup
+            tutorialCommand.onBattleEnd(updatedBattle, interaction.client);
+          } else if (updatedBattle.channelId) {
             setTimeout(async () => {
               try {
                 const channel = await interaction.client.channels.fetch(updatedBattle.channelId);
@@ -1414,85 +2394,94 @@ module.exports = {
 
         // Salvar referência da mensagem ANTES do update para uso nas atualizações automáticas do boss
         const battleMessage = interaction.message;
+        updatedBattle.lastMessageId = battleMessage.id;
         await interaction.update({ embeds: [embed], components: components });
 
         // ✅ AUTOMAÇÃO PVE CENTRALIZADA: Reação e Turno do Boss
         if (updatedBattle.isPve) {
-          // 1. Reação do Boss (sempre pula se estiver em fase de reação)
+          // Helper: build components for any battle state
+          const buildComponents = (b) => {
+            if (b.state === "finished") return [];
+            if (b.state === "choosing_reaction") {
+              const isBR = b.getOpponentId() === b.player2Id;
+              return ButtonManager.createReactionButtons(b.id, b.getOpponentPlayer(), isBR);
+            }
+            const isBT = b.currentPlayerTurnId === b.player2Id;
+            return ButtonManager.createActionComponents(b.id, b.getCurrentPlayer(), isBT, b);
+          };
+
+          // Helper: delete battle channel after delay
+          const scheduleChannelDelete = (b, reason) => {
+            if (!b.channelId) return;
+            setTimeout(async () => {
+              try {
+                const ch = await interaction.client.channels.fetch(b.channelId);
+                if (ch) await ch.delete(reason);
+              } catch (e) { console.error(`Erro ao deletar canal (${reason}):`, e); }
+            }, 10000);
+          };
+
+          // Helper: executa o ataque do boss e atualiza a mensagem
+          const executeBossAttack = async (expectedBattleRef) => {
+            const fresh = BattleEngine.getBattle(battleId);
+            // Se a batalha sumiu, foi finalizada, ou o boss já não é o jogador atual — outro evento já processou
+            if (!fresh || fresh.state !== "choosing_action" || fresh.currentPlayerTurnId !== fresh.player2Id || fresh.bossProcessing) return;
+            fresh.bossProcessing = true;
+            try {
+              const attackBattle = BattleEngine.processBossTurn(fresh);
+              if (!attackBattle) { fresh.bossProcessing = false; return; }
+              if (attackBattle.state === "finished") {
+                if (attackBattle.isTutorial) tutorialCommand.onBattleEnd(attackBattle, interaction.client);
+                else scheduleChannelDelete(attackBattle, "Combate finalizado pelo Boss");
+              }
+              const freshMsg = await battleMessage.channel.messages.fetch(battleMessage.id).catch(() => null);
+              await (freshMsg || battleMessage).edit({ embeds: [EmbedManager.createBattleEmbed(attackBattle)], components: buildComponents(attackBattle) });
+            } catch (e) {
+              console.error("Erro no ataque do boss:", e);
+            } finally {
+              const b = BattleEngine.getBattle(battleId);
+              if (b) b.bossProcessing = false;
+            }
+          };
+
+          // 1. Reação do Boss
           if (updatedBattle.state === "choosing_reaction" && updatedBattle.getOpponentId() === updatedBattle.player2Id) {
             setTimeout(async () => {
               try {
-                const reactionBattle = BattleEngine.processBossReaction(updatedBattle);
-                if (!reactionBattle) return;
-                const reactionEmbed = EmbedManager.createBattleEmbed(reactionBattle);
+                // Sempre buscar batalha fresca — evita colisão com Fix Combat button ou outra interação
+                const freshForReaction = BattleEngine.getBattle(battleId);
+                if (!freshForReaction || freshForReaction.state !== "choosing_reaction" || freshForReaction.bossProcessing) return;
+                freshForReaction.bossProcessing = true;
 
-                // Deletar canal se o player vencer na reação do boss
-                if (reactionBattle.state === "finished" && reactionBattle.channelId) {
-                  setTimeout(async () => {
-                    try {
-                      const channel = await interaction.client.channels.fetch(reactionBattle.channelId);
-                      if (channel) await channel.delete("Combate finalizado na reação");
-                    } catch (e) { console.error("Erro ao deletar canal (Reaction Win):", e); }
-                  }, 10000);
+                const reactionBattle = BattleEngine.processBossReaction(freshForReaction);
+                freshForReaction.bossProcessing = false;
+
+                if (!reactionBattle) return; // Já processado por outro evento — silencioso
+
+                if (reactionBattle.state === "finished") {
+                  if (reactionBattle.isTutorial) tutorialCommand.onBattleEnd(reactionBattle, interaction.client);
+                  else scheduleChannelDelete(reactionBattle, "Combate finalizado na reação");
+                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: [] });
+                  return;
                 }
 
                 // 2. Ataque do Boss após reagir
                 if (reactionBattle.state === "choosing_action" && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id) {
-                  setTimeout(async () => {
-                    try {
-                      const attackBattle = BattleEngine.processBossTurn(reactionBattle);
-                      if (!attackBattle) return;
-                      const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
-                      const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
-                      const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
-                      await battleMessage.edit({ embeds: [attackEmbed], components: attackComponents });
-
-                      // Deletar canal se o boss vencer no ataque
-                      if (attackBattle.state === "finished" && attackBattle.channelId) {
-                        setTimeout(async () => {
-                          try {
-                            const channel = await interaction.client.channels.fetch(attackBattle.channelId);
-                            if (channel) await channel.delete("Combate finalizado pelo Boss");
-                          } catch (e) { console.error("Erro ao deletar canal (Boss Win):", e); }
-                        }, 10000);
-                      }
-                    } catch (e) { console.error("Erro no ataque do boss após reação:", e); }
-                  }, 1500);
+                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: buildComponents(reactionBattle) });
+                  setTimeout(() => executeBossAttack(reactionBattle), 1500);
                 } else {
-                  const isBossTurn = reactionBattle.isPve && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id;
-                  let reactionComponents;
-                  if (reactionBattle.state === "finished") {
-                    reactionComponents = [];
-                  } else {
-                    reactionComponents = ButtonManager.createActionComponents(battleId, reactionBattle.getCurrentPlayer(), isBossTurn, reactionBattle);
-                  }
-                  await battleMessage.edit({ embeds: [reactionEmbed], components: reactionComponents });
+                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: buildComponents(reactionBattle) });
                 }
-              } catch (e) { console.error("Erro na reação do boss:", e); }
+              } catch (e) {
+                console.error("Erro na reação do boss:", e);
+                const b = BattleEngine.getBattle(battleId);
+                if (b) b.bossProcessing = false;
+              }
             }, 1500);
           }
           // 3. Ataque Direto do Boss (ex: após player usar buff ou recuperar energia)
           else if (updatedBattle.state === "choosing_action" && updatedBattle.currentPlayerTurnId === updatedBattle.player2Id) {
-            setTimeout(async () => {
-              try {
-                const attackBattle = BattleEngine.processBossTurn(updatedBattle);
-                if (!attackBattle) return;
-                const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
-                const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
-                const attackComponents = attackBattle.state === "finished" ? [] : (attackBattle.state === "choosing_reaction" ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting) : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
-                await battleMessage.edit({ embeds: [attackEmbed], components: attackComponents });
-
-                // Deletar canal se o boss vencer no ataque direto
-                if (attackBattle.state === "finished" && attackBattle.channelId) {
-                  setTimeout(async () => {
-                    try {
-                      const channel = await interaction.client.channels.fetch(attackBattle.channelId);
-                      if (channel) await channel.delete("Combate finalizado pelo Boss");
-                    } catch (e) { console.error("Erro ao deletar canal (Boss Win Direct):", e); }
-                  }, 10000);
-                }
-              } catch (e) { console.error("Erro no ataque direto do boss:", e); }
-            }, 1500);
+            setTimeout(() => executeBossAttack(updatedBattle), 1500);
           }
         }
       }
@@ -1563,6 +2552,11 @@ module.exports = {
       playerRepository.addItem(userId, mission.reward.soulStone.id, mission.reward.soulStone.qty);
       missionRepository.claimReward(userId, missionId);
 
+      // XP de conta: diária +80, semanal +200
+      const isWeekly = missions.weekly.some(m => m.id === missionId);
+      const missionAccountXP = isWeekly ? 200 : 80;
+      const xpResult = playerRepository.addPlayerXP(userId, missionAccountXP);
+
       // Atualizar a interface de missões
       let updatedEmbed, updatedComponents;
       if (mission.id.startsWith("win_pvp_casual") || mission.id.startsWith("win_pvp_ranked") || mission.id.startsWith("play_boss_rush") || mission.id.startsWith("win_challenge") || mission.id.startsWith("win_tower_floor") || mission.id.startsWith("level_up_10") || mission.id.startsWith("use_soul_stones")) {
@@ -1571,9 +2565,11 @@ module.exports = {
         ({ embeds: [updatedEmbed], components: updatedComponents } = missionsCommand.createWeeklyMissionsEmbed(userId));
       }
 
-      return interaction.update({ 
-        content: `✅ Recompensa resgatada: **${mission.reward.zenith} Fragmentos Zenith** e **${mission.reward.soulStone.qty}x Pedra da Alma ${mission.reward.soulStone.id.split('_')[2].toUpperCase()}**!`,
-        embeds: [updatedEmbed], 
+      const levelUpLine = xpResult.leveledUp ? `\n🆙 Você subiu para o **Nível ${xpResult.newLevel}**!` : "";
+
+      return interaction.update({
+        content: `✅ Recompensa resgatada: **${mission.reward.zenith} Fragmentos Zenith** e **${mission.reward.soulStone.qty}x Pedra da Alma ${mission.reward.soulStone.id.split('_')[2].toUpperCase()}**!${levelUpLine}`,
+        embeds: [updatedEmbed],
         components: updatedComponents
       });
     }

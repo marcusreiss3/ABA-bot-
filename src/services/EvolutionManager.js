@@ -5,17 +5,18 @@ class EvolutionManager {
   static MAX_LEVEL = 30;
 
   static ITEMS = {
-    "soul_stone_1": { name: "Pedra da Alma I", xp: 20 },
-    "soul_stone_2": { name: "Pedra da Alma II", xp: 50 },
-    "soul_stone_3": { name: "Pedra da Alma III", xp: 150 }
+    "soul_stone_1": { name: "Pedra da Alma I",   xp: 50  },
+    "soul_stone_2": { name: "Pedra da Alma II",  xp: 150 },
+    "soul_stone_3": { name: "Pedra da Alma III", xp: 500 }
   };
 
-  // Retorna o XP necessário para subir DO nível atual para o PRÓXIMO
+  // Retorna o XP necessário para subir DO nível atual para o PRÓXIMO.
+  // Curva quadrática: começa em ~77 XP (Lv1→2), termina em ~2597 XP (Lv29→30).
+  // Total acumulado Lv1→30 ≈ 29.600 XP — ~6× mais difícil que antes.
+  // Níveis iniciais ainda acessíveis; late game exige grind consistente.
   static getXPRequired(currentLevel) {
     if (currentLevel >= this.MAX_LEVEL) return Infinity;
-    // Curva progressiva: Nível 1 precisa de 50 XP, Nível 29 precisa de ~260 XP
-    // O total acumulado do 1 ao 30 será de aproximadamente 4500 XP
-    return 50 + (currentLevel - 1) * 7.5;
+    return Math.floor(60 + currentLevel * 15 + Math.pow(currentLevel, 2) * 2.5);
   }
 
   static addXP(instanceId, amount) {

@@ -41,7 +41,7 @@ module.exports = {
         id: "team_rocket",
         name: "Equipe Rocket",
         anime: "Pokémon",
-        level: 1,
+        level: 5,
         health: 300,
         energy: 100,
         imageUrl: "https://i.ibb.co/hRnNysMq/image.png",
@@ -58,7 +58,7 @@ module.exports = {
         id: "zabuza",
         name: "Zabuza Momochi",
         anime: "Naruto",
-        level: 4,
+        level: 8,
         health: 800,
         energy: 120,
         imageUrl: "https://i.ibb.co/Kx6tpC71/imagem-2026-04-13-000846945.png",
@@ -75,7 +75,7 @@ module.exports = {
         id: "stain",
         name: "Stain (Assassino de Heróis)",
         anime: "My Hero Academia",
-        level: 5,
+        level: 10,
         health: 1200,
         energy: 140,
         imageUrl: "https://i.ibb.co/Y42BcR1m/stain.png",
@@ -92,13 +92,14 @@ module.exports = {
         id: "hisoka",
         name: "Hisoka Morrow",
         anime: "Hunter x Hunter",
-        level: 25,
+        level: 15,
         health: 1600,
         energy: 160,
         imageUrl: "https://i.ibb.co/sJHrDnjk/image.png",
         skills: [
-          { id: "bungee_gum", name: "Bungee Gum", description: "Sua aura possui propriedades de borracha e chiclete.", type: "attack", cost: 25, damage: 120, damageType: 'fisico' },
-          { id: "texture_surprise", name: "Texture Surprise", description: "Usa sua técnica para enganar o oponente.", type: "reaction", cost: 30, effect: { type: "damage_reduction", value: 0.1 }, cooldown: 2 }
+          { id: "bungee_gum", name: "Bungee Gum", description: "Cola o oponente com sua aura — causa **SANGRAMENTO**.", type: "attack", cost: 25, damage: 120, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.07 } },
+          { id: "texture_surprise", name: "Texture Surprise", description: "Usa sua técnica para enganar o oponente.", type: "reaction", cost: 30, effect: { type: "damage_reduction", value: 0.1 }, cooldown: 2 },
+          { id: "hisoka_trick", name: "Ilusão Fatal", description: "Golpe disfarçado que **ATORDOA** o oponente.", type: "attack", cost: 45, damage: 90, damageType: 'fisico', cooldown: 3, effect: { type: "stun", duration: 1 } }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 4 }
@@ -109,13 +110,14 @@ module.exports = {
         id: "ulquiorra",
         name: "Ulquiorra Cifer",
         anime: "Bleach",
-        level: 30,
+        level: 20,
         health: 2400,
         energy: 200,
         imageUrl: "https://i.ibb.co/WNfbwhTq/ulquiorra.png",
         skills: [
-          { id: "cero", name: "Cero", description: "Um feixe de energia espiritual massivo.", type: "attack", cost: 30, damage: 170, damageType: 'elemental' },
-          { id: "luz_de_la_luna", name: "Luz de la Luna", description: "Ulquiorra cria uma lança de energia.", type: "attack", cost: 45, damage: 270, damageType: 'elemental', cooldown: 2 }
+          { id: "cero", name: "Cero", description: "Um feixe de energia espiritual massivo.", type: "attack", cost: 30, damage: 170, damageType: 'elemental', effect: { type: "burn", duration: 2, value: 0.06 } },
+          { id: "luz_de_la_luna", name: "Luz de la Luna", description: "Lança de energia que **ATORDOA** o oponente.", type: "attack", cost: 45, damage: 270, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 } },
+          { id: "ulquiorra_regen", name: "Hierro", description: "Reduz drasticamente o dano com pele de aço.", type: "reaction", cost: 35, effect: { type: "damage_reduction", value: 0.15 }, cooldown: 2 }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
@@ -126,13 +128,14 @@ module.exports = {
         id: "garou",
         name: "Garou",
         anime: "One Punch Man",
-        level: 35,
+        level: 30,
         health: 3000,
         energy: 250,
         imageUrl: "https://i.ibb.co/7NB2B7fd/image.png",
         skills: [
-          { id: "water_stream", name: "Water Stream Rock Smashing Fist", description: "Uma técnica marcial que desvia e contra-ataca.", type: "attack", cost: 20, damage: 200, damageType: 'fisico' },
-          { id: "adaptation", name: "Adaptação", description: "Garou se adapta ao estilo do oponente.", type: "reaction", cost: 40, effect: { type: "damage_reduction", value: 0.05 }, cooldown: 3 }
+          { id: "water_stream", name: "Water Stream Rock Smashing Fist", description: "Uma técnica marcial que desvia e contra-ataca.", type: "attack", cost: 20, damage: 200, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.08 } },
+          { id: "adaptation", name: "Adaptação", description: "Garou se adapta ao estilo do oponente.", type: "reaction", cost: 40, effect: { type: "damage_reduction", value: 0.05 }, cooldown: 3 },
+          { id: "garou_awakening", name: "Despertar do Monstro", description: "Golpe avassalador que **ATORDOA** e causa **QUEIMADURA**.", type: "attack", cost: 60, damage: 280, damageType: 'fisico', cooldown: 4, effect: { type: "stun", duration: 1 } }
         ]
       },
       reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }

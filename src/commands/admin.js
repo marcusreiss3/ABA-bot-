@@ -5,6 +5,8 @@ const EmbedManager = require("../services/EmbedManager");
 const BattleEngine = require("../services/BattleEngine");
 const missionRepository = require("../database/repositories/missionRepository");
 
+const ArtifactManager = require("../services/ArtifactManager");
+const { TITLES, addProgress } = require("../database/repositories/titleRepository");
 const ADMIN_ROLE_ID = "1485648914068537354";
 
 module.exports = {
@@ -13,7 +15,7 @@ module.exports = {
       return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem permissão para usar este comando!", false)] });
     }
 
-    const subCommand = args[0]; // add, remove, addxp, additem, resetcooldown, resetmissions
+    const subCommand = args[0]; // add, remove, addxp, additem, addartifact, resetcooldown, resetmissions, completetitle
     
     // O subcomando resetmissions não requer um targetUserId obrigatoriamente como segundo argumento
     if (subCommand === "resetmissions") {
@@ -39,8 +41,11 @@ module.exports = {
           "`!setchar remove @player <instanceId>` — Remove uma instância\n" +
           "`!setchar addxp @player <instanceId> <xp>` — Adiciona XP\n" +
           "`!setchar additem @player <itemId> <quantidade>` — Adiciona item\n" +
+          "`!setchar addartifact @player <artifactId>` — Adiciona uma relíquia\n" +
+          "`!setchar addzenit @player <quantidade>` — Adiciona Cristais Zenith\n" +
           "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
-          "`!setchar resetmissions <daily/weekly>` — Troca as missões globais",
+          "`!setchar resetmissions <daily/weekly>` — Troca as missões globais\n" +
+          "`!setchar completetitle @player <titleId>` — Marca um título como completo (teste)",
           false
         )]
       });
@@ -110,6 +115,37 @@ module.exports = {
     }
 
     // -------------------------------------------------------
+    // Subcomando: addzenit
+    // -------------------------------------------------------
+    else if (subCommand === "addzenit" || subCommand === "addzenith") {
+      const amount = parseInt(args[2]);
+      if (isNaN(amount) || amount <= 0) return message.reply({ embeds: [EmbedManager.createStatusEmbed("Uso: `!setchar addzenit @player <quantidade>`", false)] });
+
+      const player = playerRepository.getPlayer(targetUserId);
+      const current = player.zenith_fragments || 0;
+      playerRepository.updatePlayer(targetUserId, { zenith_fragments: current + amount });
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`💠 Adicionado **${amount} Cristais Zenith** para <@${targetUserId}>. Total: **${current + amount}**.`, true)] });
+    }
+
+    // -------------------------------------------------------
+    // Subcomando: addartifact
+    // -------------------------------------------------------
+    else if (subCommand === "addartifact" || subCommand === "addart") {
+      const artifactId = args[2] ? args[2].toLowerCase() : null;
+      if (!artifactId) return message.reply({ embeds: [EmbedManager.createStatusEmbed("Uso: `!setchar addartifact @player <artifactId>`", false)] });
+
+      const artData = ArtifactManager.getArtifact(artifactId, {});
+      if (!artData || artData.name === "Desconhecido") {
+        const allIds = ArtifactManager.getAllArtifacts().join(", ");
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(`Relíquia \`${artifactId}\` não encontrada.\n\n**IDs válidos:** ${allIds}`, false)] });
+      }
+
+      const result = playerRepository.addArtifact(targetUserId, artifactId);
+      if (result && result.error) return message.reply({ embeds: [EmbedManager.createStatusEmbed(result.error, false)] });
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`${artData.emoji} Relíquia **${artData.name}** adicionada para <@${targetUserId}>!`, true)] });
+    }
+
+    // -------------------------------------------------------
     // Subcomando: resetcooldown
     // Remove TODOS os cooldowns e bloqueios do jogador:
     //   • Cooldown da Torre Infinita
@@ -165,6 +201,30 @@ module.exports = {
       return message.reply({
         embeds: [EmbedManager.createStatusEmbed(description, true)]
       });
+    }
+
+    // -------------------------------------------------------
+    // Subcomando: completetitle
+    // -------------------------------------------------------
+    else if (subCommand === "completetitle" || subCommand === "ct") {
+      const titleId = args[2] ? args[2].toLowerCase() : null;
+      if (!titleId) {
+        const ids = Object.keys(TITLES).join(", ");
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(`Uso: \`!setchar completetitle @player <titleId>\`\n\n**IDs válidos:** ${ids}`, false)] });
+      }
+      const title = TITLES[titleId];
+      if (!title) {
+        const ids = Object.keys(TITLES).join(", ");
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(`Título \`${titleId}\` não encontrado.\n\n**IDs válidos:** ${ids}`, false)] });
+      }
+      if (title.usesTowerRecord) {
+        // Torre usa tower_records diretamente — inserir/atualizar
+        const db = require("../database/db");
+        db.prepare(`INSERT INTO tower_records (player_id, max_floor) VALUES (?, ?) ON CONFLICT(player_id) DO UPDATE SET max_floor = ?`).run(targetUserId, title.goal, title.goal);
+      } else {
+        addProgress(targetUserId, titleId, title.goal);
+      }
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`${title.emoji} Título **${title.name}** marcado como completo para <@${targetUserId}>.\n\nAgora use \`!titulos\` para testar o botão de resgatar.`, true)] });
     }
 
     // -------------------------------------------------------

@@ -8,7 +8,7 @@ module.exports = {
     
     player.ownedChars = ownedChars;
 
-    const embed = EmbedManager.createProfileEmbed(player);
+    const embed = EmbedManager.createProfileEmbed(player, message.author);
     message.channel.send({ embeds: [embed] });
   }
 };

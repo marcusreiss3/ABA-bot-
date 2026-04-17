@@ -1,6 +1,8 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
 const CharacterManager = require("./CharacterManager");
 const Emojis = require("../config/emojis");
+const FragmentMap = require("../config/fragmentMap");
+const FRAGMENTS_NEEDED = 100;
 
 class EmbedManager {
   static createBattleEmbed(battle) {
@@ -176,40 +178,64 @@ class EmbedManager {
       .setFooter({ text: "Clique no botão abaixo para iniciar o combate!" });
   }
 
-  static createProfileEmbed(player) {
+  static createProfileEmbed(player, user) {
+    const playerRepository = require("../database/repositories/playerRepository");
+    const titleRepository = require("../database/repositories/titleRepository");
     const instances = player.ownedChars || [];
-    const charCounts = {};
-    instances.forEach(inst => {
-      charCounts[inst.character_id] = (charCounts[inst.character_id] || 0) + 1;
-    });
 
     const equippedInstance = instances.find(i => i.id === player.equipped_instance_id);
-    let equippedName = "Nenhum";
-    let equippedArtifactsList = "Nenhum";
+    let equippedValue = "*Nenhum personagem equipado.*";
+    let artifactsValue = "*Nenhum artefato equipado.*";
     if (equippedInstance) {
       const charData = CharacterManager.getCharacter(equippedInstance.character_id, equippedInstance);
-      let artifactIcons = "";
+      const rarityIcon = charData.rarity === "EM" ? "👁️" : charData.rarity === "AL" ? "🌟" : "◆";
+      equippedValue = `${rarityIcon} **${charData.name}** — Nível \`${charData.level}\``;
       if (charData.equippedArtifacts && charData.equippedArtifacts.length > 0) {
-        artifactIcons = " " + charData.equippedArtifacts.map(a => a.emoji).join("");
-        equippedArtifactsList = charData.equippedArtifacts.map(a => `${a.emoji} ${a.name}`).join("\n");
+        artifactsValue = charData.equippedArtifacts.map(a => `${a.emoji} **${a.name}**`).join("\n");
       }
-      equippedName = `${charData.name} [Lvl ${charData.level}]${artifactIcons}`;
     }
 
+    // Nível de conta
+    const accountLevel = player.level || 1;
+    const accountXP    = player.xp    || 0;
+    const xpNeeded     = playerRepository.getAccountLevelXPRequired(accountLevel);
+    const isMaxLevel   = accountLevel >= playerRepository.ACCOUNT_MAX_LEVEL;
+    const BAR_TOTAL    = 12;
+    const filled       = isMaxLevel ? BAR_TOTAL : Math.floor((accountXP / xpNeeded) * BAR_TOTAL);
+    const bar          = "▰".repeat(filled) + "▱".repeat(BAR_TOTAL - filled);
+    const xpLine       = isMaxLevel ? "`✨ NÍVEL MÁXIMO`" : `\`${bar}\`\n\`${accountXP} / ${xpNeeded} XP\``;
+
+    // Título equipado
+    const equippedTitleId = player.equipped_title;
+    const titleData = equippedTitleId ? titleRepository.TITLES[equippedTitleId] : null;
+    const titleLine = titleData ? `${titleData.emoji} *${titleData.name}*` : "*Sem título*";
+
+    const username = user ? user.username : "Jogador";
+    const avatarURL = user ? user.displayAvatarURL() : null;
+
+    // Rank color mapping
+    const rankColors = {
+      "Lenda": "#FF6B35", "Mestre": "#9B59B6", "Diamante": "#5DADE2",
+      "Platina": "#76B7D9", "Ouro": "#F1C40F", "Prata": "#BDC3C7", "Bronze": "#CD7F32"
+    };
+    const rank = player.rank || "Discípulo I";
+    const rankKey = Object.keys(rankColors).find(k => rank.includes(k));
+    const embedColor = rankKey ? rankColors[rankKey] : "#5865F2";
+
     return new EmbedBuilder()
-      .setTitle(`Perfil do Jogador`)
-      .setColor("#00ff00")
+      .setAuthor({ name: username, iconURL: avatarURL })
+      .setColor(embedColor)
+      .setThumbnail(avatarURL)
+      .setDescription(`${titleLine}`)
       .addFields(
-        { name: "Nível", value: `\`${player.level}\``, inline: true },
-        { name: "XP", value: `\`${player.xp}\``, inline: true },
-        { name: "Ouro", value: `\`${player.gold}\``, inline: true },
-        { name: "Fragmentos Zenith", value: `${Emojis.ZENITH} \`${player.zenith_fragments || 0}\``, inline: true },
-        { name: "🏆 Rank", value: `\`${player.rank || "Discípulo I"}\``, inline: true },
-        { name: "📈 PA", value: `\`${player.pa || 0}/100\``, inline: true },
-        { name: "Equipado", value: `\`${equippedName}\``, inline: false },
-        { name: "Artefatos Equipados", value: equippedArtifactsList, inline: false }
+        { name: "🏆 Rank",             value: `\`${rank}\``,                                       inline: true },
+        { name: "📈 Pontos de Arena",  value: `\`${player.pa || 0} PA\``,                           inline: true },
+        { name: `${Emojis.ZENITH} Zenith`, value: `\`${player.zenith_fragments || 0}\``,           inline: true },
+        { name: "🌟 Nível de Conta",   value: `\`Nível ${accountLevel}\`\n${xpLine}`,              inline: false },
+        { name: "🥋 Personagem Equipado", value: equippedValue,                                    inline: false },
+        { name: `${Emojis.ARTIFACT} Artefatos Equipados`, value: artifactsValue,                   inline: false }
       )
-;
+      .setFooter({ text: "Anime Battle Arena • Use !titulos para ver conquistas" });
   }
 
   static createInventoryEmbed(player, user, type = "chars") {
@@ -226,24 +252,24 @@ class EmbedManager {
       embed.setColor("#9B59B6");
       const instances = player.ownedChars || [];
       const displayedInstances = instances.slice(0, charSlots);
-      const rarityGroups = {};
+
+      // Agrupar por raridade na ordem EM → AL → EC
+      const RARITY_ORDER = ["EM", "AL", "EC"];
+      const RARITY_LABEL = { EM: "👁️ Essência Mítica", AL: "🌟 Aura Lendária", EC: "◆ Eco Comum" };
+      const rarityGroups = { EM: [], AL: [], EC: [] };
 
       displayedInstances.forEach(inst => {
         const charData = CharacterManager.getCharacter(inst.character_id, inst);
-        const rarity = charData.rarity;
-        if (!rarityGroups[rarity]) rarityGroups[rarity] = [];
+        const rarity   = charData.rarity || "EC";
+        const artIcons = charData.equippedArtifacts?.length
+          ? " " + charData.equippedArtifacts.map(a => a.emoji).join("")
+          : "";
+        const isEquipped  = player.equipped_instance_id === inst.id ? " ⚔️" : "";
+        const isProtected = inst.protected ? " 🔒" : "";
 
-        const EvolutionManager = require("./EvolutionManager");
-        const nextLevelXP = EvolutionManager.getXPRequired(inst.level);
-        const xpPercent = Math.floor((inst.xp / nextLevelXP) * 10);
-        const bar = "█".repeat(xpPercent) + "░".repeat(10 - xpPercent);
-
-        let artifactIcons = "";
-        if (charData.equippedArtifacts && charData.equippedArtifacts.length > 0) {
-          artifactIcons = " " + charData.equippedArtifacts.map(a => a.emoji).join("");
-        }
-
-        rarityGroups[rarity].push(`• **${charData.name}** [Lvl ${inst.level}]${artifactIcons} (ID: ${inst.id})\n \`${bar}\` \`${inst.xp}/${nextLevelXP}\``);
+        const entry = `${charData.name} \`Lv${inst.level}\` \`#${inst.id}\`${artIcons}${isEquipped}${isProtected}`;
+        rarityGroups[rarity]?.push(entry);
+        if (!rarityGroups[rarity]) rarityGroups.EC.push(entry);
       });
 
       const usedSlots = instances.length;
@@ -256,25 +282,72 @@ class EmbedManager {
           : `🥋 **Personagens:** \`${usedSlots}/${charSlots}\` — 🔓 +5 slots por ${Emojis.ZENITH} **${playerRepository.SLOT_COST}**`;
       embed.setDescription(slotDesc);
 
-      const rarities = Object.keys(rarityGroups).sort();
-      if (rarities.length === 0) {
+      const hasAny = RARITY_ORDER.some(r => rarityGroups[r].length > 0);
+      if (!hasAny) {
         embed.addFields({ name: "Personagens", value: "Seu inventário de personagens está vazio.", inline: false });
       } else {
-        rarities.forEach(rarity => {
-          embed.addFields({
-            name: `✨ Raridade: ${rarity}`,
-            value: rarityGroups[rarity].join("\n"),
-            inline: false
-          });
-        });
+        for (const rarity of RARITY_ORDER) {
+          const entries = rarityGroups[rarity];
+          if (entries.length === 0) continue;
+
+          const label = `${RARITY_LABEL[rarity]} — ${entries.length}`;
+
+          if (rarity === "EC") {
+            // EC: agrupar vários por linha separados por " · "
+            const lines = [];
+            let currentLine = "";
+            for (const entry of entries) {
+              const sep = currentLine ? "  ·  " : "";
+              if ((currentLine + sep + entry).length > 80) {
+                if (currentLine) lines.push(currentLine);
+                currentLine = entry;
+              } else {
+                currentLine += sep + entry;
+              }
+            }
+            if (currentLine) lines.push(currentLine);
+
+            let chunk = "";
+            let firstChunk = true;
+            for (const line of lines) {
+              if ((chunk + line + "\n").length > 1020) {
+                embed.addFields({ name: firstChunk ? label : `${RARITY_LABEL[rarity]} (cont.)`, value: chunk.trimEnd(), inline: false });
+                chunk = line + "\n";
+                firstChunk = false;
+              } else {
+                chunk += line + "\n";
+              }
+            }
+            if (chunk.trim()) {
+              embed.addFields({ name: firstChunk ? label : `${RARITY_LABEL[rarity]} (cont.)`, value: chunk.trimEnd(), inline: false });
+            }
+          } else {
+            // EM/AL: uma entrada por linha
+            let chunk = "";
+            let firstChunk = true;
+            for (const entry of entries) {
+              const line = entry + "\n";
+              if ((chunk + line).length > 1020) {
+                embed.addFields({ name: firstChunk ? label : `${RARITY_LABEL[rarity]} (cont.)`, value: chunk.trimEnd(), inline: false });
+                chunk = line;
+                firstChunk = false;
+              } else {
+                chunk += line;
+              }
+            }
+            if (chunk.trim()) {
+              embed.addFields({ name: firstChunk ? label : `${RARITY_LABEL[rarity]} (cont.)`, value: chunk.trimEnd(), inline: false });
+            }
+          }
+        }
       }
 
       if (instances.length > charSlots) {
         embed.addFields({ name: "⚠️ Slots Cheios!", value: `Você tem **${instances.length - charSlots}** personagem(ns) além do limite que não aparecem. Desbloqueie mais slots!`, inline: false });
       }
 
-      embed.setFooter({ text: `Total: ${instances.length}/${charSlots} slots | Use !inv para alternar` });
-    } else {
+      embed.setFooter({ text: `Total: ${instances.length}/${charSlots} slots · ⚔️ = equipado · Use !inv para alternar` });
+    } else if (type === "items") {
       embed.setColor("#E67E22");
       const items = player.items || [];
       const playerChars = player.ownedChars || [];
@@ -340,6 +413,117 @@ class EmbedManager {
     const canUnlockChar = charSlots < playerRepository.SLOT_MAX;
     const canUnlockArt = artifactSlots < playerRepository.SLOT_MAX;
 
+    if (type === "fragments") {
+      embed.setColor("#4a0080");
+      const items = player.items || [];
+      const fragSlots   = slots.fragmentSlots;
+      const fragSlotsMax = playerRepository.FRAG_SLOT_MAX;
+      const canUnlockFrag = fragSlots < fragSlotsMax;
+
+      // Coletar todos os fragmentos que o jogador possui, limitado pelos slots
+      const allFrags = Object.entries(FragmentMap)
+        .map(([itemId, data]) => {
+          const qty = items.find(i => i.item_id === itemId)?.quantity || 0;
+          return { itemId, qty, ...data };
+        })
+        .filter(f => f.qty > 0)
+        .sort((a, b) => b.qty - a.qty);
+
+      const ownedFrags = allFrags.slice(0, fragSlots);
+      const hiddenCount = allFrags.length - ownedFrags.length;
+
+      if (ownedFrags.length === 0) {
+        embed.setDescription(
+          `> Você ainda não possui fragmentos de relíquias.\n> Use \`!fenda\` para invocar e acumular fragmentos!\n\n` +
+          `**Slots de Fragmentos:** \`0/${fragSlots}\``
+        );
+      } else {
+        const lines = ownedFrags.map(f => {
+          const filled = Math.min(f.qty, FRAGMENTS_NEEDED);
+          const pct    = Math.floor((filled / FRAGMENTS_NEEDED) * 10);
+          const bar    = "█".repeat(pct) + "░".repeat(10 - pct);
+          const ready  = f.qty >= FRAGMENTS_NEEDED ? " ✅" : "";
+          return `${f.emoji} **${f.name}**${ready}\n \`${bar}\` \`${filled}/${FRAGMENTS_NEEDED}\``;
+        });
+
+        const slotLine = canUnlockFrag
+          ? `**Tipos visíveis:** \`${ownedFrags.length}/${fragSlots}\` — 🔓 +5 por ${Emojis.ZENITH} **${playerRepository.SLOT_COST}**`
+          : `**Tipos visíveis:** \`${ownedFrags.length}/${fragSlots}\` — ✅ Máximo atingido`;
+
+        embed.setDescription(
+          `> Junte **100 fragmentos** de uma relíquia para forjá-la!\n${slotLine}\n\n` +
+          lines.join("\n") +
+          (hiddenCount > 0 ? `\n\n*+${hiddenCount} tipo(s) oculto(s). Desbloqueie mais slots para exibir.*` : "")
+        );
+      }
+
+      // Select menu de forja — apenas fragmentos com ≥ 100
+      const craftable = ownedFrags.filter(f => f.qty >= FRAGMENTS_NEEDED);
+      const rows = [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_chars_${user.id}`)
+            .setLabel("Personagens")
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`inv_items_${user.id}`)
+            .setLabel("Itens e Artefatos")
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`inv_fragments_${user.id}`)
+            .setLabel("Fragmentos")
+            .setStyle(ButtonStyle.Primary),
+        ),
+      ];
+
+      if (canUnlockFrag) {
+        rows.push(new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_unlock_fragment_${user.id}`)
+            .setLabel(`🔓 +5 Slots de Fragmentos (${playerRepository.SLOT_COST} Zenith)`)
+            .setStyle(ButtonStyle.Success),
+        ));
+      }
+
+      if (craftable.length > 0) {
+        const options = craftable.map(f => {
+          const emojiIdMatch  = f.emoji.match(/<:[^:]+:(\d+)>/);
+          const emojiNameMatch = f.emoji.match(/<:([^:]+):\d+>/);
+          const opt = {
+            label: f.name,
+            description: `Você tem ${f.qty} fragmentos — custa 100`,
+            value: f.itemId,
+          };
+          if (emojiIdMatch && emojiNameMatch) {
+            opt.emoji = { id: emojiIdMatch[1], name: emojiNameMatch[1] };
+          }
+          return opt;
+        });
+        rows.push(
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`inv_craft_select_${user.id}`)
+              .setPlaceholder("⚒️ Forjar relíquia — selecione o fragmento")
+              .addOptions(options),
+          ),
+        );
+      }
+
+      // Botão de descarte — sempre visível se tiver algum fragmento
+      if (ownedFrags.length > 0) {
+        rows.push(
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`inv_discard_frag_${user.id}`)
+              .setLabel("🗑️ Descartar Fragmento")
+              .setStyle(ButtonStyle.Danger),
+          ),
+        );
+      }
+
+      return { embeds: [embed], components: rows };
+    }
+
     const rows = [];
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -349,24 +533,70 @@ class EmbedManager {
       new ButtonBuilder()
         .setCustomId(`inv_items_${user.id}`)
         .setLabel("Itens e Artefatos")
-        .setStyle(type === "items" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        .setStyle(type === "items" ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`inv_fragments_${user.id}`)
+        .setLabel("Fragmentos")
+        .setStyle(ButtonStyle.Secondary),
     ));
 
-    if (type === "chars" && canUnlockChar) {
-      rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`inv_unlock_char_${user.id}`)
-          .setLabel(`🔓 +5 Slots Personagem (${playerRepository.SLOT_COST} Zenith)`)
-          .setStyle(ButtonStyle.Success)
-      ));
+    if (type === "chars") {
+      const charInstances = player.ownedChars || [];
+      const discardable = charInstances.filter(i => i.id !== player.equipped_instance_id);
+      if (discardable.length > 0) {
+        const discardRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_char_${user.id}`)
+            .setLabel("🗑️ Descartar")
+            .setStyle(ButtonStyle.Danger),
+        );
+        if (canUnlockChar) {
+          discardRow.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`inv_unlock_char_${user.id}`)
+              .setLabel(`🔓 +5 Slots (${playerRepository.SLOT_COST} Zenith)`)
+              .setStyle(ButtonStyle.Success)
+          );
+        }
+        rows.push(discardRow);
+      } else if (canUnlockChar) {
+        rows.push(new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_unlock_char_${user.id}`)
+            .setLabel(`🔓 +5 Slots Personagem (${playerRepository.SLOT_COST} Zenith)`)
+            .setStyle(ButtonStyle.Success)
+        ));
+      }
     }
-    if (type === "items" && canUnlockArt) {
-      rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`inv_unlock_artifact_${user.id}`)
-          .setLabel(`🔓 +5 Slots Artefato (${playerRepository.SLOT_COST} Zenith)`)
-          .setStyle(ButtonStyle.Success)
-      ));
+    if (type === "items") {
+      const allArtifacts = player.artifacts || [];
+      // Artifacts equipped on any character cannot be discarded
+      const equippedArtIds = (player.ownedChars || []).reduce((acc, c) => {
+        if (c.equipped_artifact_1) acc.push(c.equipped_artifact_1);
+        if (c.equipped_artifact_2) acc.push(c.equipped_artifact_2);
+        if (c.equipped_artifact_3) acc.push(c.equipped_artifact_3);
+        return acc;
+      }, []);
+      const discardableArtifacts = allArtifacts.filter(a => !equippedArtIds.includes(a.id));
+
+      const artRow = new ActionRowBuilder();
+      if (discardableArtifacts.length > 0) {
+        artRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_discard_art_${user.id}`)
+            .setLabel("🗑️ Descartar Artefato")
+            .setStyle(ButtonStyle.Danger)
+        );
+      }
+      if (canUnlockArt) {
+        artRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`inv_unlock_artifact_${user.id}`)
+            .setLabel(`🔓 +5 Slots Artefato (${playerRepository.SLOT_COST} Zenith)`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      if (artRow.components.length > 0) rows.push(artRow);
     }
 
     return { embeds: [embed], components: rows };

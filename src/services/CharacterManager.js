@@ -22,7 +22,7 @@ class CharacterManager {
         energy: 100,
         maxEnergy: 100,
         rarity: "EC",
-        imageUrl: "https://i.ibb.co/XZHp3smS/naruto1.png",
+        imageUrl: "https://i.ibb.co/kbDbGYx/imagem-2026-04-16-232348110.png",
         skills: [
           new Skill({ id: "punch", name: "Soco", description: "Um soco básico.", type: "attack", cost: 5, damage: 12, damageType: 'fisico' }),
           new Skill({ id: "kage_bunshin", name: "Kage Bunshin", description: "Cria clones (stack até 3x).", type: "buff", cost: 15, cooldown: 1, gifUrl: "https://i.pinimg.com/originals/35/46/7a/35467acda53a479e31600e1e44181def.gif" }),
@@ -45,7 +45,7 @@ class CharacterManager {
         energy: 100,
         maxEnergy: 100,
         rarity: "EC",
-        imageUrl: "https://i.ibb.co/KcTWLDTB/20260323-1245-Image-Generation-remix-01kmdnwvrmeycbthdrbekys330.png",
+        imageUrl: "https://i.ibb.co/Y4gG3XNw/imagem-2026-04-16-231555597.png",
         skills: [
           new Skill({ id: "kick", name: "Chute", description: "Um chute rápido.", type: "attack", cost: 8, damage: 12, damageType: 'fisico' }),
           new Skill({ id: "kaioken", name: "Kaioken", description: "Dano +50%, mas sofre 10% de auto-dano.", type: "buff", cost: 20, cooldown: 3, gifUrl: "https://i.pinimg.com/originals/23/a0/41/23a041ae7b7e0e4b4ab41c0c8e3fb67c.gif" }),
@@ -229,7 +229,7 @@ class CharacterManager {
         energy: 120,
         maxEnergy: 120,
         rarity: "AL",
-        imageUrl: "https://i.ibb.co/JFK9DhNg/20260412-1444-Image-Generation-remix-01kp1cmdbpef89zekdzsg0syme.png",
+        imageUrl: "https://i.ibb.co/MygrTX2g/Adobe-Express-file.png",
         skills: [
           new Skill({ id: "muda_muda", name: "Muda Muda!", description: "Sequência de socos rápidos do The World.", type: "attack", cost: 15, damage: 25, damageType: 'fisico' }),
           new Skill({ id: "knife_throw", name: "Lançamento de Facas", description: "Lança facas que causam **SANGRAMENTO**.", type: "attack", cost: 20, damage: 30, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.08 } }),
@@ -546,39 +546,77 @@ class CharacterManager {
     } else if (bossId === "vegeta") {
       baseSkills[0].name = "Galick Gun";
       baseSkills[1].name = "Big Bang Attack";
+      baseSkills[1].effect = { type: "burn", duration: 2, value: 0.06 };
+      baseSkills[1].description = "Explosão de ki que causa **QUEIMADURA**.";
       baseSkills.push(new Skill({ id: "vegeta_pride", name: "Orgulho Saiyajin", description: "Aumenta o dano em 50%.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.5, duration: 2 } }));
     } else if (bossId === "freeza") {
       baseSkills[0].name = "Death Beam";
+      baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
+      baseSkills[0].description = "Raio preciso que perfura e causa **SANGRAMENTO**.";
       baseSkills[1].name = "Death Ball";
+      baseSkills[1].effect = { type: "burn", duration: 3, value: 0.08 };
+      baseSkills[1].description = "Esfera de energia que causa **QUEIMADURA** intensa.";
       baseSkills.push(new Skill({ id: "freeza_tele", name: "Teletransporte Cruel", description: "Esquiva-se completamente do ataque.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
     } else if (bossId === "cell") {
       baseSkills[0].name = "Kamehameha Perfeito";
-      baseSkills[1].name = "Solar Flare";
+      baseSkills[0].effect = { type: "burn", duration: 2, value: 0.07 };
+      baseSkills[0].description = "Kamehameha perfeito que causa **QUEIMADURA**.";
+      baseSkills[1].name = "Absorção Celular";
+      baseSkills[1].effect = { type: "bleed", duration: 3, value: 0.06 };
+      baseSkills[1].description = "Suga a energia vital do oponente causando **SANGRAMENTO**.";
       baseSkills.push(new Skill({ id: "cell_regen", name: "Regeneração Celular", description: "Recupera 20% da vida máxima.", type: "heal", cost: 40, healPercent: 20, cooldown: 4 }));
     } else if (bossId === "majin_boo") {
       baseSkills[0].name = "Feixe de Chocolate";
       baseSkills[1].name = "Explosão Planetária";
+      baseSkills[1].effect = { type: "burn", duration: 2, value: 0.07 };
+      baseSkills[1].description = "Explosão de energia que causa **QUEIMADURA** massiva.";
       baseSkills.push(new Skill({ id: "boo_regen", name: "Regeneração Infinita", description: "Recupera 30% da vida máxima.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
     } else if (bossId === "orochimaru") {
       baseSkills[0].name = "Kusanagi";
+      baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
+      baseSkills[0].description = "Espada lendária que causa **SANGRAMENTO**.";
       baseSkills[1].name = "Mãos de Serpente";
       baseSkills.push(new Skill({ id: "oro_poison", name: "Veneno de Cobra", description: "Causa **SANGRAMENTO** contínuo.", type: "attack", cost: 25, damage: 15, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.08 } }));
     } else if (bossId === "gaara") {
       baseSkills[0].name = "Caixão de Areia";
       baseSkills[1].name = "Funeral de Areia";
+      baseSkills[1].effect = { type: "bleed", duration: 3, value: 0.07 };
+      baseSkills[1].description = "A areia corta por dentro causando **SANGRAMENTO**.";
       baseSkills.push(new Skill({ id: "gaara_shield", name: "Escudo de Areia", description: "Defesa absoluta (95% redução).", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.05 } }));
     } else if (bossId === "itachi_npc") {
       baseSkills[0].name = "Amaterasu";
+      baseSkills[0].effect = { type: "burn", duration: 3, value: 0.08 };
+      baseSkills[0].description = "Chamas negras eternas que causam **QUEIMADURA** severa.";
       baseSkills[1].name = "Tsukuyomi";
+      baseSkills[1].effect = { type: "stun", duration: 1 };
+      baseSkills[1].description = "Genjutsu que distorce o tempo — **ATORDOA** o oponente.";
       baseSkills.push(new Skill({ id: "itachi_crow", name: "Genjutsu de Corvos", description: "Oponente fica **ATORDOADO**.", type: "attack", cost: 40, damage: 30, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "pain") {
       baseSkills[0].name = "Shinra Tensei";
-      baseSkills[1].name = "Bansho Ten'in";
+      baseSkills[0].effect = { type: "stun", duration: 1 };
+      baseSkills[0].description = "Onda de repulsão gravitacional que **ATORDOA**.";
+      baseSkills[1].name = "Chibaku Tensei";
+      baseSkills[1].effect = { type: "stun", duration: 1 };
+      baseSkills[1].description = "Cria um ponto gravitacional que **ATORDOA** e prende.";
       baseSkills.push(new Skill({ id: "pain_absorb", name: "Absorção de Chakra", description: "Recupera 50 de energia.", type: "buff", cost: 0, cooldown: 3 }));
     } else if (bossId === "madara") {
       baseSkills[0].name = "Katon: Goka Mekkyaku";
       baseSkills[1].name = "Susano'o Slash";
       baseSkills.push(new Skill({ id: "madara_meteor", name: "Tengai Shinsei", description: "Dano massivo e **QUEIMADURA**.", type: "attack", cost: 60, damage: 100, damageType: 'elemental', cooldown: 5, effect: { type: "burn", duration: 3, value: 0.1 } }));
+    } else if (bossId === "jaw_titan") {
+      baseSkills[0].name = "Mandíbula de Aço";
+      baseSkills[1].name = "Garras Devastadoras";
+      baseSkills.push(new Skill({ id: "jaw_frenzy", name: "Fúria Predadora", description: "Ataque frenético que causa **SANGRAMENTO** severo.", type: "attack", cost: 35, damage: 60, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.09 } }));
+    } else if (bossId === "armored_titan") {
+      baseSkills[0].name = "Carga Blindada";
+      baseSkills[1].name = "Impacto de Armadura";
+      baseSkills.push(new Skill({ id: "armor_shell", name: "Carapaça de Aço", description: "Armadura absoluta (90% redução de dano).", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.10 } }));
+      baseSkills.push(new Skill({ id: "armor_slam", name: "Esmagamento de Titã", description: "Golpe devastador que **ATORDOA** o oponente.", type: "attack", cost: 50, damage: 90, damageType: 'fisico', cooldown: 4, effect: { type: "stun", duration: 1 } }));
+    } else if (bossId === "attack_titan") {
+      baseSkills[0].name = "Punho do Titã";
+      baseSkills[1].name = "Fúria de Eren";
+      baseSkills.push(new Skill({ id: "founding_scream", name: "Rugido Fundador", description: "Grito que **ATORDOA** por 2 turnos e causa **SANGRAMENTO**.", type: "attack", cost: 65, damage: 80, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 2, bleed: { duration: 2, value: 0.07 } } }));
+      baseSkills.push(new Skill({ id: "titan_regen", name: "Regeneração de Titã", description: "Recupera 25% da vida máxima.", type: "heal", cost: 45, healPercent: 25, cooldown: 5 }));
     } else if (bossId === "f_titan") {
       baseSkills[0].name = "Soco Endurecido";
       baseSkills[1].name = "Grito de Chamada";
@@ -601,11 +639,17 @@ class CharacterManager {
 
     if (bossId === "buggy") {
       baseSkills[0].name = "Bara Bara Ho";
+      baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
+      baseSkills[0].description = "Lança partes do corpo como projéteis cortantes — causa **SANGRAMENTO**.";
       baseSkills[1].name = "Bara Bara Festival";
       baseSkills.push(new Skill({ id: "buggy_split", name: "Separação", description: "Esquiva-se completamente do ataque.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
     } else if (bossId === "haruta") {
-      baseSkills[0].name = "Corte de Espada";
+      baseSkills[0].name = "Corte Maldito";
+      baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.06 };
+      baseSkills[0].description = "Corte impregnado de energia amaldiçoada — causa **SANGRAMENTO**.";
       baseSkills[1].name = "Técnica Amaldiçoada";
+      baseSkills[1].effect = { type: "stun", duration: 1 };
+      baseSkills[1].description = "Técnica de energia amaldiçoada que **ATORDOA** o oponente.";
       baseSkills.push(new Skill({ id: "haruta_luck", name: "Sorte Milagrosa", description: "Reduz o dano recebido em 90%.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.1 } }));
     } else if (bossId === "neferpitou") {
       baseSkills[0].name = "Terpsichora";
@@ -621,8 +665,12 @@ class CharacterManager {
       baseSkills.push(new Skill({ id: "esdeath_freeze", name: "Mahapadma", description: "Congela o tempo (**ATORDOA** por 2 turnos).", type: "attack", cost: 80, damage: 40, damageType: 'elemental', cooldown: 6, effect: { type: "stun", duration: 2 } }));
     } else if (bossId === "dabi") {
       baseSkills[0].name = "Chamas Azuis";
+      baseSkills[0].effect = { type: "burn", duration: 1, value: 0.05 };
+      baseSkills[0].description = "Chamas criotérmicas que causam **QUEIMADURA** persistente.";
       baseSkills[1].name = "Prominence Burn";
-      baseSkills.push(new Skill({ id: "dabi_burn", name: "Cremação", description: "Causa **QUEIMADURA** massiva.", type: "attack", cost: 50, damage: 110, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 3, value: 0.15 } }));
+      baseSkills[1].effect = { type: "burn", duration: 2, value: 0.08 };
+      baseSkills[1].description = "Explosão de chamas azuis — **QUEIMADURA** severa.";
+      baseSkills.push(new Skill({ id: "dabi_burn", name: "Cremação", description: "Incineração total — **QUEIMADURA** massiva por 3 turnos.", type: "attack", cost: 50, damage: 110, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 3, value: 0.15 } }));
     }
 
     return baseSkills;

@@ -33,6 +33,41 @@ function updatePlayer(id, data) {
   return db.prepare(`UPDATE players SET ${fields} WHERE id = ?`).run(...values);
 }
 
+// --- Sistema de Nível de Conta ---
+const ACCOUNT_MAX_LEVEL = 100;
+
+// XP necessário para subir DO nível atual para o PRÓXIMO.
+// Curva suave: Lv1→2 ~106 XP, Lv25→26 ~375 XP, Lv50→51 ~774 XP, Lv99→100 ~1777 XP.
+// Total Lv1→100 ≈ 81.000 XP (~2-3 meses para jogador ativo).
+function getAccountLevelXPRequired(level) {
+  if (level >= ACCOUNT_MAX_LEVEL) return Infinity;
+  return Math.floor(100 + level * 5 + Math.pow(level, 1.5) * 1.2);
+}
+
+// Adiciona XP de conta ao jogador e processa level-ups.
+// Retorna { leveledUp, oldLevel, newLevel }.
+function addPlayerXP(playerId, amount) {
+  const player = getPlayer(playerId);
+  let { level, xp } = player;
+  if (level >= ACCOUNT_MAX_LEVEL) return { leveledUp: false, oldLevel: level, newLevel: level };
+
+  xp += amount;
+  const oldLevel = level;
+  let leveledUp = false;
+
+  while (level < ACCOUNT_MAX_LEVEL) {
+    const required = getAccountLevelXPRequired(level);
+    if (xp < required) break;
+    xp -= required;
+    level++;
+    leveledUp = true;
+  }
+
+  if (level >= ACCOUNT_MAX_LEVEL) xp = 0;
+  updatePlayer(playerId, { level, xp });
+  return { leveledUp, oldLevel, newLevel: level };
+}
+
 // --- Personagens ---
 
 function getPlayerCharacters(playerId) {
@@ -171,36 +206,48 @@ function resetPlayerChallengeProgress(playerId) {
 }
 
 // --- Sistema de Slots ---
-const SLOT_COST = 500;
+const SLOT_COST      = 500;
 const SLOT_INCREMENT = 5;
-const SLOT_DEFAULT = 10;
-const SLOT_MAX = 30;
+const SLOT_DEFAULT   = 10;
+const SLOT_MAX       = 30;
+
+const FRAG_SLOT_DEFAULT   = 10;
+const FRAG_SLOT_MAX       = 15;
+const FRAG_SLOT_INCREMENT = 5;
 
 function getSlots(playerId) {
   const player = getPlayer(playerId);
   return {
-    charSlots: player.char_slots ?? SLOT_DEFAULT,
+    charSlots:     player.char_slots     ?? SLOT_DEFAULT,
     artifactSlots: player.artifact_slots ?? SLOT_DEFAULT,
+    fragmentSlots: player.fragment_slots ?? FRAG_SLOT_DEFAULT,
   };
 }
 
 function canUnlockSlots(playerId, type) {
-  const player = getPlayer(playerId);
-  const col = type === "char" ? "char_slots" : "artifact_slots";
-  const current = player[col] ?? SLOT_DEFAULT;
-  if (current >= SLOT_MAX) return { can: false, reason: `Você já atingiu o máximo de **${SLOT_MAX} slots**!` };
-  const zenith = player.zenith_fragments || 0;
+  const player  = getPlayer(playerId);
+  const isFrags = type === "fragment";
+  const col     = type === "char" ? "char_slots" : isFrags ? "fragment_slots" : "artifact_slots";
+  const defVal  = isFrags ? FRAG_SLOT_DEFAULT : SLOT_DEFAULT;
+  const maxVal  = isFrags ? FRAG_SLOT_MAX     : SLOT_MAX;
+  const current = player[col] ?? defVal;
+  if (current >= maxVal) return { can: false, reason: `Você já atingiu o máximo de **${maxVal} slots**!` };
+  const zenith  = player.zenith_fragments || 0;
   if (zenith < SLOT_COST) return { can: false, reason: `Você precisa de **${SLOT_COST} Fragmentos Zenith** para desbloquear mais slots. (Você tem: ${zenith})` };
   return { can: true };
 }
 
 function unlockSlots(playerId, type) {
-  const check = canUnlockSlots(playerId, type);
+  const check   = canUnlockSlots(playerId, type);
   if (!check.can) return check;
-  const player = getPlayer(playerId);
-  const col = type === "char" ? "char_slots" : "artifact_slots";
-  const current = player[col] ?? SLOT_DEFAULT;
-  const newSlots = Math.min(SLOT_MAX, current + SLOT_INCREMENT);
+  const player  = getPlayer(playerId);
+  const isFrags = type === "fragment";
+  const col     = type === "char" ? "char_slots" : isFrags ? "fragment_slots" : "artifact_slots";
+  const defVal  = isFrags ? FRAG_SLOT_DEFAULT   : SLOT_DEFAULT;
+  const maxVal  = isFrags ? FRAG_SLOT_MAX       : SLOT_MAX;
+  const incVal  = isFrags ? FRAG_SLOT_INCREMENT : SLOT_INCREMENT;
+  const current = player[col] ?? defVal;
+  const newSlots = Math.min(maxVal, current + incVal);
   db.prepare(`UPDATE players SET ${col} = ?, zenith_fragments = zenith_fragments - ? WHERE id = ?`).run(newSlots, SLOT_COST, playerId);
   return { can: true, newSlots };
 }
@@ -217,6 +264,9 @@ module.exports = {
   SLOT_MAX,
   SLOT_COST,
   SLOT_INCREMENT,
+  FRAG_SLOT_DEFAULT,
+  FRAG_SLOT_MAX,
+  FRAG_SLOT_INCREMENT,
   getCharacterInstance,
   addCharacter,
   removeCharacterInstance,
@@ -232,6 +282,9 @@ module.exports = {
   unequipArtifact,
   getStoryProgress,
   updateStoryProgress,
+  addPlayerXP,
+  getAccountLevelXPRequired,
+  ACCOUNT_MAX_LEVEL,
   addToQueue: (playerId) => db.prepare("INSERT OR REPLACE INTO ranked_queue (player_id) VALUES (?)").run(playerId),
   removeFromQueue: (playerId) => db.prepare("DELETE FROM ranked_queue WHERE player_id = ?").run(playerId),
   getQueue: () => db.prepare("SELECT * FROM ranked_queue ORDER BY joined_at ASC").all(),
@@ -325,4 +378,33 @@ module.exports = {
   resetTowerCooldown,
   resetAllChallengeCooldowns,
   resetPlayerChallengeProgress,
+
+  // --- Proteção de Personagem ---
+  toggleCharacterProtection: (instanceId) => {
+    const inst = db.prepare("SELECT protected FROM player_characters WHERE id = ?").get(instanceId);
+    if (!inst) return null;
+    const newVal = inst.protected ? 0 : 1;
+    db.prepare("UPDATE player_characters SET protected = ? WHERE id = ?").run(newVal, instanceId);
+    return newVal;
+  },
+
+  // --- Limbo ---
+  LIMBO_MAX: 100,
+  addToLimbo: (playerId, characterId) => {
+    const count = db.prepare("SELECT COUNT(*) as cnt FROM limbo_characters WHERE player_id = ?").get(playerId).cnt;
+    if (count >= 100) return { error: "limbo_full" };
+    return db.prepare("INSERT INTO limbo_characters (player_id, character_id) VALUES (?, ?)").run(playerId, characterId);
+  },
+  getLimboCharacters: (playerId) => {
+    return db.prepare("SELECT * FROM limbo_characters WHERE player_id = ? ORDER BY id ASC").all(playerId);
+  },
+  getLimboCount: (playerId) => {
+    return db.prepare("SELECT COUNT(*) as cnt FROM limbo_characters WHERE player_id = ?").get(playerId).cnt;
+  },
+  removeFromLimbo: (limboId) => {
+    const row = db.prepare("SELECT * FROM limbo_characters WHERE id = ?").get(limboId);
+    if (!row) return null;
+    db.prepare("DELETE FROM limbo_characters WHERE id = ?").run(limboId);
+    return row;
+  },
 };

@@ -59,21 +59,34 @@ class Character {
         } else if (artifact.effectUnit === "flat") {
           this.maxHealth += artifact.effectValue;
         }
-      } else if (artifact.effectType === "damage") {
+      } else if (artifact.effectType === "maxEnergy") {
         if (artifact.effectUnit === "percentage") {
-          this.bonusDamage += Math.floor((this.level * 10) * artifact.effectValue);
-        } else if (artifact.effectUnit === "flat") {
-          this.bonusDamage += artifact.effectValue;
+          this.maxEnergy += Math.floor(this.maxEnergy * artifact.effectValue);
         }
+      } else if (artifact.effectType === "curse_mark") {
+        // +30% dano (via multiplicador em calculateDamage), -10% HP máximo
+        this.maxHealth = Math.floor(this.maxHealth * 0.90);
+      } else if (artifact.effectType === "damage") {
+        // dano % tratado no calculateDamage do BattleEngine
       } else if (artifact.effectType === "energyCost") {
-        // Este efeito será aplicado no BattleEngine, mas o Character precisa saber que tem
-        // Por enquanto, apenas registramos que o artefato está equipado
+        // tratado no BattleEngine
       }
-      // Adicionar outros tipos de efeito aqui
+
+      // Efeito secundário (ex: Knight Killer +maxEnergy, Seis Olhos é damageReduction via BattleEngine)
+      if (artifact.secondaryEffect) {
+        if (artifact.secondaryEffect.type === "maxEnergy") {
+          const conditionOk = !artifact.conditionType ||
+            (artifact.conditionType === "character" && this.id === artifact.conditionValue);
+          if (conditionOk) {
+            this.maxEnergy += Math.floor(this.maxEnergy * artifact.secondaryEffect.value);
+          }
+        }
+      }
     });
-    
-    // ✅ Correção: Resetar a vida para o novo máximo após aplicar os bônus dos artefatos
+
+    // Resetar a vida e energia para o novo máximo após aplicar os bônus dos artefatos
     this.health = this.maxHealth;
+    this.energy = this.maxEnergy;
   }
 
   applyLevelScaling() {
