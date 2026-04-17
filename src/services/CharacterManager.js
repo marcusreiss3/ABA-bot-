@@ -24,9 +24,9 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/kbDbGYx/imagem-2026-04-16-232348110.png",
         skills: [
-          new Skill({ id: "punch", name: "Soco", description: "Um soco básico.", type: "attack", cost: 5, damage: 12, damageType: 'fisico' }),
+          new Skill({ id: "punch", name: "Soco", description: "Um soco básico.", type: "attack", cost: 5, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/RGvWK7F6/undefined-Imgur.gifhttps://i.ibb.co/Z1BSgBSs/undefined-Imgur-1.gif" }),
           new Skill({ id: "kage_bunshin", name: "Kage Bunshin", description: "Cria clones (stack até 3x).", type: "buff", cost: 15, cooldown: 1, gifUrl: "https://i.pinimg.com/originals/35/46/7a/35467acda53a479e31600e1e44181def.gif" }),
-          new Skill({ id: "rasengan", name: "Rasengan", description: "Esfera de energia que **ATORDOA**.", type: "attack", cost: 35, damage: 35, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "" }),
+          new Skill({ id: "rasengan", name: "Rasengan", description: "Esfera de energia que **ATORDOA**.", type: "attack", cost: 35, damage: 35, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/VY0p4kvw/naruto-rasengan.gif" }),
           new Skill({ id: "kyuubi_chakra", name: "Chakra da Kyuubi", description: "Recupera 20% da vida total.", type: "heal", cost: 40, healPercent: 20, cooldown: 4 }),
           new Skill({ id: "substitution", name: "Substituição", description: "Reduz o dano recebido em 50%.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 } })
         ]
@@ -49,7 +49,7 @@ class CharacterManager {
         skills: [
           new Skill({ id: "kick", name: "Chute", description: "Um chute rápido.", type: "attack", cost: 8, damage: 12, damageType: 'fisico' }),
           new Skill({ id: "kaioken", name: "Kaioken", description: "Dano +50%, mas sofre 10% de auto-dano.", type: "buff", cost: 20, cooldown: 3, gifUrl: "https://i.pinimg.com/originals/23/a0/41/23a041ae7b7e0e4b4ab41c0c8e3fb67c.gif" }),
-          new Skill({ id: "kamehameha", name: "Kamehameha", description: "Rajada de energia que causa **QUEIMADURA**.", type: "attack", cost: 40, damage: 40, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.pinimg.com/originals/2e/f0/e6/2ef0e6649c833ae65d78e3cab875c4ee.gif" }),
+          new Skill({ id: "kamehameha", name: "Kamehameha", description: "Rajada de energia que causa **QUEIMADURA**.", type: "attack", cost: 40, damage: 40, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.ibb.co/hRX5MvwK/kamehameha-goku.gif" }),
           new Skill({ id: "solar_flare", name: "Solar Flare", description: "Cega o oponente (**ATORDOAMENTO**).", type: "attack", cost: 20, damage: 5, damageType: 'elemental', cooldown: 4, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.pinimg.com/originals/1a/2b/3c/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.gif" }),
           new Skill({ id: "instant_transmission", name: "Teletransporte", description: "Esquiva completamente do ataque (100% redução).", type: "reaction", cost: 45, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.pinimg.com/originals/9f/8e/7d/9f8e7d6c5b4a3d2f1e0d9c8b7a6f5e4d.gif" })
         ]

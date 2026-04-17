@@ -26,6 +26,7 @@ const limboCommand = require("./commands/limbo");
 const protegerCommand = require("./commands/proteger");
 const tutorialCommand = require("./commands/tutorial");
 const titulosCommand = require("./commands/titulos");
+const ticketCommand = require("./commands/ticket");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
 
@@ -48,6 +49,15 @@ const BATTLE_CHANNELS = new Set([
 
 // Canal de comandos gerais (sem PVP/desafio/torre)
 const GENERAL_COMMANDS_CHANNEL = "1487204980380274798";
+
+// Canais onde o bot é completamente bloqueado (canais de chat geral, mídias, etc.)
+const BLOCKED_CHANNELS = new Set([
+  "1485482920008220724",
+  "1494689601791463525",
+  "1494695065409552466",
+  "1494695186251386992",
+  "1494698483460866309",
+]);
 
 // Comandos exclusivos dos canais de batalha
 const BATTLE_ONLY_COMMANDS = new Set([
@@ -74,14 +84,14 @@ client.on("messageCreate", async (message) => {
   const isBattleChannel = BATTLE_CHANNELS.has(channelId);
   const isGeneralChannel = channelId === GENERAL_COMMANDS_CHANNEL;
 
-  if (!isBattleChannel && !isGeneralChannel) {
+  if (BLOCKED_CHANNELS.has(channelId)) {
     const errorEmbed = new EmbedBuilder()
       .setColor("#FF0000")
       .setDescription("❌ Os comandos do bot não funcionam neste canal. Use os canais próprios do bot.");
     return message.reply({ embeds: [errorEmbed] });
   }
 
-  if (isGeneralChannel && BATTLE_ONLY_COMMANDS.has(command)) {
+  if (!isBattleChannel && !isGeneralChannel && BATTLE_ONLY_COMMANDS.has(command)) {
     const errorEmbed = new EmbedBuilder()
       .setColor("#FF0000")
       .setDescription("❌ Este comando não está disponível aqui. Use os canais de batalha do bot.");
@@ -212,6 +222,10 @@ client.on("messageCreate", async (message) => {
   if (command === "!tutorial-post") {
     console.log("Comando tutorial-post detectado"); // DEBUG
     tutorialCommand.postTutorialEmbed(message);
+  }
+
+  if (command === "!ticket-post") {
+    ticketCommand.postTicketEmbed(message);
   }
 });
 

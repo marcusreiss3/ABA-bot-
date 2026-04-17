@@ -16,6 +16,7 @@ const nexusZenithCommand = require("../commands/nexus-zenith");
 const limboCommand = require("../commands/limbo");
 const protegerCommand = require("../commands/proteger");
 const tutorialCommand = require("../commands/tutorial");
+const ticketCommand = require("../commands/ticket");
 const titleRepository = require("../database/repositories/titleRepository");
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 
@@ -53,6 +54,15 @@ module.exports = {
     // 0.0 Tutorial (must be before all other handlers)
     if (interaction.isButton() && interaction.customId.startsWith("tutorial_")) {
       return tutorialCommand.handleInteraction(interaction);
+    }
+
+    // Ticket system
+    if (
+      (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") ||
+      (interaction.isModalSubmit() && interaction.customId.startsWith("ticket_modal_")) ||
+      (interaction.isButton() && interaction.customId.startsWith("ticket_"))
+    ) {
+      return ticketCommand.handleInteraction(interaction);
     }
 
     // 0.0 Fix Combat (stall recovery — must be first)

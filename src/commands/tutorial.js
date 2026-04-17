@@ -175,9 +175,10 @@ function buildEquipPrompt(userId) {
     `**[Okabe]** — Antes de qualquer batalha, você precisa de um guerreiro de combate ativo.\n\n` +
     `*Um holograma de **Satoru Gojo** se materializa — venda branca, sorriso arrogante — emprestado do laboratório.*\n\n` +
     `**[Gojo]** — Só vou precisar de um aperitivo pra esquentar.\n\n` +
-    `**[Okabe]** — Gojo foi adicionado temporariamente ao seu inventário. ` +
+    `**[Okabe]** — Gojo foi adicionado **temporariamente** ao seu inventário apenas para este treinamento. ` +
     `**Agora use \`!equip\` neste canal para equipá-lo como seu guerreiro ativo.**\n\n` +
     `> 💡 Digite \`!equip\` → clique em **Equipar Personagem** → selecione **Satoru Gojo**\n\n` +
+    `> ⚠️ **Atenção:** Não use Pedras da Alma no Gojo — ele será removido ao fim do tutorial. Guarde suas pedras para seus guerreiros definitivos!\n\n` +
     `*O canal detectará automaticamente quando você equipar e avançará o tutorial.*`,
     OKABE_COLOR, "Tutorial • Use !equip"
   );
@@ -245,7 +246,8 @@ function buildSoulStone(userId) {
     `> ${Emojis.SOUL_STONE_1} **Pedra da Alma I** — XP básico. A mais comum, obtida em combates e missões.\n` +
     `> ${Emojis.SOUL_STONE_2} **Pedra da Alma II** — XP médio. Obtida em missões semanais e desafios.\n` +
     `> ${Emojis.SOUL_STONE_3} **Pedra da Alma III** — XP avançado. Rara, grandes marcos de progressão.\n\n` +
-    `**[Okabe]** — Um guerreiro mais forte sobrevive mais. Priorize evoluir seu personagem principal!`,
+    `**[Okabe]** — Um guerreiro mais forte sobrevive mais. Priorize evoluir seu personagem principal!\n\n` +
+    `> ⚠️ **Lembre-se:** Não aplique as pedras no Gojo — ele é temporário e será removido ao encerrar o tutorial!`,
     OKABE_COLOR, "Tutorial • Etapa 4"
   );
   return { embeds: [embed], components: [new ActionRowBuilder().addComponents(nextBtn(userId, "📜 Sistema de Missões →"))] };
@@ -748,9 +750,9 @@ function buildStep(step, userId) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CHANNEL CLEANUP
 // ─────────────────────────────────────────────────────────────────────────────
-const TUTORIAL_ROLE_REMOVE = "1494490127018229883";
-const TUTORIAL_ROLE_ADD_1  = "1494490134861582336";
-const TUTORIAL_ROLE_ADD_2  = "1494493201002791064";
+const TUTORIAL_ROLE_REMOVE = "1494488843221598329";
+const TUTORIAL_ROLE_ADD_1  = "1494492810190262272";
+const TUTORIAL_ROLE_ADD_2  = "1494488914499469563";
 
 async function cleanupTutorial(client, state, userId, grantRoles = false) {
   try {
@@ -834,14 +836,11 @@ async function handleStart(interaction) {
     const guild = interaction.guild;
     const safeName = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16) || "invocador";
 
-    // Give player temporary Gojo (track instance ID for removal later)
+    // Sempre adiciona um Gojo novo para o tutorial — assim sempre temos o ID para remover no cleanup,
+    // independentemente de o jogador já ter um Gojo antes de começar.
     let tutorialGojoInstanceId = null;
-    const instances = playerRepository.getPlayerCharacters(userId);
-    const hasGojo   = instances.some(i => i.character_id === "satoru_gojo");
-    if (!hasGojo) {
-      const result = playerRepository.addCharacter(userId, "satoru_gojo", 1);
-      if (typeof result === "number") tutorialGojoInstanceId = result;
-    }
+    const result = playerRepository.addCharacter(userId, "satoru_gojo", 1);
+    if (typeof result === "number") tutorialGojoInstanceId = result;
 
     const channel = await guild.channels.create({
       name:  `tutorial-${safeName}`,
