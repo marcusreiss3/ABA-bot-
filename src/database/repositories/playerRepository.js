@@ -206,7 +206,7 @@ function resetPlayerChallengeProgress(playerId) {
 }
 
 // --- Sistema de Slots ---
-const SLOT_COST      = 500;
+const SLOT_COST      = 300;
 const SLOT_INCREMENT = 5;
 const SLOT_DEFAULT   = 10;
 const SLOT_MAX       = 30;

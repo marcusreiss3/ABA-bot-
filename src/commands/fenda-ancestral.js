@@ -54,20 +54,20 @@ function getBanner(bannerId) {
 
 // ── Fragmentos de cada relíquia ─────────────────────────────────────────────
 const FRAGMENTS = {
-  knight_killer:     { itemId: "f_knightkiller",    emoji: Emojis.F_KNIGHTKILLER,   minQty: 8,  maxQty: 16 },
-  seis_olhos:        { itemId: "f_seisolhos",        emoji: Emojis.F_SEISOLHOS,      minQty: 8,  maxQty: 16 },
-  hogyoku:           { itemId: "f_hogyoku",          emoji: Emojis.F_HOGYOKU,        minQty: 20, maxQty: 30 },
-  pesos_lee:         { itemId: "f_pesoslee",         emoji: Emojis.F_PESOSLEE,       minQty: 20, maxQty: 30 },
-  controle_infinito: { itemId: "f_infinito",         emoji: Emojis.F_INFINITO,       minQty: 20, maxQty: 30 },
-  chakra_nova_caudas:{ itemId: "f_chakrakurama",     emoji: Emojis.F_CHAKRAKURAMA,   minQty: 20, maxQty: 30 },
-  haki_do_rei:       { itemId: "f_haki",             emoji: Emojis.F_HAKI,           minQty: 20, maxQty: 30 },
-  capsula_curativa:  { itemId: "f_capsula",          emoji: Emojis.F_CAPSULA,        minQty: 20, maxQty: 30 },
-  sharingan:         { itemId: "f_sharingan",        emoji: Emojis.F_SHARINGAN,      minQty: 20, maxQty: 30 },
-  roda_mahoraga:     { itemId: "f_rodamahoraga",     emoji: Emojis.F_RODAMAHORAGA,   minQty: 20, maxQty: 30 },
-  marca_maldicao:    { itemId: "f_marcamaldi",       emoji: Emojis.F_MARCAMALDI,     minQty: 20, maxQty: 30 },
-  dedo_sukuna:       { itemId: "f_sukuna",           emoji: Emojis.F_SUKUNA,         minQty: 20, maxQty: 30 },
-  pedra_filosofal:   { itemId: "f_pedrafilosofal",   emoji: Emojis.F_PEDRAFILOSOFAL, minQty: 20, maxQty: 30 },
-  esfera_4_estrelas: { itemId: "f_esfera",           emoji: Emojis.F_ESFERA,         minQty: 20, maxQty: 30 },
+  knight_killer:     { itemId: "f_knightkiller",    emoji: Emojis.F_KNIGHTKILLER,   minQty: 12, maxQty: 20 },
+  seis_olhos:        { itemId: "f_seisolhos",        emoji: Emojis.F_SEISOLHOS,      minQty: 12, maxQty: 20 },
+  hogyoku:           { itemId: "f_hogyoku",          emoji: Emojis.F_HOGYOKU,        minQty: 10, maxQty: 18 },
+  pesos_lee:         { itemId: "f_pesoslee",         emoji: Emojis.F_PESOSLEE,       minQty: 10, maxQty: 18 },
+  controle_infinito: { itemId: "f_infinito",         emoji: Emojis.F_INFINITO,       minQty: 10, maxQty: 18 },
+  chakra_nova_caudas:{ itemId: "f_chakrakurama",     emoji: Emojis.F_CHAKRAKURAMA,   minQty: 10, maxQty: 18 },
+  haki_do_rei:       { itemId: "f_haki",             emoji: Emojis.F_HAKI,           minQty: 10, maxQty: 18 },
+  capsula_curativa:  { itemId: "f_capsula",          emoji: Emojis.F_CAPSULA,        minQty: 10, maxQty: 18 },
+  sharingan:         { itemId: "f_sharingan",        emoji: Emojis.F_SHARINGAN,      minQty: 10, maxQty: 18 },
+  roda_mahoraga:     { itemId: "f_rodamahoraga",     emoji: Emojis.F_RODAMAHORAGA,   minQty: 10, maxQty: 18 },
+  marca_maldicao:    { itemId: "f_marcamaldi",       emoji: Emojis.F_MARCAMALDI,     minQty: 10, maxQty: 18 },
+  dedo_sukuna:       { itemId: "f_sukuna",           emoji: Emojis.F_SUKUNA,         minQty: 10, maxQty: 18 },
+  pedra_filosofal:   { itemId: "f_pedrafilosofal",   emoji: Emojis.F_PEDRAFILOSOFAL, minQty: 10, maxQty: 18 },
+  esfera_4_estrelas: { itemId: "f_esfera",           emoji: Emojis.F_ESFERA,         minQty: 10, maxQty: 18 },
 };
 
 const COST_1  = 25;
@@ -96,10 +96,10 @@ function singlePull(bannerId) {
   const banner = getBanner(bannerId);
   const roll = Math.random() * 100;
 
-  // 0.5% relíquia em destaque
-  if (roll < 0.50) return { type: "artifact", artifactId: banner.featuredId, featured: true };
-  // 5.5% relíquia do pool (total 6%)
-  if (roll < 6.00) {
+  // 0.2% relíquia em destaque
+  if (roll < 0.20) return { type: "artifact", artifactId: banner.featuredId, featured: true };
+  // 0.8% relíquia do pool (total 1%)
+  if (roll < 1.00) {
     const id = banner.pool[Math.floor(Math.random() * banner.pool.length)];
     return { type: "artifact", artifactId: id, featured: false };
   }
@@ -259,7 +259,7 @@ function createBannerEmbed(bannerId, userId) {
   const pity  = items.find(i => i.item_id === `fenda_pity_${bannerId}`)?.quantity || 0;
 
   const poolSize = b.pool.length;
-  const perPool  = (0.75 / poolSize).toFixed(2);
+  const perPool  = (0.80 / poolSize).toFixed(2);
 
   const poolLines = b.pool.map(id => {
     const art = ArtifactManager.getArtifact(id, {});
@@ -271,7 +271,7 @@ function createBannerEmbed(bannerId, userId) {
     .setDescription(
       `*${b.description}*\n\n` +
       `**Relíquia em Destaque:**\n` +
-      `${b.featuredEmoji} **${b.featuredName}** ✦ \`0.25%\`\n\n` +
+      `${b.featuredEmoji} **${b.featuredName}** ✦ \`0.20%\`\n\n` +
       `**Relíquias do Pool:**\n${poolLines.join("\n")}\n\n` +
       `> ${Emojis.ARTIFACT} **FR disponíveis:** \`${fr}\``
     )

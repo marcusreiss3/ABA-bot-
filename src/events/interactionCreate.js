@@ -14,6 +14,7 @@ const missionsCommand = require("../commands/missions");
 const fendaAncestralCommand = require("../commands/fenda-ancestral");
 const nexusZenithCommand = require("../commands/nexus-zenith");
 const lojaReliquiasCommand = require("../commands/loja-reliquias");
+const charInfoCommand = require("../commands/char-info");
 const limboCommand = require("../commands/limbo");
 const protegerCommand = require("../commands/proteger");
 const tutorialCommand = require("../commands/tutorial");
@@ -47,6 +48,39 @@ async function sendStallEmbed(message, battleId, battle) {
     await message.edit({ embeds: [battleEmbed, stallEmbed], components: [fixRow] });
   } catch (e) {
     console.error("[STALL_EMBED] Erro ao enviar embed de recuperação:", e);
+  }
+}
+
+// Edits the battle message or falls back to sending a new one if the edit fails.
+// Always updates battle.lastMessageId to point at the current visible message.
+async function safeEditBattleMessage(client, battle, payload) {
+  const channelId = battle.channelId;
+  const msgId = battle.lastMessageId;
+
+  if (channelId && msgId) {
+    try {
+      const ch = await client.channels.fetch(channelId).catch(() => null);
+      if (ch) {
+        const msg = await ch.messages.fetch(msgId).catch(() => null);
+        if (msg) {
+          await msg.edit(payload);
+          return;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Fallback: send a new message
+  if (channelId) {
+    try {
+      const ch = await client.channels.fetch(channelId).catch(() => null);
+      if (ch) {
+        const newMsg = await ch.send(payload);
+        battle.lastMessageId = newMsg.id;
+      }
+    } catch (e) {
+      console.error("[SAFE_EDIT] Fallback send falhou:", e);
+    }
   }
 }
 
@@ -99,10 +133,15 @@ module.exports = {
         let resultBattle = null;
 
         if (battle.bossProcessing) {
-          // Boss já está sendo processado pelo timeout automático — aguardar
-          await interaction.followUp({ content: "⏳ O boss já está reagindo, aguarde um momento...", ephemeral: true });
-          return;
+          // Se bossProcessing está travado há mais de 10s, força reset
+          const processingAge = battle.bossProcessingAt ? (Date.now() - battle.bossProcessingAt) : Infinity;
+          if (processingAge < 10000) {
+            await interaction.followUp({ content: "⏳ O boss já está reagindo, aguarde um momento...", ephemeral: true });
+            return;
+          }
+          battle.bossProcessing = false; // Força reset após 10s travado
         }
+        battle.bossProcessingAt = Date.now();
         if (battle.state === "choosing_reaction") {
           battle.bossProcessing = true;
           resultBattle = BattleEngine.processBossReaction(battle);
@@ -133,23 +172,37 @@ module.exports = {
           }
         }
 
+        // Reset stall counter so the fix button can reappear if it bugs again
+        resultBattle.stallNotifiedAt = 0;
+        resultBattle.bossProcessing = false;
+
+        resultBattle.lastMessageId = interaction.message.id;
         await interaction.editReply({ embeds: [embed], components });
 
         // If boss still needs to act, trigger automation
         if (resultBattle.isPve && resultBattle.state === "choosing_action" && resultBattle.currentPlayerTurnId === resultBattle.player2Id) {
-          const fixMsg = interaction.message;
+          const fixBattleId = battleId;
+          const fixClient = interaction.client;
           setTimeout(async () => {
             try {
-              const attackBattle = BattleEngine.processBossTurn(resultBattle);
+              const freshFix = BattleEngine.getBattle(fixBattleId);
+              if (!freshFix || freshFix.state !== "choosing_action" || freshFix.currentPlayerTurnId !== freshFix.player2Id || freshFix.bossProcessing) return;
+              freshFix.bossProcessing = true;
+              const attackBattle = BattleEngine.processBossTurn(freshFix);
+              freshFix.bossProcessing = false;
               if (!attackBattle) return;
               const attackEmbed = EmbedManager.createBattleEmbed(attackBattle);
               const isBossReacting = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
               const attackComponents = attackBattle.state === "finished" ? [] :
                 (attackBattle.state === "choosing_reaction"
-                  ? ButtonManager.createReactionButtons(battleId, attackBattle.getOpponentPlayer(), isBossReacting)
-                  : ButtonManager.createActionComponents(battleId, attackBattle.getCurrentPlayer(), false, attackBattle));
-              await fixMsg.edit({ embeds: [attackEmbed], components: attackComponents });
-            } catch (e) { console.error("[FIX_COMBAT] Boss automation após fix:", e); }
+                  ? ButtonManager.createReactionButtons(fixBattleId, attackBattle.getOpponentPlayer(), isBossReacting)
+                  : ButtonManager.createActionComponents(fixBattleId, attackBattle.getCurrentPlayer(), false, attackBattle));
+              await safeEditBattleMessage(fixClient, attackBattle, { embeds: [attackEmbed], components: attackComponents });
+            } catch (e) {
+              console.error("[FIX_COMBAT] Boss automation após fix:", e);
+              const b = BattleEngine.getBattle(fixBattleId);
+              if (b) b.bossProcessing = false;
+            }
           }, 1500);
         }
       } catch (e) {
@@ -167,6 +220,11 @@ module.exports = {
     // 0.0d Loja de Relíquias
     if (interaction.isButton() && interaction.customId.startsWith("lojar_")) {
       return lojaReliquiasCommand.handleInteraction(interaction);
+    }
+
+    // 0.0e Char Info
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith("ci_")) {
+      return charInfoCommand.handleInteraction(interaction);
     }
 
     // 0.0b Nexus Zenith (gacha de personagens)
@@ -2441,21 +2499,30 @@ module.exports = {
             }, 10000);
           };
 
+          const pveCli = interaction.client;
+
           // Helper: executa o ataque do boss e atualiza a mensagem
-          const executeBossAttack = async (expectedBattleRef) => {
+          const executeBossAttack = async () => {
             const fresh = BattleEngine.getBattle(battleId);
-            // Se a batalha sumiu, foi finalizada, ou o boss já não é o jogador atual — outro evento já processou
-            if (!fresh || fresh.state !== "choosing_action" || fresh.currentPlayerTurnId !== fresh.player2Id || fresh.bossProcessing) return;
+            if (!fresh || fresh.state !== "choosing_action" || fresh.currentPlayerTurnId !== fresh.player2Id) return;
+            if (fresh.bossProcessing) {
+              const age = fresh.bossProcessingAt ? (Date.now() - fresh.bossProcessingAt) : Infinity;
+              if (age < 10000) return;
+              fresh.bossProcessing = false;
+            }
             fresh.bossProcessing = true;
+            fresh.bossProcessingAt = Date.now();
             try {
               const attackBattle = BattleEngine.processBossTurn(fresh);
               if (!attackBattle) { fresh.bossProcessing = false; return; }
               if (attackBattle.state === "finished") {
-                if (attackBattle.isTutorial) tutorialCommand.onBattleEnd(attackBattle, interaction.client);
+                if (attackBattle.isTutorial) tutorialCommand.onBattleEnd(attackBattle, pveCli);
                 else scheduleChannelDelete(attackBattle, "Combate finalizado pelo Boss");
               }
-              const freshMsg = await battleMessage.channel.messages.fetch(battleMessage.id).catch(() => null);
-              await (freshMsg || battleMessage).edit({ embeds: [EmbedManager.createBattleEmbed(attackBattle)], components: buildComponents(attackBattle) });
+              await safeEditBattleMessage(pveCli, attackBattle, {
+                embeds: [EmbedManager.createBattleEmbed(attackBattle)],
+                components: buildComponents(attackBattle),
+              });
             } catch (e) {
               console.error("Erro no ataque do boss:", e);
             } finally {
@@ -2468,29 +2535,39 @@ module.exports = {
           if (updatedBattle.state === "choosing_reaction" && updatedBattle.getOpponentId() === updatedBattle.player2Id) {
             setTimeout(async () => {
               try {
-                // Sempre buscar batalha fresca — evita colisão com Fix Combat button ou outra interação
                 const freshForReaction = BattleEngine.getBattle(battleId);
-                if (!freshForReaction || freshForReaction.state !== "choosing_reaction" || freshForReaction.bossProcessing) return;
+                if (!freshForReaction || freshForReaction.state !== "choosing_reaction") return;
+                if (freshForReaction.bossProcessing) {
+                  const age = freshForReaction.bossProcessingAt ? (Date.now() - freshForReaction.bossProcessingAt) : Infinity;
+                  if (age < 10000) return;
+                  freshForReaction.bossProcessing = false;
+                }
                 freshForReaction.bossProcessing = true;
+                freshForReaction.bossProcessingAt = Date.now();
 
                 const reactionBattle = BattleEngine.processBossReaction(freshForReaction);
                 freshForReaction.bossProcessing = false;
 
-                if (!reactionBattle) return; // Já processado por outro evento — silencioso
+                if (!reactionBattle) return;
 
                 if (reactionBattle.state === "finished") {
-                  if (reactionBattle.isTutorial) tutorialCommand.onBattleEnd(reactionBattle, interaction.client);
+                  if (reactionBattle.isTutorial) tutorialCommand.onBattleEnd(reactionBattle, pveCli);
                   else scheduleChannelDelete(reactionBattle, "Combate finalizado na reação");
-                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: [] });
+                  await safeEditBattleMessage(pveCli, reactionBattle, {
+                    embeds: [EmbedManager.createBattleEmbed(reactionBattle)],
+                    components: [],
+                  });
                   return;
                 }
 
+                await safeEditBattleMessage(pveCli, reactionBattle, {
+                  embeds: [EmbedManager.createBattleEmbed(reactionBattle)],
+                  components: buildComponents(reactionBattle),
+                });
+
                 // 2. Ataque do Boss após reagir
                 if (reactionBattle.state === "choosing_action" && reactionBattle.currentPlayerTurnId === reactionBattle.player2Id) {
-                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: buildComponents(reactionBattle) });
-                  setTimeout(() => executeBossAttack(reactionBattle), 1500);
-                } else {
-                  await battleMessage.edit({ embeds: [EmbedManager.createBattleEmbed(reactionBattle)], components: buildComponents(reactionBattle) });
+                  setTimeout(() => executeBossAttack(), 1500);
                 }
               } catch (e) {
                 console.error("Erro na reação do boss:", e);
@@ -2501,7 +2578,7 @@ module.exports = {
           }
           // 3. Ataque Direto do Boss (ex: após player usar buff ou recuperar energia)
           else if (updatedBattle.state === "choosing_action" && updatedBattle.currentPlayerTurnId === updatedBattle.player2Id) {
-            setTimeout(() => executeBossAttack(updatedBattle), 1500);
+            setTimeout(() => executeBossAttack(), 1500);
           }
         }
       }

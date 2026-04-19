@@ -181,4 +181,14 @@ db.prepare(`
   )
 `).run();
 
+// Tabela de resgates de códigos promocionais
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS code_redemptions (
+    player_id TEXT,
+    code TEXT,
+    redeemed_at INTEGER DEFAULT (strftime('%s','now')),
+    PRIMARY KEY (player_id, code)
+  )
+`).run();
+
 module.exports = db;

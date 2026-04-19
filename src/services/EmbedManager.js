@@ -85,13 +85,14 @@ class EmbedManager {
       if (currentPlayer.imageUrl) embed.setThumbnail(currentPlayer.imageUrl);
     }
 
+    const bugNote = "⚠️ Se a batalha travar, aguarde 2-3 min — uma mensagem para retomar aparecerá automaticamente.";
     if (battle.state === "choosing_action") {
         const turnText = (battle.isPve && battle.currentPlayerTurnId === battle.player2Id) ? `Turno de: ${currentPlayer.name} (Boss pensando...)` : `Turno de: ${currentPlayer.name} | Escolha uma habilidade!`;
-        embed.setFooter({ text: turnText });
+        embed.setFooter({ text: `${turnText}\n${bugNote}` });
     } else if (battle.state === "choosing_reaction") {
       const damage = battle.lastPendingDamage || 0;
       const turnText = (battle.isPve && battle.getOpponentId() === battle.player2Id) ? `Turno de: ${opponentPlayer.name} (Boss reagindo...)` : `Turno de: ${opponentPlayer.name} | Dano Previsto: ${damage} HP | Reaja ou Pule!`;
-      embed.setFooter({ text: turnText });
+      embed.setFooter({ text: `${turnText}\n${bugNote}` });
     }
 
     return embed;

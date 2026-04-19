@@ -28,6 +28,8 @@ const tutorialCommand = require("./commands/tutorial");
 const titulosCommand = require("./commands/titulos");
 const ticketCommand = require("./commands/ticket");
 const lojaReliquiasCommand = require("./commands/loja-reliquias");
+const charInfoCommand = require("./commands/char-info");
+const codigoCommand = require("./commands/codigo");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
 
@@ -209,6 +211,14 @@ client.on("messageCreate", async (message) => {
     lojaReliquiasCommand.execute(message);
   }
 
+  if (command === "!char-info") {
+    charInfoCommand.execute(message);
+  }
+
+  if (command === "!codigo") {
+    codigoCommand.execute(message, args);
+  }
+
   if (command === "!limbo") {
     console.log("Comando limbo detectado"); // DEBUG
     limboCommand.execute(message);
@@ -250,9 +260,10 @@ client.once("ready", () => {
   // Detectar combates PVE travados a cada 2 minutos
   setInterval(async () => {
     const stalledBattles = BattleEngine.getStalledBattles(2 * 60 * 1000);
+    const nowStall = Date.now();
     for (const battle of stalledBattles) {
-      if (battle.stallNotified) continue;
-      battle.stallNotified = true;
+      if (battle.stallNotifiedAt && (nowStall - battle.stallNotifiedAt) < 3 * 60 * 1000) continue;
+      battle.stallNotifiedAt = nowStall;
 
       try {
         const channel = await client.channels.fetch(battle.channelId).catch(() => null);

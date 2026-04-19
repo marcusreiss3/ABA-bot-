@@ -67,7 +67,7 @@ module.exports = {
           health: 6000,
           energy: 600,
           imageUrl: "https://i.ibb.co/SXJz76TT/imagem-2026-04-13-003343874.png",
-          reward: { fr: [20, 30], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }
+          reward: { fr: [13, 20], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }
         },
         {
           id: "dabi",
@@ -77,7 +77,7 @@ module.exports = {
           health: 6000,
           energy: 600,
           imageUrl: "https://i.ibb.co/qMsqzsHB/imagem-2026-04-13-003515489.png",
-          reward: { fr: [20, 30], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }
+          reward: { fr: [13, 20], soul_stone_3: [1, 1], soul_stone_2: [1, 2] }
         }
       ]
     }

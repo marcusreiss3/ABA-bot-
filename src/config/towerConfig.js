@@ -16,7 +16,7 @@ module.exports = {
           { id: "self_destruct", name: "Auto-Destruição", description: "O Saibaman se explode, causando dano massivo.", type: "attack", cost: 50, damage: 160, damageType: 'fisico', cooldown: 10 }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 3 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 3 }
     },
     {
       floor: 2,
@@ -33,7 +33,7 @@ module.exports = {
           { id: "muggy_ball", name: "Muggy Ball", description: "Uma bala de canhão potente e explosiva.", type: "attack", cost: 30, damage: 80, damageType: 'elemental', cooldown: 2 }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 5 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 5 }
     },
     {
       floor: 3,
@@ -50,7 +50,7 @@ module.exports = {
           { id: "fury_swipes", name: "Golpes de Fúria", description: "Uma sequência de arranhões furiosos.", type: "attack", cost: 25, damage: 70, damageType: 'fisico' }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 6 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
     },
     {
       floor: 4,
@@ -67,7 +67,7 @@ module.exports = {
           { id: "hidden_mist", name: "Névoa Oculta", description: "Zabuza se esconde na névoa, reduzindo o dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.2 } }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_1", stoneQty: 6 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
     },
     {
       floor: 5,

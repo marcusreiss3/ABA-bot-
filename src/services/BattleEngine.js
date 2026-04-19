@@ -559,7 +559,26 @@ class BattleEngine {
           defender.addStatusEffect({ type: "bleed", duration: skill.effect.bleed.duration, value: skill.effect.bleed.value });
           battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skill.effect.bleed.duration} turno(s)!`;
         }
-        battle.lastPendingSkill = null; // ← LINHA ADICIONADA: limpa o flag antes de chamar endTurnUpdate
+        battle.lastPendingSkill = null;
+
+        if (!defender.isAlive()) {
+          const missionRepository = require("../database/repositories/missionRepository");
+          if (battle.isPve && defender.id === battle.character2.id) {
+            battle.state = "finished";
+            battle.winnerId = "players";
+            battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+            this.handlePveRewards(battle);
+            const partyMembers = battle.partyMembers || [battle.player1Id];
+            partyMembers.forEach(id => missionRepository.addProgress(id, "win_pve"));
+          } else if (!battle.isPve) {
+            battle.state = "finished";
+            battle.winnerId = attacker.ownerId;
+            battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
+          }
+          this.endTurnUpdate(battle);
+          return battle;
+        }
+
         battle.switchTurn();
         this.endTurnUpdate(battle);
         battle.state = "choosing_action";
@@ -973,7 +992,7 @@ class BattleEngine {
       const floorNum = battle.currentFloor;
       const floorData = towerConfig.floors.find(f => f.floor === floorNum);
       const rewards = floorData.reward;
-      const fragmentsZenith = 10;
+      const fragmentsZenith = rewards.zenith ?? 10;
 
       let rewardMsg = `\n\n✨ **RECOMPENSAS DO ANDAR ${floorNum}:**`;
       
@@ -1075,7 +1094,7 @@ class BattleEngine {
       return;
     }
     
-    let bossReward = { zenith: 90, stoneId: "soul_stone_1", stoneQty: 1 };
+    let bossReward = { zenith: 80, stoneId: "soul_stone_1", stoneQty: 1 };
     for (const world of storyConfig.worlds) {
       const data = world.bosses.find(b => b.id === bossId);
       if (data) { bossReward = data.reward; break; }

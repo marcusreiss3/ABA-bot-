@@ -641,6 +641,7 @@ class CharacterManager {
       baseSkills[1].damage = 120;
       baseSkills[1].description = "Troca de posições instantânea que confunde e **ATORDOA** o oponente.";
       baseSkills[1].effect = { type: "stun", duration: 1 };
+      baseSkills[1].cooldown = 3;
       baseSkills.push(new Skill({ id: "todo_clap", name: "Palma Fantasma", description: "Palmada com energia maldita — **ATORDOA** e causa sangramento.", type: "attack", cost: 55, damage: 110, damageType: 'fisico', cooldown: 4, effect: { type: "bleed", duration: 2, value: 0.07 } }));
     } else if (bossId === "mahito") {
       baseSkills[0].name = "Transfiguração Leve";
