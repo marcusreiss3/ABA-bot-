@@ -47,7 +47,7 @@ module.exports = {
           "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
           "`!setchar resetmissions <daily/weekly>` — Troca as missões globais\n" +
           "`!setchar completetitle @player <titleId>` — Marca um título como completo\n" +
-          "`!setchar resettutorial @player` — Reseta o tutorial bugado de um jogador",
+          "`!setchar resettutorial @player` — Reseta o tutorial bugado de um jogador.",
           false
         )]
       });
