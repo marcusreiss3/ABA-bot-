@@ -43,7 +43,7 @@ module.exports = {
           "`!setchar addxp @player <instanceId> <xp>` — Adiciona XP\n" +
           "`!setchar additem @player <itemId> <quantidade>` — Adiciona item\n" +
           "`!setchar addartifact @player <artifactId>` — Adiciona uma relíquia\n" +
-          "`!setchar addzenit @player <quantidade>` — Adiciona Cristais Zenith\n" +
+          "`!setchar addzenit @player <quantidade>` — Adiciona Cristais Zenith.\n" +
           "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
           "`!setchar resetmissions <daily/weekly>` — Troca as missões globais\n" +
           "`!setchar completetitle @player <titleId>` — Marca um título como completo\n" +
