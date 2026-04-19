@@ -4,6 +4,7 @@ const EvolutionManager = require("../services/EvolutionManager");
 const EmbedManager = require("../services/EmbedManager");
 const BattleEngine = require("../services/BattleEngine");
 const missionRepository = require("../database/repositories/missionRepository");
+const tutorialCommand = require("./tutorial");
 
 const ArtifactManager = require("../services/ArtifactManager");
 const { TITLES, addProgress } = require("../database/repositories/titleRepository");
@@ -45,7 +46,8 @@ module.exports = {
           "`!setchar addzenit @player <quantidade>` — Adiciona Cristais Zenith\n" +
           "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
           "`!setchar resetmissions <daily/weekly>` — Troca as missões globais\n" +
-          "`!setchar completetitle @player <titleId>` — Marca um título como completo (teste)",
+          "`!setchar completetitle @player <titleId>` — Marca um título como completo (teste)\n" +
+          "`!setchar resettutorial @player` — Reseta o tutorial bugado de um jogador",
           false
         )]
       });
@@ -228,12 +230,24 @@ module.exports = {
     }
 
     // -------------------------------------------------------
+    // Subcomando: resettutorial
+    // -------------------------------------------------------
+    else if (subCommand === "resettutorial" || subCommand === "rt") {
+      const result = await tutorialCommand.adminResetTutorial(message.client, targetUserId);
+      if (!result.ok) {
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(result.reason, false)] });
+      }
+      const detail = result.channelDeleted ? "Canal de tutorial deletado." : "Canal já não existia.";
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`✅ Tutorial de <@${targetUserId}> resetado. ${detail} O jogador pode iniciar o tutorial novamente.`, true)] });
+    }
+
+    // -------------------------------------------------------
     // Subcomando inválido
     // -------------------------------------------------------
     else {
       return message.reply({
         embeds: [EmbedManager.createStatusEmbed(
-          "Subcomando inválido! Use `add`, `remove`, `addxp`, `additem` ou `resetcooldown`.",
+          "Subcomando inválido! Use `add`, `remove`, `addxp`, `additem`, `resetcooldown` ou `resettutorial`.",
           false
         )]
       });

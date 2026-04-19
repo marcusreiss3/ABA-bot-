@@ -1042,6 +1042,36 @@ async function postTutorialEmbed(message) {
   }
 }
 
+async function adminResetTutorial(client, userId) {
+  const state = activeTutorials.get(userId);
+  if (!state) return { ok: false, reason: "Nenhum tutorial ativo para este usuário." };
+
+  if (state.inactivityTimeoutId) clearTimeout(state.inactivityTimeoutId);
+
+  // Remove tutorial Gojo instance
+  if (state.tutorialGojoInstanceId) {
+    try {
+      const player = playerRepository.getPlayer(userId);
+      if (player && player.equipped_instance_id === state.tutorialGojoInstanceId) {
+        playerRepository.updatePlayer(userId, { equipped_instance_id: null });
+      }
+      playerRepository.removeCharacterInstance(state.tutorialGojoInstanceId);
+    } catch (e) { console.error("[TUTORIAL] adminReset Gojo cleanup:", e); }
+  }
+
+  // Delete tutorial channel
+  let channelDeleted = false;
+  try {
+    const ch = await client.channels.fetch(state.channelId).catch(() => null);
+    if (ch) { await ch.delete("Tutorial resetado pelo admin"); channelDeleted = true; }
+  } catch (e) { console.error("[TUTORIAL] adminReset channel delete:", e); }
+
+  activeTutorials.delete(userId);
+  tutorialChannels.delete(state.channelId);
+
+  return { ok: true, channelDeleted };
+}
+
 module.exports = {
   handleInteraction,
   postTutorialEmbed,
@@ -1049,4 +1079,5 @@ module.exports = {
   onEquipComplete,
   onBattleEnd,
   getTutorialUserByChannel,
+  adminResetTutorial,
 };
