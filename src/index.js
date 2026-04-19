@@ -27,6 +27,7 @@ const protegerCommand = require("./commands/proteger");
 const tutorialCommand = require("./commands/tutorial");
 const titulosCommand = require("./commands/titulos");
 const ticketCommand = require("./commands/ticket");
+const lojaReliquiasCommand = require("./commands/loja-reliquias");
 const interactionCreateEvent = require("./events/interactionCreate");
 const BattleEngine = require("./services/BattleEngine");
 
@@ -202,6 +203,10 @@ client.on("messageCreate", async (message) => {
   if (command === "!nexus-zenith" || command === "!nexus") {
     console.log("Comando nexus-zenith detectado"); // DEBUG
     nexusZenithCommand.execute(message);
+  }
+
+  if (command === "!loja-reliquias" || command === "!loja-fr") {
+    lojaReliquiasCommand.execute(message);
   }
 
   if (command === "!limbo") {

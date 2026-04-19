@@ -10,7 +10,6 @@ module.exports = {
     const playerId = message.author.id;
     const items = playerRepository.getPlayerItems(playerId);
 
-    // Filtrar apenas itens que estão no EvolutionManager (pedras da alma)
     const validItems = items.filter(i => EvolutionManager.ITEMS[i.item_id]);
 
     if (validItems.length === 0) {
@@ -28,14 +27,18 @@ module.exports = {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle("🎒 Usar Item")
-      .setDescription("Selecione o item que deseja usar.")
-      .setColor("#5865F2");
+      .setColor("#1a0a2e")
+      .setAuthor({ name: "⚗️ Câmara de Evolução" })
+      .setDescription(
+        "*As Pedras da Alma pulsam com energia dimensional, prontas para despertar o potencial adormecido de um guerreiro.*\n\n" +
+        "Selecione abaixo qual pedra deseja invocar."
+      )
+      .setFooter({ text: "Escolha a Pedra da Alma • Próximo: selecionar guerreiro" });
 
     const row = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`use_item_select_${playerId}`)
-        .setPlaceholder("Escolha um item...")
+        .setPlaceholder("Qual pedra deseja usar?")
         .addOptions(itemOptions)
     );
 

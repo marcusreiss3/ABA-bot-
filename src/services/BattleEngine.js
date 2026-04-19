@@ -351,6 +351,7 @@ class BattleEngine {
     }
 
     if (skill.id === "determination") {
+      battle.lastBuffGifUrl = skill.gifUrl || null;
       attacker.addStack("eva_charge", 3);
       const stacks = attacker.stacks["eva_charge"];
       if (stacks < 3) {
@@ -715,6 +716,14 @@ class BattleEngine {
           }
         }
         battle.lastActionMessage += `\n🛡️ **${defender.name}** reagiu com **${reaction.name}**!`;
+
+        // Frieren: 50% de chance de contra-ataque
+        if (reaction.id === "frieren_counter" && Math.random() < 0.5) {
+          const counterDmg = Math.floor(attacker.maxHealth * 0.06);
+          attacker.health = Math.max(0, attacker.health - counterDmg);
+          battle.lastActionMessage += `\n⚡ **${defender.name}** contra-atacou! **${attacker.name}** sofreu **${counterDmg}** de dano!`;
+          if (reaction.counterGifUrl) battle.lastReactionGifOverride = reaction.counterGifUrl;
+        }
       }
     } else {
       battle.lastActionMessage += `\n⏩ **${defender.name}** não reagiu.`;
@@ -1066,38 +1075,52 @@ class BattleEngine {
       return;
     }
     
-    let bossReward = { zenith: 250, stoneId: "soul_stone_1", stoneQty: 1 };
+    let bossReward = { zenith: 90, stoneId: "soul_stone_1", stoneQty: 1 };
     for (const world of storyConfig.worlds) {
       const data = world.bosses.find(b => b.id === bossId);
       if (data) { bossReward = data.reward; break; }
     }
 
+    // Lista ordenada de todos os boss IDs do modo história
+    const allStoryBossIds = storyConfig.worlds.flatMap(w => w.bosses.map(b => b.id));
+    const currentBossIndex = allStoryBossIds.indexOf(bossId);
+    const cleanBossId = bossId.startsWith("boss_") ? bossId.replace("boss_", "") : bossId;
+
     let rewardMsg = `\n\n✨ **RECOMPENSAS DISTRIBUÍDAS:**`;
 
     partyMembers.forEach(memberId => {
       const isLeader = memberId === leaderId;
-      const zenithAmount = isLeader ? 250 : 25;
-      
+
+      // Verifica se o membro já derrotou este boss anteriormente
+      const progress = playerRepository.getStoryProgress(memberId);
+      const lastDefeated = progress?.last_boss_defeated;
+      const lastDefeatedIndex = lastDefeated ? allStoryBossIds.indexOf(lastDefeated) : -1;
+      const alreadyDefeated = lastDefeatedIndex >= currentBossIndex;
+
+      const zenithAmount = alreadyDefeated ? 2 : (bossReward.zenith ?? 90);
+
       const player = playerRepository.getPlayer(memberId);
-      playerRepository.updatePlayer(memberId, { 
-        zenith_fragments: (player.zenith_fragments || 0) + zenithAmount 
+      playerRepository.updatePlayer(memberId, {
+        zenith_fragments: (player.zenith_fragments || 0) + zenithAmount
       });
-      
-      // Todos recebem a mesma soul stone
-      playerRepository.addItem(memberId, bossReward.stoneId, bossReward.stoneQty);
-      
-      // Apenas o líder desbloqueia o próximo nível
+
+      if (!alreadyDefeated) {
+        playerRepository.addItem(memberId, bossReward.stoneId, bossReward.stoneQty);
+      }
+
+      // Apenas o líder avança o próprio progresso
       if (isLeader) {
-        // Garantir que o ID do boss não tenha o prefixo "boss_" para bater com a config
-        const cleanBossId = bossId.startsWith("boss_") ? bossId.replace("boss_", "") : bossId;
         playerRepository.updateStoryProgress(memberId, cleanBossId);
       }
-      
-      rewardMsg += `\n- <@${memberId}>: ${Emojis.ZENITH} **${zenithAmount} Fragmentos Zenith** + ${this._formatItem(bossReward.stoneId, bossReward.stoneQty)}`;
 
-      const xpResult = playerRepository.addPlayerXP(memberId, 100);
+      if (alreadyDefeated) {
+        rewardMsg += `\n- <@${memberId}>: ${Emojis.ZENITH} **${zenithAmount} Fragmentos Zenith** *(boss já derrotado anteriormente)*`;
+      } else {
+        rewardMsg += `\n- <@${memberId}>: ${Emojis.ZENITH} **${zenithAmount} Fragmentos Zenith** + ${this._formatItem(bossReward.stoneId, bossReward.stoneQty)}`;
+      }
+
+      const xpResult = playerRepository.addPlayerXP(memberId, alreadyDefeated ? 20 : 100);
       if (xpResult.leveledUp) rewardMsg += `\n🆙 <@${memberId}> subiu para o **Nível ${xpResult.newLevel}**!`;
-      // Título: Exterminador de Titãs
       titleRepository.addProgress(memberId, "npc_slayer");
     });
 

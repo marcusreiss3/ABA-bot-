@@ -2,7 +2,15 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelect
 const CharacterManager = require("./CharacterManager");
 const Emojis = require("../config/emojis");
 const FragmentMap = require("../config/fragmentMap");
+const storyConfig = require("../config/storyConfig");
 const FRAGMENTS_NEEDED = 100;
+
+const WORLD_COLORS = {
+  dragonball: "#FF6B00",
+  naruto:     "#4A90D9",
+  aot:        "#8B1A1A",
+  jjk:        "#5C00CC"
+};
 
 class EmbedManager {
   static createBattleEmbed(battle) {
@@ -164,18 +172,95 @@ class EmbedManager {
     return stats;
   }
 
+  static createStoryWorldSelectEmbed(lastDefeated) {
+    const allBosses = [];
+    storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+    const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
+
+    const embed = new EmbedBuilder()
+      .setAuthor({ name: "📜 Nexus Interdimensional — Modo História" })
+      .setTitle("✦ Escolha seu Destino")
+      .setDescription(
+        "*Portais dimensionais se abrem diante de você...*\n" +
+        "Cada universo guarda segredos e perigos únicos. Derrote o guardião final de cada mundo para avançar à próxima dimensão.\n\n" +
+        "━━━━━━━━━━━━━━━━━━━━"
+      )
+      .setColor("#1a0a2e")
+      .setFooter({ text: "▸ Derrote o boss final de cada mundo para desbloquear o próximo" });
+
+    storyConfig.worlds.forEach((world, index) => {
+      let isWorldUnlocked = index === 0;
+      if (index > 0) {
+        const prevWorld = storyConfig.worlds[index - 1];
+        const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
+        const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
+        if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
+      }
+
+      const defeatedInWorld = world.bosses.filter(boss => {
+        const idx = allBosses.findIndex(b => b.id === boss.id);
+        return lastDefeatedIdx >= idx;
+      }).length;
+      const total = world.bosses.length;
+
+      let statusLine;
+      if (!isWorldUnlocked) {
+        statusLine = `\`🔒 Bloqueado\``;
+      } else if (defeatedInWorld >= total) {
+        statusLine = `\`✅ Concluído — ${total}/${total}\``;
+      } else {
+        statusLine = `\`⚔️ Em progresso — ${defeatedInWorld}/${total}\``;
+      }
+
+      embed.addFields({ name: `${world.emoji} ${world.name}`, value: statusLine, inline: true });
+    });
+
+    return embed;
+  }
+
+  static createStoryBossSelectEmbed(world, lastDefeated) {
+    const allBosses = [];
+    storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+    const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
+
+    const bossLines = world.bosses.map(boss => {
+      const globalIdx = allBosses.findIndex(b => b.id === boss.id);
+      const isDefeated = lastDefeatedIdx >= globalIdx;
+      const isUnlocked = globalIdx === 0 || lastDefeatedIdx >= globalIdx - 1;
+      const icon = isDefeated ? "☑" : (isUnlocked ? "⚔️" : "🔒");
+      const nameStr = isDefeated ? `~~**${boss.name}**~~` : `**${boss.name}**`;
+      return `${icon} ${nameStr} — Lv.\`${boss.level}\``;
+    }).join("\n");
+
+    return new EmbedBuilder()
+      .setAuthor({ name: `${world.emoji} ${world.name}` })
+      .setTitle("Escolha seu Adversário")
+      .setDescription(
+        `*Os guardiões deste mundo aguardam seu desafio...*\n\n` +
+        bossLines +
+        `\n\n━━━━━━━━━━━━━━━━━━━━`
+      )
+      .setColor(WORLD_COLORS[world.id] || "#5865F2")
+      .setFooter({ text: "☑ Derrotado  ⚔️ Disponível  🔒 Bloqueado" });
+  }
+
   static createStoryIntroEmbed(world, boss, playerChar) {
     return new EmbedBuilder()
-      .setTitle(`📖 Modo História: ${world.name}`)
-      .setDescription(`Você atravessa um portal interdimensional e surge de repente diante de um poderoso inimigo...\n\n**${boss.dialogue}**`)
-      .setColor("#E74C3C")
+      .setAuthor({ name: `${world.emoji} ${world.name} — Encontro Iminente` })
+      .setTitle(`⚔️ ${boss.name}`)
+      .setDescription(
+        `*Um silêncio pesado toma conta do ar. A presença do inimigo é inconfundível...*\n\n` +
+        `> ${boss.dialogue}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━`
+      )
+      .setColor(WORLD_COLORS[world.id] || "#E74C3C")
       .setImage(boss.imageUrl)
       .addFields(
-        { name: "🌍 Local", value: world.name, inline: true },
-        { name: "⚔️ Oponente", value: `${boss.name} [Lvl ${boss.level}]`, inline: true },
-        { name: "🥋 Seu Personagem", value: `${playerChar.name} [Lvl ${playerChar.level}]`, inline: true }
+        { name: "👹 Nível", value: `\`${boss.level}\``, inline: true },
+        { name: "❤️ Vitalidade", value: `\`${boss.health} HP\``, inline: true },
+        { name: "🥋 Seu Guerreiro", value: `${playerChar.name} — Lv.\`${playerChar.level}\``, inline: true }
       )
-      .setFooter({ text: "Clique no botão abaixo para iniciar o combate!" });
+      .setFooter({ text: "Pressione o botão abaixo para iniciar o combate. Não há volta!" });
   }
 
   static createProfileEmbed(player, user) {
@@ -603,42 +688,44 @@ class EmbedManager {
   }
 
   static createLevelUpEmbed(charData, oldLevel, newLevel, xpGained) {
+    const levelsGained = newLevel - oldLevel;
     const embed = new EmbedBuilder()
-      .setTitle("🆙 LEVEL UP!")
-      .setDescription(`Seu personagem **${charData.name}** ficou mais forte!`)
       .setColor("#FFD700")
-      .addFields(
-        { name: "Nível Anterior", value: `\`${oldLevel}\``, inline: true },
-        { name: "Novo Nível", value: `\`${newLevel}\``, inline: true },
-        { name: "XP Ganho", value: `\`+${xpGained}\``, inline: true },
-        { name: "Novos Atributos", value: `❤️ HP: \`${charData.maxHealth}\`\n⚔️ Dano Bônus: \`+${charData.bonusDamage}\``, inline: false }
+      .setAuthor({ name: "⬆️ Guerreiro Evoluído!" })
+      .setDescription(
+        `*O ritual foi um sucesso. O poder de **${charData.name}** transcendeu seus limites anteriores.*\n\n` +
+        `**Nível:** \`${oldLevel}\` → \`${newLevel}\`${levelsGained > 1 ? ` *(+${levelsGained} níveis!)*` : ""}\n` +
+        `**XP absorvido:** +${xpGained}`
       )
-;
+      .addFields(
+        { name: "❤️ Vida Máxima", value: `\`${charData.maxHealth}\``, inline: true },
+        { name: "⚔️ Dano Bônus", value: `\`+${charData.bonusDamage}\``, inline: true },
+      )
+      .setFooter({ text: "Câmara de Evolução • Continue evoluindo seu guerreiro" });
 
-    if (charData.imageUrl) {
-      embed.setThumbnail(charData.imageUrl);
-    }
-
+    if (charData.imageUrl) embed.setThumbnail(charData.imageUrl);
     return embed;
   }
 
   static createXPGainEmbed(charData, xpGained, currentXP, requiredXP, quantity, itemName) {
-    const xpPercent = Math.floor((currentXP / requiredXP) * 10);
-    const bar = "█".repeat(Math.min(10, Math.max(0, xpPercent))) + "░".repeat(Math.min(10, Math.max(0, 10 - xpPercent)));
-    
+    const filled = Math.min(12, Math.floor((currentXP / requiredXP) * 12));
+    const bar = "▰".repeat(filled) + "▱".repeat(12 - filled);
+    const pct = Math.floor((currentXP / requiredXP) * 100);
+
     const embed = new EmbedBuilder()
-      .setTitle("✨ XP Adquirido!")
-      .setDescription(`Você usou **${quantity}x ${itemName}** em **${charData.name}**!`)
-      .setColor("#3498DB")
+      .setColor("#2b0a4e")
+      .setAuthor({ name: "✨ Energia Absorvida" })
+      .setDescription(
+        `*As pedras se dissolvem, e a energia flui pelo corpo de **${charData.name}**...*\n\n` +
+        `**Pedras usadas:** ${quantity}x ${itemName}\n` +
+        `**XP absorvido:** +${xpGained}`
+      )
       .addFields(
-        { name: "XP Ganho", value: `\`+${xpGained}\``, inline: true },
-        { name: "Progresso", value: `\`${bar}\` \`${Math.floor(currentXP)}/${Math.floor(requiredXP)}\``, inline: false }
-      );
+        { name: "Progresso para o próximo nível", value: `${bar} **${pct}%**\n\`${Math.floor(currentXP)} / ${Math.floor(requiredXP)} XP\``, inline: false }
+      )
+      .setFooter({ text: "Câmara de Evolução • Continue para evoluir de nível" });
 
-    if (charData.imageUrl) {
-      embed.setThumbnail(charData.imageUrl);
-    }
-
+    if (charData.imageUrl) embed.setThumbnail(charData.imageUrl);
     return embed;
   }
 

@@ -13,6 +13,7 @@ const missionRepository = require("../database/repositories/missionRepository");
 const missionsCommand = require("../commands/missions");
 const fendaAncestralCommand = require("../commands/fenda-ancestral");
 const nexusZenithCommand = require("../commands/nexus-zenith");
+const lojaReliquiasCommand = require("../commands/loja-reliquias");
 const limboCommand = require("../commands/limbo");
 const protegerCommand = require("../commands/proteger");
 const tutorialCommand = require("../commands/tutorial");
@@ -161,6 +162,11 @@ module.exports = {
     // 0.0 Fenda Ancestral (gacha)
     if (interaction.isButton() && interaction.customId.startsWith("fenda_")) {
       return fendaAncestralCommand.handleInteraction(interaction);
+    }
+
+    // 0.0d Loja de Relíquias
+    if (interaction.isButton() && interaction.customId.startsWith("lojar_")) {
+      return lojaReliquiasCommand.handleInteraction(interaction);
     }
 
     // 0.0b Nexus Zenith (gacha de personagens)
@@ -1245,14 +1251,18 @@ module.exports = {
       });
 
       const embed = new EmbedBuilder()
-        .setTitle("👤 Selecionar Personagem")
-        .setDescription(`Você selecionou **${itemData.name}**. Agora escolha em qual personagem deseja usar.`)
-        .setColor("#5865F2");
+        .setColor("#1a0a2e")
+        .setAuthor({ name: "⚔️ Escolha o Guerreiro" })
+        .setDescription(
+          `*O poder de **${itemData.name}** aguarda um recipiente digno.*\n\n` +
+          `Selecione o guerreiro que receberá este ritual de evolução.`
+        )
+        .setFooter({ text: "Câmara de Evolução • Próximo: selecionar quantidade" });
 
       const row = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId(`use_char_select_${playerId}_${itemId}`)
-          .setPlaceholder("Escolha um personagem...")
+          .setPlaceholder("Qual guerreiro receberá o poder?")
           .addOptions(charOptions.slice(0, 25))
       );
 
@@ -1279,20 +1289,26 @@ module.exports = {
 
       const maxQuantity = item.quantity;
       const embed = new EmbedBuilder()
-        .setTitle("🔢 Selecionar Quantidade")
-        .setDescription(`Quantas **${itemData.name}** você deseja usar?\n\nVocê possui: **${maxQuantity}**`)
-        .setColor("#5865F2");
+        .setColor("#1a0a2e")
+        .setAuthor({ name: "💎 Pedras a Sacrificar" })
+        .setDescription(
+          `*Quantas pedras deseja oferecer ao ritual?*\n\n` +
+          `**Item:** ${itemData.name}\n` +
+          `**Disponível:** ${maxQuantity} unidade${maxQuantity !== 1 ? "s" : ""}\n` +
+          `**XP por pedra:** +${itemData.xp}`
+        )
+        .setFooter({ text: "Câmara de Evolução • Quanto mais pedras, mais poder" });
 
-      const qtyOptions = [1, 5, 10, 20, 50].filter(q => q <= maxQuantity).map(q => ({ label: `${q} unidades`, value: q.toString() }));
-      
+      const qtyOptions = [1, 5, 10, 20, 50].filter(q => q <= maxQuantity).map(q => ({ label: `${q} pedra${q !== 1 ? "s" : ""} (+${itemData.xp * q} XP)`, value: q.toString() }));
+
       if (maxQuantity > 1 && !qtyOptions.find(o => parseInt(o.value) === maxQuantity)) {
-        qtyOptions.push({ label: `Tudo (${maxQuantity})`, value: maxQuantity.toString() });
+        qtyOptions.push({ label: `Todas (${maxQuantity}) — +${itemData.xp * maxQuantity} XP`, value: maxQuantity.toString() });
       }
 
       const row = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId(`use_qty_select_${playerId}_${instanceId}_${itemId}`)
-          .setPlaceholder("Escolha a quantidade...")
+          .setPlaceholder("Quantas pedras sacrificar?")
           .addOptions(qtyOptions)
       );
 
@@ -1318,14 +1334,21 @@ module.exports = {
       const totalXP = itemData.xp * quantity;
 
       const embed = new EmbedBuilder()
-        .setTitle("⚠️ Confirmar Uso")
-        .setDescription(`Deseja usar **${quantity}x ${itemData.name}** em **${charData.name}**?\n\nEle ganhará **${totalXP} XP**.`)
-        .setColor("#E67E22");
+        .setColor("#c8aa6e")
+        .setAuthor({ name: "🔮 Confirmar Ritual de Evolução" })
+        .setDescription(
+          `*As pedras vibram ao redor de ${charData.name}, aguardando sua ordem.*\n\n` +
+          `**Guerreiro:** ${charData.name}\n` +
+          `**Pedras consumidas:** ${quantity}x ${itemData.name}\n` +
+          `**XP concedido:** +${totalXP}\n\n` +
+          `*Esta ação não pode ser desfeita.*`
+        )
+        .setFooter({ text: "Câmara de Evolução • Confirme para iniciar o ritual" });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`use_confirm_${playerId}_${instanceId}_${quantity}_${itemId}`)
-          .setLabel("Confirmar")
+          .setLabel("⚗️ Iniciar Ritual")
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId(`use_cancel_${playerId}`)
@@ -1489,30 +1512,17 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle(`${world.emoji} Modo História: ${world.name}`)
-        .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
+      const embed = EmbedManager.createStoryBossSelectEmbed(world, lastDefeated);
 
-      const row = new ActionRowBuilder();
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       world.bosses.forEach((boss) => {
-        let isUnlocked = false;
         const globalBossIndex = allBosses.findIndex(b => b.id === boss.id);
-        
-        if (globalBossIndex === 0) isUnlocked = true;
-        else {
-          const previousBossId = allBosses[globalBossIndex - 1].id;
-          const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-          const prevBossIndex = allBosses.findIndex(b => b.id === previousBossId);
-          if (lastDefeatedIndex >= prevBossIndex) isUnlocked = true;
-        }
-
-        const isDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
-
+        const isUnlocked = globalBossIndex === 0 || lastDefeatedIdx >= globalBossIndex - 1;
+        const isDefeated = lastDefeatedIdx >= globalBossIndex;
         row.addComponents(
           new ButtonBuilder()
             .setCustomId(`pve_intro_${boss.id}_${playerId}`)
@@ -1523,7 +1533,7 @@ module.exports = {
       });
 
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("◂ Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
       );
 
       return interaction.update({ embeds: [embed], components: [row, backButton] });
@@ -1538,27 +1548,20 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle("🌍 Modo História: Seleção de Universo")
-        .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
-
-      const row = new ActionRowBuilder();
+      const embed = EmbedManager.createStoryWorldSelectEmbed(lastDefeated);
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       storyConfig.worlds.forEach((world, index) => {
         let isWorldUnlocked = index === 0;
         if (index > 0) {
           const prevWorld = storyConfig.worlds[index - 1];
           const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
-          const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
           const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
           if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
         }
-
-        embed.addFields({ name: `${world.emoji} ${world.name}`, value: isWorldUnlocked ? "✅ Disponível" : "❌ Bloqueado", inline: true });
         row.addComponents(new ButtonBuilder().setCustomId(`story_world_${world.id}_${playerId}`).setLabel(world.name.split(" ")[1] || world.name).setEmoji(world.emoji).setStyle(isWorldUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(!isWorldUnlocked));
       });
 
@@ -1645,30 +1648,16 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle(`${world.emoji} Modo História: ${world.name}`)
-        .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
-
-      const row = new ActionRowBuilder();
+      const embed = EmbedManager.createStoryBossSelectEmbed(world, lastDefeated);
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       world.bosses.forEach((boss) => {
-        let isUnlocked = false;
         const globalBossIndex = allBosses.findIndex(b => b.id === boss.id);
-        
-        if (globalBossIndex === 0) isUnlocked = true;
-        else {
-          const previousBossId = allBosses[globalBossIndex - 1].id;
-          const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-          const prevBossIndex = allBosses.findIndex(b => b.id === previousBossId);
-          if (lastDefeatedIndex >= prevBossIndex) isUnlocked = true;
-        }
-
-        const isDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
-
+        const isUnlocked = globalBossIndex === 0 || lastDefeatedIdx >= globalBossIndex - 1;
+        const isDefeated = lastDefeatedIdx >= globalBossIndex;
         row.addComponents(
           new ButtonBuilder()
             .setCustomId(`pve_intro_${boss.id}_${playerId}`)
@@ -1679,7 +1668,7 @@ module.exports = {
       });
 
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("◂ Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
       );
 
       return interaction.update({ embeds: [embed], components: [row, backButton] });
@@ -1693,27 +1682,20 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle("🌍 Modo História: Seleção de Universo")
-        .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
-
-      const row = new ActionRowBuilder();
+      const embed = EmbedManager.createStoryWorldSelectEmbed(lastDefeated);
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       storyConfig.worlds.forEach((world, index) => {
         let isWorldUnlocked = index === 0;
         if (index > 0) {
           const prevWorld = storyConfig.worlds[index - 1];
           const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
-          const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
           const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
           if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
         }
-
-        embed.addFields({ name: `${world.emoji} ${world.name}`, value: isWorldUnlocked ? "✅ Disponível" : "❌ Bloqueado", inline: true });
         row.addComponents(new ButtonBuilder().setCustomId(`story_world_${world.id}_${playerId}`).setLabel(world.name.split(" ")[1] || world.name).setEmoji(world.emoji).setStyle(isWorldUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(!isWorldUnlocked));
       });
 
@@ -1768,30 +1750,16 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle(`${world.emoji} Modo História: ${world.name}`)
-        .setDescription("Selecione um vilão para enfrentar. Derrote o atual para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
-
-      const row = new ActionRowBuilder();
+      const embed = EmbedManager.createStoryBossSelectEmbed(world, lastDefeated);
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       world.bosses.forEach((boss) => {
-        let isUnlocked = false;
         const globalBossIndex = allBosses.findIndex(b => b.id === boss.id);
-        
-        if (globalBossIndex === 0) isUnlocked = true;
-        else {
-          const previousBossId = allBosses[globalBossIndex - 1].id;
-          const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-          const prevBossIndex = allBosses.findIndex(b => b.id === previousBossId);
-          if (lastDefeatedIndex >= prevBossIndex) isUnlocked = true;
-        }
-
-        const isDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
-
+        const isUnlocked = globalBossIndex === 0 || lastDefeatedIdx >= globalBossIndex - 1;
+        const isDefeated = lastDefeatedIdx >= globalBossIndex;
         row.addComponents(
           new ButtonBuilder()
             .setCustomId(`pve_intro_${boss.id}_${playerId}`)
@@ -1802,7 +1770,7 @@ module.exports = {
       });
 
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId(`story_back_${playerId}`).setLabel("◂ Voltar aos Mundos").setStyle(ButtonStyle.Secondary)
       );
 
       return interaction.update({ embeds: [embed], components: [row, backButton] });
@@ -1816,27 +1784,20 @@ module.exports = {
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
 
-      const embed = new EmbedBuilder()
-        .setTitle("🌍 Modo História: Seleção de Universo")
-        .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
-        .setColor("#5865F2")
-        ;
-
-      const row = new ActionRowBuilder();
+      const embed = EmbedManager.createStoryWorldSelectEmbed(lastDefeated);
       const allBosses = [];
       storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+      const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+      const row = new ActionRowBuilder();
       storyConfig.worlds.forEach((world, index) => {
         let isWorldUnlocked = index === 0;
         if (index > 0) {
           const prevWorld = storyConfig.worlds[index - 1];
           const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
-          const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
           const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
           if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
         }
-
-        embed.addFields({ name: `${world.emoji} ${world.name}`, value: isWorldUnlocked ? "✅ Disponível" : "❌ Bloqueado", inline: true });
         row.addComponents(new ButtonBuilder().setCustomId(`story_world_${world.id}_${playerId}`).setLabel(world.name.split(" ")[1] || world.name).setEmoji(world.emoji).setStyle(isWorldUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(!isWorldUnlocked));
       });
 
@@ -1907,6 +1868,11 @@ module.exports = {
       const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
       const partyMembers = party ? party.members : [playerId];
       
+      // Lista ordenada de todos os bosses do modo história
+      const allStoryBossesOrdered = [];
+      storyConfig.worlds.forEach(w => allStoryBossesOrdered.push(...w.bosses));
+      const currentBossIndex = allStoryBossesOrdered.findIndex(b => b.id === bossId);
+
       // Validar se todos os membros têm personagens equipados e não estão em combate
       for (const memberId of partyMembers) {
         const memberPlayer = playerRepository.getPlayer(memberId);
@@ -1919,6 +1885,17 @@ module.exports = {
           if (!memberStatus.can) {
             const memberUser = await interaction.client.users.fetch(memberId);
             return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+          }
+
+          // Verificar progresso do membro na história
+          const memberProgress = playerRepository.getStoryProgress(memberId);
+          const memberLastDefeated = memberProgress?.last_boss_defeated;
+          const memberLastIndex = memberLastDefeated ? allStoryBossesOrdered.findIndex(b => b.id === memberLastDefeated) : -1;
+
+          // Membro não chegou nessa parte ainda (não derrotou o boss anterior)
+          if (currentBossIndex > 0 && memberLastIndex < currentBossIndex - 1) {
+            const memberUser = await interaction.client.users.fetch(memberId);
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** ainda não chegou nessa parte da história!`, false)], ephemeral: true });
           }
         }
       }
@@ -2370,11 +2347,27 @@ module.exports = {
         if (!updatedBattle) return safeReply("Erro ao recuperar energia.");
       }
 
+      let reactionGifUrl = null;
       if (isButton && type === "reaction") {
         if (interaction.user.id !== battle.getOpponentId()) return safeReply("Não é sua vez!");
+        const reactingPlayer = battle.getOpponentPlayer();
+        const reactionSkill = reactingPlayer?.skills?.find(s => s.id === actionId);
+        reactionGifUrl = reactionSkill?.gifUrl || null;
+
         updatedBattle = BattleEngine.processReaction(battleId, interaction.user.id, actionId);
         if (!updatedBattle) return safeReply("Erro na reação.");
+
+        // Frieren counter: usa gif diferente se o contra-ataque disparou
+        if (updatedBattle.lastReactionGifOverride) {
+          reactionGifUrl = updatedBattle.lastReactionGifOverride;
+          updatedBattle.lastReactionGifOverride = null;
+        }
       }
+
+      // Buff GIF (ex: Determinação do Shinji) — mostra antes do resultado
+      const buffGifUrl = updatedBattle?.lastBuffGifUrl || null;
+      if (updatedBattle && updatedBattle.lastBuffGifUrl) updatedBattle.lastBuffGifUrl = null;
+
       if (updatedBattle) {
         const embed = EmbedManager.createBattleEmbed(updatedBattle);
         let components = [];
@@ -2405,7 +2398,24 @@ module.exports = {
         // Salvar referência da mensagem ANTES do update para uso nas atualizações automáticas do boss
         const battleMessage = interaction.message;
         updatedBattle.lastMessageId = battleMessage.id;
-        await interaction.update({ embeds: [embed], components: components });
+
+        if (buffGifUrl) {
+          // Mostra o GIF do buff (ex: Determinação) por 3s antes do próximo estado
+          const gifEmbed = EmbedManager.createBattleEmbed(updatedBattle);
+          gifEmbed.setImage(buffGifUrl);
+          await interaction.update({ embeds: [gifEmbed], components: [] });
+          await new Promise(r => setTimeout(r, 3000));
+          await battleMessage.edit({ embeds: [embed], components }).catch(() => {});
+        } else if (reactionGifUrl) {
+          // Mostra o GIF da reação por 5s antes do resultado final
+          const gifEmbed = EmbedManager.createBattleEmbed(updatedBattle);
+          gifEmbed.setImage(reactionGifUrl);
+          await interaction.update({ embeds: [gifEmbed], components: [] });
+          await new Promise(r => setTimeout(r, 5000));
+          await battleMessage.edit({ embeds: [embed], components }).catch(() => {});
+        } else {
+          await interaction.update({ embeds: [embed], components: components });
+        }
 
         // ✅ AUTOMAÇÃO PVE CENTRALIZADA: Reação e Turno do Boss
         if (updatedBattle.isPve) {

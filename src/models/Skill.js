@@ -22,7 +22,8 @@ class Skill {
     this.cost = data.cost;
     this.damage = data.damage || 0;
     this.cooldown = data.cooldown || 0;
-    this.currentCooldown = 0;
+    this.currentCooldown = data.initialCooldown || 0;
+    this.counterGifUrl = data.counterGifUrl || null;
     this.effect = data.effect || null;
     this.healPercent = data.healPercent || 0;
     this.gifUrl = data.gifUrl || "";

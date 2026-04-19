@@ -7,7 +7,7 @@ class EvolutionManager {
   static ITEMS = {
     "soul_stone_1": { name: "Pedra da Alma I",   xp: 50  },
     "soul_stone_2": { name: "Pedra da Alma II",  xp: 150 },
-    "soul_stone_3": { name: "Pedra da Alma III", xp: 500 }
+    "soul_stone_3": { name: "Pedra da Alma III", xp: 500 },
   };
 
   // Retorna o XP necessário para subir DO nível atual para o PRÓXIMO.

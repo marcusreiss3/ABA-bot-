@@ -18,43 +18,21 @@ module.exports = {
     const progress = playerRepository.getStoryProgress(playerId);
     const lastDefeated = progress.last_boss_defeated;
 
-    const embed = new EmbedBuilder()
-      .setTitle("🌍 Modo História: Seleção de Universo")
-      .setDescription("Escolha o universo que deseja explorar. Derrote o boss final de um mundo para desbloquear o próximo!")
-      .setColor("#5865F2")
-      .setTimestamp();
+    const embed = EmbedManager.createStoryWorldSelectEmbed(lastDefeated);
 
-    const row = new ActionRowBuilder();
-    
-    // Lista plana de todos os bosses para verificação global
     const allBosses = [];
     storyConfig.worlds.forEach(w => allBosses.push(...w.bosses));
+    const lastDefeatedIdx = allBosses.findIndex(b => b.id === lastDefeated);
 
+    const row = new ActionRowBuilder();
     storyConfig.worlds.forEach((world, index) => {
-      let isWorldUnlocked = false;
-      
-      if (index === 0) {
-        isWorldUnlocked = true;
-      } else {
-        // Um mundo está liberado se o último boss do mundo anterior foi derrotado
-        const previousWorld = storyConfig.worlds[index - 1];
-        const lastBossOfPrevWorld = previousWorld.bosses[previousWorld.bosses.length - 1].id;
-        
-        const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-        const prevWorldLastBossIndex = allBosses.findIndex(b => b.id === lastBossOfPrevWorld);
-        
-        if (lastDefeatedIndex >= prevWorldLastBossIndex) {
-          isWorldUnlocked = true;
-        }
+      let isWorldUnlocked = index === 0;
+      if (index > 0) {
+        const prevWorld = storyConfig.worlds[index - 1];
+        const lastBossPrev = prevWorld.bosses[prevWorld.bosses.length - 1].id;
+        const prevWorldLastIdx = allBosses.findIndex(b => b.id === lastBossPrev);
+        if (lastDefeatedIdx >= prevWorldLastIdx) isWorldUnlocked = true;
       }
-
-      const statusEmoji = isWorldUnlocked ? "🔓" : "🔒";
-      embed.addFields({
-        name: `${world.emoji} ${world.name}`,
-        value: isWorldUnlocked ? "✅ Disponível para exploração" : "❌ Bloqueado",
-        inline: true
-      });
-
       row.addComponents(
         new ButtonBuilder()
           .setCustomId(`story_world_${world.id}_${playerId}`)
@@ -64,8 +42,6 @@ module.exports = {
           .setDisabled(!isWorldUnlocked)
       );
     });
-
-    embed.setFooter({ text: "Sua jornada começa aqui!" });
 
     await message.reply({ embeds: [embed], components: [row] });
   }
