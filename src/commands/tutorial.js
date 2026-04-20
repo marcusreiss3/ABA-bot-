@@ -543,7 +543,7 @@ async function startTutorialBattle(interaction, userId, state) {
     const battle = BattleEngine.startBattle(
       userId, TUTORIAL_BOSS_ID, charInstance,
       { character_id: TUTORIAL_BOSS_ID, level: 1 },
-      true, null, false, null
+      true, null, false, state.channelId
     );
     battle.isTutorial = true;
     battle.tutorialUserId = userId;

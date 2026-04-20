@@ -19,6 +19,8 @@ const desafioCommand = require("./commands/desafio");
 const sairFilaCommand = require("./commands/sairfila");
 const torreCommand = require("./commands/torre");
 const torreRankCommand = require("./commands/torre-rank");
+const pvpRankCommand = require("./commands/pvp-rank");
+const helpCommand = require("./commands/help");
 const missionsCommand = require("./commands/missions");
 const fendaAncestralCommand = require("./commands/fenda-ancestral");
 const nexusZenithCommand = require("./commands/nexus-zenith");
@@ -192,6 +194,14 @@ client.on("messageCreate", async (message) => {
     torreRankCommand.execute(message, args);
   }
 
+  if (command === "!pvp-rank") {
+    pvpRankCommand.execute(message, args);
+  }
+
+  if (command === "!help" || command === "!ajuda") {
+    helpCommand.execute(message);
+  }
+
   if (command === "!missões" || command === "!missoes") {
     console.log("Comando missões detectado"); // DEBUG
     missionsCommand.execute(message);
@@ -257,9 +267,9 @@ client.once("ready", () => {
     BattleEngine.checkTimeouts(client);
   }, 60000);
 
-  // Detectar combates PVE travados a cada 2 minutos
+  // Detectar combates PVE travados a cada 1 minuto
   setInterval(async () => {
-    const stalledBattles = BattleEngine.getStalledBattles(2 * 60 * 1000);
+    const stalledBattles = BattleEngine.getStalledBattles(1 * 60 * 1000);
     const nowStall = Date.now();
     for (const battle of stalledBattles) {
       if (battle.stallNotifiedAt && (nowStall - battle.stallNotifiedAt) < 3 * 60 * 1000) continue;
@@ -275,7 +285,7 @@ client.once("ready", () => {
           .setColor("#FF6600")
           .setTitle("⚠️ Combate Travado?")
           .setDescription(
-            `O combate parece parado há mais de 2 minutos.\n` +
+            `O combate parece parado há mais de 1 minuto.\n` +
             `<@${leaderId}> pode forçar a retomada ou abandonar.`
           );
         const fixRow = new ActionRowBuilder().addComponents(
@@ -302,7 +312,7 @@ client.once("ready", () => {
         console.error("[STALL_CHECK] Erro:", e);
       }
     }
-  }, 2 * 60 * 1000);
+  }, 1 * 60 * 1000);
 });
 
 // Check if TOKEN exists in .env

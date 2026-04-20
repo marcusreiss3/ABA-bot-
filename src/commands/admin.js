@@ -47,6 +47,7 @@ module.exports = {
           "`!setchar resetcooldown @player` — Remove todos os cooldowns do jogador\n" +
           "`!setchar resetmissions <daily/weekly>` — Troca as missões globais\n" +
           "`!setchar completetitle @player <titleId>` — Marca um título como completo\n" +
+          "`!setchar removebattle @player` — Remove o jogador da batalha ativa (sem resetar cooldowns)\n" +
           "`!setchar resettutorial @player` — Reseta o tutorial bugado de um jogador.",
           false
         )]
@@ -230,6 +231,32 @@ module.exports = {
     }
 
     // -------------------------------------------------------
+    // Subcomando: removebattle
+    // -------------------------------------------------------
+    else if (subCommand === "removebattle" || subCommand === "rb") {
+      let found = null;
+      for (const [battleId, battle] of BattleEngine.activeBattles.entries()) {
+        const isInBattle =
+          battle.player1Id === targetUserId ||
+          battle.player2Id === targetUserId ||
+          (battle.partyMembers && battle.partyMembers.includes(targetUserId)) ||
+          (battle.team2 && battle.team2.includes(targetUserId));
+        if (isInBattle) { found = { battleId, battle }; break; }
+      }
+
+      if (!found) {
+        return message.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${targetUserId}> não está em nenhuma batalha ativa.`, false)] });
+      }
+
+      const { battleId, battle } = found;
+      const type = battle.isTower ? "Torre" : battle.isPve ? "PVE" : battle.isBossRush ? "Boss Rush" : "PVP";
+      battle.state = "finished";
+      BattleEngine.activeBattles.delete(battleId);
+
+      return message.reply({ embeds: [EmbedManager.createStatusEmbed(`⚡ <@${targetUserId}> foi removido da batalha **${type}** (ID: \`${battleId}\`). Cooldowns mantidos.`, true)] });
+    }
+
+    // -------------------------------------------------------
     // Subcomando: resettutorial
     // -------------------------------------------------------
     else if (subCommand === "resettutorial" || subCommand === "rt") {
@@ -247,7 +274,7 @@ module.exports = {
     else {
       return message.reply({
         embeds: [EmbedManager.createStatusEmbed(
-          "Subcomando inválido! Use `add`, `remove`, `addxp`, `additem`, `resetcooldown` ou `resettutorial`.",
+          "Subcomando inválido! Use `add`, `remove`, `addxp`, `additem`, `resetcooldown`, `removebattle` ou `resettutorial`.",
           false
         )]
       });

@@ -374,6 +374,16 @@ module.exports = {
     `).all(limit);
   },
 
+  getPvpRanking: (limit = 10) => {
+    return db.prepare(`
+      SELECT id AS player_id, pa, rank, equipped_instance_id
+      FROM players
+      WHERE pa > 0
+      ORDER BY pa DESC
+      LIMIT ?
+    `).all(limit);
+  },
+
   // --- Admin: Reset de Cooldowns ---
   resetTowerCooldown,
   resetAllChallengeCooldowns,

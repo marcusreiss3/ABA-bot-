@@ -207,18 +207,18 @@ class BattleEngine {
       battle.lastActionMessage = `🏳️ <@${playerId}> abandonou o combate!`;
       battle.winnerId = (battle.player1Id === playerId) ? battle.player2Id : battle.player1Id;
       
-      // Se for Torre Infinita, aplicar cooldown de 30 minutos em todos os membros da party que abandonaram
+      // Se for Torre Infinita, aplicar cooldown de 40 minutos em todos os membros da party que abandonaram
       if (battle.type === "tower") {
-        const cooldownTime = 30 * 60 * 1000;
+        const cooldownTime = 40 * 60 * 1000;
         const availableAt = Date.now() + cooldownTime;
         const playersToCooldown = battle.partyMembers || [playerId];
-        
-        console.log(`[TOWER COOLDOWN] Aplicando cooldown de 30 min para: ${playersToCooldown.join(", ")}`);
-        
+
+        console.log(`[TOWER COOLDOWN] Aplicando cooldown de 40 min para: ${playersToCooldown.join(", ")}`);
+
         playersToCooldown.forEach(mId => {
           playerRepository.updateTowerCooldown(mId, availableAt);
         });
-        battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party que abandonaram estão em cooldown de 30 minutos.`;
+        battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party que abandonaram estão em cooldown de 40 minutos.`;
       }
 
       // Recompensa de PA se for ranqueado no abandono
@@ -961,14 +961,14 @@ class BattleEngine {
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n\n💀 Todos os jogadores foram derrotados! O Boss venceu.`;
           
-          // Se for Torre Infinita, aplicar cooldown de 30 minutos em todos
+          // Se for Torre Infinita, aplicar cooldown de 40 minutos em todos
           if (battle.type === "tower") {
-            const cooldownTime = 30 * 60 * 1000;
+            const cooldownTime = 40 * 60 * 1000;
             const availableAt = Date.now() + cooldownTime;
             battle.partyMembers.forEach(mId => {
               playerRepository.updateTowerCooldown(mId, availableAt);
             });
-            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party estão em cooldown de 30 minutos.`;
+            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party estão em cooldown de 40 minutos.`;
           }
         }
       }

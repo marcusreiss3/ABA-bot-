@@ -19,6 +19,7 @@ const limboCommand = require("../commands/limbo");
 const protegerCommand = require("../commands/proteger");
 const tutorialCommand = require("../commands/tutorial");
 const ticketCommand = require("../commands/ticket");
+const helpCommand = require("../commands/help");
 const titleRepository = require("../database/repositories/titleRepository");
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 
@@ -89,6 +90,14 @@ module.exports = {
     // 0.0 Tutorial (must be before all other handlers)
     if (interaction.isButton() && interaction.customId.startsWith("tutorial_")) {
       return tutorialCommand.handleInteraction(interaction);
+    }
+
+    // Help menu
+    if (
+      (interaction.isButton() && interaction.customId.startsWith("help_")) ||
+      (interaction.isStringSelectMenu() && interaction.customId.startsWith("help_select_"))
+    ) {
+      return helpCommand.handleInteraction(interaction);
     }
 
     // Ticket system
