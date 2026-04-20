@@ -810,7 +810,7 @@ class BattleEngine {
 
     // --- Sung Jin-Woo: Beru lifesteal ---
     if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
-      const lifesteal = Math.floor(finalDamage * 0.05);
+      const lifesteal = Math.floor(finalDamage * 0.08);
       if (lifesteal > 0) {
         attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
         battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
