@@ -16,7 +16,7 @@ module.exports = {
           { id: "self_destruct", name: "Auto-Destruição", description: "O Saibaman se explode, causando dano massivo.", type: "attack", cost: 50, damage: 160, damageType: 'fisico', cooldown: 10 }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 3 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 5 }
     },
     {
       floor: 2,
@@ -33,7 +33,7 @@ module.exports = {
           { id: "muggy_ball", name: "Muggy Ball", description: "Uma bala de canhão potente e explosiva.", type: "attack", cost: 30, damage: 80, damageType: 'elemental', cooldown: 2 }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 5 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 7 }
     },
     {
       floor: 3,
@@ -50,7 +50,7 @@ module.exports = {
           { id: "fury_swipes", name: "Golpes de Fúria", description: "Uma sequência de arranhões furiosos.", type: "attack", cost: 25, damage: 70, damageType: 'fisico' }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 8 }
     },
     {
       floor: 4,
@@ -67,7 +67,7 @@ module.exports = {
           { id: "hidden_mist", name: "Névoa Oculta", description: "Zabuza se esconde na névoa, reduzindo o dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.2 } }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 10 }
     },
     {
       floor: 5,
@@ -84,7 +84,7 @@ module.exports = {
           { id: "katana_slash", name: "Corte de Katana", description: "Um corte preciso com sua katana.", type: "attack", cost: 15, damage: 85, damageType: 'fisico' }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 2 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 4 }
     },
     {
       floor: 6,
@@ -102,7 +102,7 @@ module.exports = {
           { id: "hisoka_trick", name: "Ilusão Fatal", description: "Golpe disfarçado que **ATORDOA** o oponente.", type: "attack", cost: 45, damage: 90, damageType: 'fisico', cooldown: 3, effect: { type: "stun", duration: 1 } }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 4 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
     },
     {
       floor: 7,
@@ -120,7 +120,7 @@ module.exports = {
           { id: "ulquiorra_regen", name: "Hierro", description: "Reduz drasticamente o dano com pele de aço.", type: "reaction", cost: 35, effect: { type: "damage_reduction", value: 0.15 }, cooldown: 2 }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 8 }
     },
     {
       floor: 8,
@@ -138,7 +138,7 @@ module.exports = {
           { id: "garou_awakening", name: "Despertar do Monstro", description: "Golpe avassalador que **ATORDOA** e causa **QUEIMADURA**.", type: "attack", cost: 60, damage: 280, damageType: 'fisico', cooldown: 4, effect: { type: "stun", duration: 1 } }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 8 }
     },
     {
       floor: 9,
@@ -155,7 +155,7 @@ module.exports = {
           { id: "god_thread", name: "God Thread", description: "Dez fios extremamente afiados e potentes.", type: "attack", cost: 60, damage: 420, damageType: 'fisico', cooldown: 2 }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 2 }
+      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 4 }
     },
     {
       floor: 10,
@@ -172,7 +172,7 @@ module.exports = {
           { id: "photon_flash", name: "Photon Flash", description: "Uma rajada de energia concentrada.", type: "attack", cost: 50, damage: 600, damageType: 'elemental' }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 3 }
+      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 6 }
     }
   ]
 };

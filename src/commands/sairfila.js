@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require("discord.js");
 const playerRepository = require("../database/repositories/playerRepository");
 const EmbedManager = require("../services/EmbedManager");
+const BattleEngine = require("../services/BattleEngine");
 
 const QUEUE_CHANNEL_ID = "1487958808897781780";
 
@@ -11,12 +12,16 @@ module.exports = {
   execute: async (message) => {
     const playerId = message.author.id;
 
-    if (!playerRepository.isInQueue(playerId)) {
+    const inQueue1v1 = playerRepository.isInQueue(playerId);
+    const inQueue3v3 = BattleEngine.isInTeamQueue(playerId);
+
+    if (!inQueue1v1 && !inQueue3v3) {
       return message.reply({ embeds: [EmbedManager.createStatusEmbed("Você não está em nenhuma fila no momento!", false)] });
     }
 
     try {
-      playerRepository.removeFromQueue(playerId);
+      if (inQueue1v1) playerRepository.removeFromQueue(playerId);
+      if (inQueue3v3) BattleEngine.removeFromTeamQueue(playerId);
 
       const leaveEmbed = new EmbedBuilder()
         .setColor("#FF0000")
