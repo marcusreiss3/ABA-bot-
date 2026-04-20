@@ -21,6 +21,7 @@ const torreCommand = require("./commands/torre");
 const torreRankCommand = require("./commands/torre-rank");
 const pvpRankCommand = require("./commands/pvp-rank");
 const helpCommand = require("./commands/help");
+const zenithLojaEmbedCommand = require("./commands/zenith-loja-embed");
 const missionsCommand = require("./commands/missions");
 const fendaAncestralCommand = require("./commands/fenda-ancestral");
 const nexusZenithCommand = require("./commands/nexus-zenith");
@@ -200,6 +201,10 @@ client.on("messageCreate", async (message) => {
 
   if (command === "!help" || command === "!ajuda") {
     helpCommand.execute(message);
+  }
+
+  if (command === "!zenith-loja-embed") {
+    zenithLojaEmbedCommand.execute(message);
   }
 
   if (command === "!missões" || command === "!missoes") {

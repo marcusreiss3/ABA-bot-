@@ -374,12 +374,11 @@ module.exports = {
     `).all(limit);
   },
 
-  getPvpRanking: (limit = 10) => {
+  getPvpRanking: (limit = 100) => {
     return db.prepare(`
       SELECT id AS player_id, pa, rank, equipped_instance_id
       FROM players
-      WHERE pa > 0
-      ORDER BY pa DESC
+      WHERE rank != 'Discípulo III' OR pa > 0
       LIMIT ?
     `).all(limit);
   },

@@ -361,18 +361,18 @@ class CharacterManager {
 
     if (characterId === "sung_jin_woo") {
       // Reação pessoal de Jin-Woo (não pertence a nenhuma sombra — instinto da classe assassino)
-      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 35, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 } });
+      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 35, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
 
       const igrisSkills = [
         new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "Golpe preciso de Igris. Aplica **1 Marca de Sangue**. Ao atingir 3 marcas, dano bônus automático (+40).", type: "attack", cost: 15, damage: 32, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
         new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "Investida devastadora de Igris. Aplica **2 Marcas de Sangue**.", type: "attack", cost: 25, damage: 45, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
-        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome todas as **Marcas de Sangue** (+35 dano/marca). Sem marcas: dano base. Sempre aplica 1 nova marca.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 1 }),
+        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome todas as **Marcas de Sangue** (+50 dano/marca). Sem marcas: dano base. Sempre aplica 1 nova marca.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 1 }),
         sjwReaction,
       ];
 
       const beruSkills = [
-        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Ataque rápido que drena vitalidade. Cura **6% do HP máximo**. 25% de chance de golpe duplo.", type: "attack", cost: 15, damage: 28, damageType: 'fisico', cooldown: 1}),
-        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 golpes garantidos + 35% de chance de um 3º. Cada hit cura **5% do HP máximo**.", type: "attack", cost: 25, damage: 16, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
+        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Ataque rápido que drena vitalidade. Roubo de vida passivo (5% do dano). 25% de chance de golpe duplo.", type: "attack", cost: 15, damage: 28, damageType: 'fisico', cooldown: 1}),
+        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 golpes garantidos + 35% de chance de um 3º. Cada hit cura **2% do HP máximo**.", type: "attack", cost: 25, damage: 16, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
         new Skill({ id: "sjw_devorar", name: "Devorar", description: "Golpe devastador com alto dano. 25% de chance de golpe duplo.", type: "attack", cost: 35, damage: 52, damageType: 'fisico', cooldown: 2 }),
         sjwReaction,
       ];

@@ -56,9 +56,9 @@ const BANNER_CONFIG = {
 };
 
 // ── Taxas ─────────────────────────────────────────────────────────────────────
-// EM destaque: 0.5% | EM outros: 0.2% | AL total: 5% | EC: 94.3%
-const RATE_EM_FEAT  = 0.50;
-const RATE_EM_OTHER = 0.20;
+// EM destaque: 0.7% | EM outros: 0.3% | AL total: 5% | EC: 94%
+const RATE_EM_FEAT  = 0.70;
+const RATE_EM_OTHER = 0.30;
 const RATE_AL       = 5.00;
 
 // ── Lógica de Pull ────────────────────────────────────────────────────────────

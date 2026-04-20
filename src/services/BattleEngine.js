@@ -207,9 +207,9 @@ class BattleEngine {
       battle.lastActionMessage = `🏳️ <@${playerId}> abandonou o combate!`;
       battle.winnerId = (battle.player1Id === playerId) ? battle.player2Id : battle.player1Id;
       
-      // Se for Torre Infinita, aplicar cooldown de 40 minutos em todos os membros da party que abandonaram
+      // Se for Torre Infinita, aplicar cooldown de 35 minutos em todos os membros da party que abandonaram
       if (battle.type === "tower") {
-        const cooldownTime = 40 * 60 * 1000;
+        const cooldownTime = 35 * 60 * 1000;
         const availableAt = Date.now() + cooldownTime;
         const playersToCooldown = battle.partyMembers || [playerId];
 
@@ -218,7 +218,7 @@ class BattleEngine {
         playersToCooldown.forEach(mId => {
           playerRepository.updateTowerCooldown(mId, availableAt);
         });
-        battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party que abandonaram estão em cooldown de 40 minutos.`;
+        battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party que abandonaram estão em cooldown de 35 minutos.`;
       }
 
       // Recompensa de PA se for ranqueado no abandono
@@ -449,21 +449,21 @@ class BattleEngine {
       if (skill.id === "sjw_corte_preciso") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 1);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 40;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+40** de dano bônus!`;
+          markBonus = 55;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+55** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_investida_cavaleiro") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 2);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 40;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+40** de dano bônus!`;
+          markBonus = 55;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+55** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_execucao_carmesim") {
         const existing = attacker.stacks["blood_marks"];
         if (existing > 0) {
-          markBonus = existing * 35;
+          markBonus = existing * 50;
           markMsg = `\n🗡️ **Execução Carmesim!** ${existing} marca(s) consumida(s)! **+${markBonus}** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
@@ -632,7 +632,7 @@ class BattleEngine {
     const shadowDesc = {
       igris: "Precisão e Execução — acumule **Marcas de Sangue**!",
       beru: "Agressão e Sustain — **roubo de vida** e golpe duplo!",
-      tank: "Defesa e Controle — **15% de redução física** passiva!",
+      tank: "Defesa e Controle — **15% redução física** + **regeneração de 4% HP** por turno!",
     };
 
     battle.lastActionMessage = `**${attacker.name}** invoca a sombra **${shadowEmojis[shadowId]} ${shadowNames[shadowId]}**!\n${shadowDesc[shadowId]}\nEscolha sua habilidade.`;
@@ -805,21 +805,20 @@ class BattleEngine {
       }
     }
 
-    // --- Sung Jin-Woo: Beru lifesteal e curas ---
+    // --- Sung Jin-Woo: Beru lifesteal ---
     if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
-      const lifesteal = Math.floor(finalDamage * 0.10);
-      attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
-      battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
-      if (skillUsed.id === "sjw_garras_vorazes") {
-        const extraHeal = Math.floor(attacker.maxHealth * 0.06);
-        attacker.health = Math.min(attacker.maxHealth, attacker.health + extraHeal);
-        battle.lastActionMessage += `\n💚 **Garras Vorazes:** Drena vitalidade! +**${extraHeal}** HP!`;
+      const lifesteal = Math.floor(finalDamage * 0.05);
+      if (lifesteal > 0) {
+        attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
+        battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
       }
       if (skillUsed.id === "sjw_frenesi_predador") {
         const hits = attacker.sjwFrenesiHits || 2;
-        const frenesiHeal = Math.floor(attacker.maxHealth * 0.05) * hits;
-        attacker.health = Math.min(attacker.maxHealth, attacker.health + frenesiHeal);
-        battle.lastActionMessage += `\n💚 **Frenesi do Predador:** Drenou em ${hits} hit(s)! +**${frenesiHeal}** HP!`;
+        const frenesiHeal = Math.floor(attacker.maxHealth * 0.02) * hits;
+        if (frenesiHeal > 0) {
+          attacker.health = Math.min(attacker.maxHealth, attacker.health + frenesiHeal);
+          battle.lastActionMessage += `\n💚 **Frenesi do Predador:** Drenou em ${hits} hit(s)! +**${frenesiHeal}** HP!`;
+        }
         attacker.sjwFrenesiHits = 0;
       }
     }
@@ -961,14 +960,14 @@ class BattleEngine {
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n\n💀 Todos os jogadores foram derrotados! O Boss venceu.`;
           
-          // Se for Torre Infinita, aplicar cooldown de 40 minutos em todos
+          // Se for Torre Infinita, aplicar cooldown de 35 minutos em todos
           if (battle.type === "tower") {
-            const cooldownTime = 40 * 60 * 1000;
+            const cooldownTime = 35 * 60 * 1000;
             const availableAt = Date.now() + cooldownTime;
             battle.partyMembers.forEach(mId => {
               playerRepository.updateTowerCooldown(mId, availableAt);
             });
-            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party estão em cooldown de 40 minutos.`;
+            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Todos os membros da party estão em cooldown de 35 minutos.`;
           }
         }
       }
@@ -1303,6 +1302,13 @@ class BattleEngine {
     // Reset da seleção de sombra de Sung Jin-Woo a cada novo turno
     if (nextPlayer.id === "sung_jin_woo") {
       battle.sjwShadowChosen = false;
+
+      // Tank: regeneração passiva de 4% do HP máximo no início de cada turno
+      if (nextPlayer.activeShadow === "tank" && nextPlayer.isAlive()) {
+        const regen = Math.floor(nextPlayer.maxHealth * 0.04);
+        nextPlayer.health = Math.min(nextPlayer.maxHealth, nextPlayer.health + regen);
+        battle.lastActionMessage += `\n🛡️ **Regeneração de Sombra:** Sung Jin-Woo recuperou **${regen}** HP (Tank passivo).`;
+      }
     }
 
     battle.state = "choosing_action";

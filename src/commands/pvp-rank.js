@@ -1,21 +1,8 @@
+"use strict";
 const { EmbedBuilder } = require("discord.js");
 const playerRepository = require("../database/repositories/playerRepository");
 const CharacterManager = require("../services/CharacterManager");
-
-const RANK_EMOJI = {
-  "Discípulo":    "🩶",
-  "Desperto":     "🥉",
-  "Vanguardista": "🥈",
-  "Lendário":     "🥇",
-  "Divino":       "💎",
-  "Supremo":      "👑",
-};
-
-function rankEmoji(rankName) {
-  if (!rankName) return "🩶";
-  const key = Object.keys(RANK_EMOJI).find(k => rankName.includes(k));
-  return key ? RANK_EMOJI[key] : "🩶";
-}
+const RankManager = require("../services/RankManager");
 
 const POSITION_MEDAL = ["🥇", "🥈", "🥉"];
 
@@ -23,9 +10,21 @@ module.exports = {
   name: "pvp-rank",
   description: "Mostra o ranking dos jogadores com mais PA no PVP Ranqueado.",
   async execute(message) {
-    const ranking = playerRepository.getPvpRanking(10);
+    // Busca os jogadores que já jogaram ranqueado e ordena corretamente:
+    // rank mais alto primeiro, depois maior PA dentro do mesmo rank
+    const raw = playerRepository.getPvpRanking(100);
 
-    if (ranking.length === 0) {
+    const sorted = raw
+      .filter(e => e.rank)
+      .sort((a, b) => {
+        const idxA = RankManager.getRankIndex(a.rank);
+        const idxB = RankManager.getRankIndex(b.rank);
+        if (idxB !== idxA) return idxB - idxA;
+        return b.pa - a.pa;
+      })
+      .slice(0, 10);
+
+    if (sorted.length === 0) {
       const EmbedManager = require("../services/EmbedManager");
       return message.reply({ embeds: [EmbedManager.createStatusEmbed("Ainda não há jogadores no ranking PVP.", false)] });
     }
@@ -36,8 +35,8 @@ module.exports = {
 
     let description = "";
 
-    for (let i = 0; i < ranking.length; i++) {
-      const entry = ranking[i];
+    for (let i = 0; i < sorted.length; i++) {
+      const entry = sorted[i];
       let username = `Jogador (${entry.player_id})`;
       try {
         const user = await message.client.users.fetch(entry.player_id).catch(() => null);
@@ -54,8 +53,7 @@ module.exports = {
       }
 
       const pos = i < 3 ? POSITION_MEDAL[i] : `**${i + 1}º**`;
-      const emoji = rankEmoji(entry.rank);
-      description += `${pos} <@${entry.player_id}> — ${emoji} ${entry.rank} · **${entry.pa} PA**\n  ${charInfo}\n\n`;
+      description += `${pos} <@${entry.player_id}> — ${entry.rank} · **${entry.pa} PA**\n  ${charInfo}\n\n`;
     }
 
     embed.setDescription(description);
