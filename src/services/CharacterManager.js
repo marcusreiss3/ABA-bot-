@@ -361,7 +361,7 @@ class CharacterManager {
 
     if (characterId === "sung_jin_woo") {
       // Reação pessoal de Jin-Woo (não pertence a nenhuma sombra — instinto da classe assassino)
-      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
+      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 35, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 } });
 
       const igrisSkills = [
         new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "Golpe preciso de Igris. Aplica **1 Marca de Sangue**. Ao atingir 3 marcas, dano bônus automático (+40).", type: "attack", cost: 15, damage: 32, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),

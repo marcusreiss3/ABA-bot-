@@ -807,17 +807,17 @@ class BattleEngine {
 
     // --- Sung Jin-Woo: Beru lifesteal e curas ---
     if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
-      const lifesteal = Math.floor(finalDamage * 0.20);
+      const lifesteal = Math.floor(finalDamage * 0.10);
       attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
       battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
       if (skillUsed.id === "sjw_garras_vorazes") {
-        const extraHeal = Math.floor(attacker.maxHealth * 0.10);
+        const extraHeal = Math.floor(attacker.maxHealth * 0.06);
         attacker.health = Math.min(attacker.maxHealth, attacker.health + extraHeal);
         battle.lastActionMessage += `\n💚 **Garras Vorazes:** Drena vitalidade! +**${extraHeal}** HP!`;
       }
       if (skillUsed.id === "sjw_frenesi_predador") {
         const hits = attacker.sjwFrenesiHits || 2;
-        const frenesiHeal = Math.floor(attacker.maxHealth * 0.08) * hits;
+        const frenesiHeal = Math.floor(attacker.maxHealth * 0.05) * hits;
         attacker.health = Math.min(attacker.maxHealth, attacker.health + frenesiHeal);
         battle.lastActionMessage += `\n💚 **Frenesi do Predador:** Drenou em ${hits} hit(s)! +**${frenesiHeal}** HP!`;
         attacker.sjwFrenesiHits = 0;
