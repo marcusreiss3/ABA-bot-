@@ -138,8 +138,8 @@ class BattleEngine {
       const partySize = partyMembers ? partyMembers.length : 1;
       if (partySize > 1) {
         const extraMembers = partySize - 1;
-        const healthMultiplier = 1 + extraMembers * 0.3; // 30% a mais de vida por pessoa extra
-        const damageMultiplier = 1 + extraMembers * 0.5; // 50% a mais de dano por pessoa extra
+        const healthMultiplier = 1 + extraMembers * 0.5; // 50% a mais de vida por pessoa extra
+        const damageMultiplier = 1 + extraMembers * 1.5; // 150% a mais de dano por pessoa extra
         const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
 
         character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
@@ -188,8 +188,8 @@ class BattleEngine {
       const partySize = partyMembers.length;
       if (partySize > 1) {
         const extraMembers = partySize - 1;
-        const healthMultiplier = 1 + extraMembers * 0.3; // 30% a mais de vida por pessoa extra
-        const damageMultiplier = 1 + extraMembers * 0.5; // 50% a mais de dano por pessoa extra
+        const healthMultiplier = 1 + extraMembers * 0.5; // 50% a mais de vida por pessoa extra
+        const damageMultiplier = 1 + extraMembers * 1.5; // 150% a mais de dano por pessoa extra
         const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
 
         character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
