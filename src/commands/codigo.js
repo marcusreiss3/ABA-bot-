@@ -12,6 +12,13 @@ const CODES = {
     ],
     description: "Código de acesso antecipado — Bem-vindo ao ABA!",
   },
+  PVPUPDATE: {
+    rewards: [
+      { type: "zenith", qty: 150 },
+      { type: "item",   id: "soul_stone_3", qty: 1 },
+    ],
+    description: "Atualização do PVP 3v3 — Obrigado por jogar!",
+  },
 };
 
 // ── DB helpers ────────────────────────────────────────────────────────────────

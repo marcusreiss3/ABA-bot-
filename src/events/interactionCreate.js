@@ -2106,7 +2106,7 @@ module.exports = {
     }
 
     // 1.0 Lógica de Confirmação de PVP
-    if (interaction.isButton() && interaction.customId.startsWith("pvp_")) {
+    if (interaction.isButton() && interaction.customId.startsWith("pvp_") && !interaction.customId.startsWith("pvp_team_")) {
       const parts = interaction.customId.split("_");
       const action = parts[1];
       const p1Id = parts[parts.length - 1]; // Para init_ranked e init_casual
@@ -2120,68 +2120,45 @@ module.exports = {
           const status = BattleEngine.canStartBattle(p1Id);
           if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
 
-          playerRepository.addToQueue(p1Id);
-          await interaction.update({ 
-            embeds: [EmbedManager.createStatusEmbed("Você entrou na fila ranqueada! O bot procurará um oponente compatível...", true)], 
-            components: [] 
-          });
-
-          // Anúncio no canal específico
-          const queueChannelId = "1487958808897781780";
-          try {
-            const qChannel = await interaction.client.channels.fetch(queueChannelId);
-            if (qChannel) {
-              const p1Data = playerRepository.getPlayer(p1Id);
-              const queueEmbed = new EmbedBuilder()
-                .setTitle("🏆 Nova Fila Ranqueada!")
-                .setDescription(`<@${p1Id}> entrou na fila para uma partida ranqueada!`)
-                .addFields({ name: "Rank Atual", value: `**${p1Data.rank}** (${p1Data.pa} PA)`, inline: true })
-                .setColor("#FFD700")
-                ;
-              await qChannel.send({ embeds: [queueEmbed] });
-            }
-          } catch (e) { console.error("Erro ao enviar anúncio de fila:", e); }
-
-          // Tentar Matchmaking
-          const queue = playerRepository.getQueue();
-          const p1Data = playerRepository.getPlayer(p1Id);
-          
-          for (const entry of queue) {
-            if (entry.player_id === p1Id) continue;
-            const p2Data = playerRepository.getPlayer(entry.player_id);
-            
-            if (RankManager.canFight(p1Data.rank, p2Data.rank)) {
-              playerRepository.removeFromQueue(p1Id);
-              playerRepository.removeFromQueue(p2Data.id);
-
-              const guild = interaction.guild;
-              const channel = await guild.channels.create({
-                name: `ranked-${p1Data.id.slice(-4)}-vs-${p2Data.id.slice(-4)}`,
-                type: ChannelType.GuildText,
-                permissionOverwrites: [
-                  { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-                  { id: p1Id, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] },
-                  { id: p2Data.id, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }
-                ]
-              });
-
-              const inst1 = playerRepository.getCharacterInstance(p1Data.equipped_instance_id);
-              const inst2 = playerRepository.getCharacterInstance(p2Data.equipped_instance_id);
-              const battle = BattleEngine.startBattle(p1Id, p2Data.id, inst1, inst2, false, null, true, channel.id);
-              
-              const embed = EmbedManager.createBattleEmbed(battle);
-              const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
-
-              await channel.send({
-                content: `⚔️ **PARTIDA RANQUEADA INICIADA!** ⚔️\n<@${p1Id}> vs <@${p2Data.id}>\n\nEste canal será apagado em 45 minutos ou ao fim da luta.`,
-                embeds: [embed],
-                components: components
-              });
-
-              return interaction.followUp({ content: `🎮 Partida ranqueada encontrada! Vá para o canal <#${channel.id}>`, ephemeral: true });
-            }
+          // 3v3: mostrar seleção de time
+          const savedTeam = BattleEngine.getRankedTeam(p1Id);
+          if (savedTeam) {
+            // Já tem time salvo — mostrar confirmação
+            const teamInfo = savedTeam.map((instId, i) => {
+              const inst = playerRepository.getCharacterInstance(instId);
+              const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+              return `${i + 1}. **${charDef.name}** [Lv${inst.level}]`;
+            }).join("\n");
+            const confirmEmbed = new EmbedBuilder()
+              .setTitle("🏆 Ranqueado 3v3 — Confirmar Time")
+              .setDescription(`Seu time atual:\n\n${teamInfo}\n\nDeseja entrar na fila com este time?`)
+              .setColor("#FFD700");
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId(`pvp_team_confirm_${p1Id}`).setLabel("✅ Confirmar Time").setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId(`pvp_team_change_${p1Id}`).setLabel("🔄 Mudar Time").setStyle(ButtonStyle.Secondary)
+            );
+            return interaction.update({ embeds: [confirmEmbed], components: [row] });
           }
-          return;
+
+          // Sem time salvo — mostrar seleção
+          const chars = playerRepository.getPlayerCharacters(p1Id);
+          if (chars.length < 3) {
+            return interaction.reply({ content: "❌ Você precisa ter pelo menos 3 personagens para jogar o 3v3!", ephemeral: true });
+          }
+          const options = chars.slice(0, 25).map(inst => {
+            const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+            return { label: `${charDef.name} [Lv${inst.level}]`, value: String(inst.id), description: `Raridade: ${charDef.rarity}` };
+          });
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`pvp_team_select_${p1Id}`)
+            .setPlaceholder("Selecione exatamente 3 personagens para seu time")
+            .setMinValues(3).setMaxValues(3)
+            .addOptions(options);
+          const selEmbed = new EmbedBuilder()
+            .setTitle("🏆 Ranqueado 3v3 — Escolha seu Time")
+            .setDescription("Selecione **3 personagens** que formarão seu time. O primeiro será o personagem inicial em campo.")
+            .setColor("#FFD700");
+          return interaction.update({ embeds: [selEmbed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
         }
 
         if (mode === "casual") {
@@ -2242,6 +2219,168 @@ module.exports = {
 
         return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Batalha iniciada no canal <#${channel.id}>!`, true)], components: [] });
       }
+    }
+
+    // 1.05 — Seleção de time 3v3 (select menu)
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("pvp_team_select_")) {
+      const ownerId = interaction.customId.replace("pvp_team_select_", "");
+      if (interaction.user.id !== ownerId) return interaction.reply({ content: "Apenas o dono pode selecionar o time!", ephemeral: true });
+
+      const selected = interaction.values; // array de instId strings
+      if (selected.length !== 3) return interaction.reply({ content: "❌ Selecione exatamente 3 personagens.", ephemeral: true });
+
+      BattleEngine.setRankedTeam(ownerId, selected);
+
+      const teamInfo = selected.map((instId, i) => {
+        const inst = playerRepository.getCharacterInstance(instId);
+        const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+        return `${i + 1}. **${charDef.name}** [Lv${inst.level}]`;
+      }).join("\n");
+
+      const confirmEmbed = new EmbedBuilder()
+        .setTitle("🏆 Ranqueado 3v3 — Confirmar Time")
+        .setDescription(`Time selecionado:\n\n${teamInfo}\n\nConfirme para entrar na fila!`)
+        .setColor("#FFD700");
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`pvp_team_confirm_${ownerId}`).setLabel("✅ Confirmar e Entrar na Fila").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`pvp_team_change_${ownerId}`).setLabel("🔄 Mudar Time").setStyle(ButtonStyle.Secondary)
+      );
+      return interaction.update({ embeds: [confirmEmbed], components: [row] });
+    }
+
+    // 1.06 — Botões de confirmação/mudança de time 3v3
+    if (interaction.isButton() && interaction.customId.startsWith("pvp_team_")) {
+      const parts = interaction.customId.split("_");
+      const action = parts[2]; // "confirm" or "change"
+      const ownerId = parts[3];
+      if (interaction.user.id !== ownerId) return interaction.reply({ content: "Apenas o dono pode usar isso!", ephemeral: true });
+
+      if (action === "change") {
+        const chars = playerRepository.getPlayerCharacters(ownerId);
+        if (chars.length < 3) return interaction.reply({ content: "❌ Você precisa de ao menos 3 personagens!", ephemeral: true });
+        const options = chars.slice(0, 25).map(inst => {
+          const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+          return { label: `${charDef.name} [Lv${inst.level}]`, value: String(inst.id), description: `Raridade: ${charDef.rarity}` };
+        });
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId(`pvp_team_select_${ownerId}`)
+          .setPlaceholder("Selecione 3 personagens")
+          .setMinValues(3).setMaxValues(3)
+          .addOptions(options);
+        const selEmbed = new EmbedBuilder()
+          .setTitle("🏆 Ranqueado 3v3 — Escolha seu Time")
+          .setDescription("Selecione **3 personagens**. O primeiro será o inicial em campo.")
+          .setColor("#FFD700");
+        return interaction.update({ embeds: [selEmbed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+      }
+
+      if (action === "confirm") {
+        const status = BattleEngine.canStartBattle(ownerId);
+        if (!status.can) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(status.reason, false)], ephemeral: true });
+
+        const savedTeam = BattleEngine.getRankedTeam(ownerId);
+        if (!savedTeam) return interaction.reply({ content: "❌ Selecione um time primeiro!", ephemeral: true });
+
+        BattleEngine.addToTeamQueue(ownerId);
+        await interaction.update({
+          embeds: [EmbedManager.createStatusEmbed("Você entrou na fila 3v3! Procurando oponente...", true)],
+          components: []
+        });
+
+        // Anúncio no canal de fila
+        const queueChannelId = "1487958808897781780";
+        try {
+          const qChannel = await interaction.client.channels.fetch(queueChannelId);
+          if (qChannel) {
+            const p1Data = playerRepository.getPlayer(ownerId);
+            const teamNames = savedTeam.map(id => {
+              const inst = playerRepository.getCharacterInstance(id);
+              return CharacterManager.getCharacter(inst.character_id, inst).name;
+            }).join(", ");
+            await qChannel.send({ embeds: [new EmbedBuilder()
+              .setTitle("🏆 Nova Fila 3v3 Ranqueada!")
+              .setDescription(`<@${ownerId}> entrou na fila 3v3!\nTime: **${teamNames}**`)
+              .addFields({ name: "Rank", value: `**${p1Data.rank}** (${p1Data.pa} PA)`, inline: true })
+              .setColor("#FFD700")] });
+          }
+        } catch (e) { console.error("Erro ao anunciar fila 3v3:", e); }
+
+        // Tentar matchmaking 3v3
+        const queue = BattleEngine.rankedTeamQueue;
+        const p1Data = playerRepository.getPlayer(ownerId);
+        for (const entry of queue) {
+          if (entry.playerId === ownerId) continue;
+          const p2Data = playerRepository.getPlayer(entry.playerId);
+          if (RankManager.canFight(p1Data.rank, p2Data.rank)) {
+            BattleEngine.removeFromTeamQueue(ownerId);
+            BattleEngine.removeFromTeamQueue(entry.playerId);
+
+            const guild = interaction.guild;
+            const channel = await guild.channels.create({
+              name: `3v3-${ownerId.slice(-4)}-vs-${entry.playerId.slice(-4)}`,
+              type: ChannelType.GuildText,
+              permissionOverwrites: [
+                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+                { id: ownerId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] },
+                { id: entry.playerId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }
+              ]
+            });
+
+            const battle = BattleEngine.startTeamBattle(ownerId, entry.playerId, channel.id);
+            const embed = EmbedManager.createBattleEmbed(battle);
+            const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
+
+            await channel.send({
+              content: `⚔️ **3v3 RANQUEADO INICIADO!** ⚔️\n<@${ownerId}> vs <@${entry.playerId}>\n\nCada jogador tem 3 personagens. Quando um cair, o próximo entra automaticamente!`,
+              embeds: [embed],
+              components
+            });
+
+            return interaction.followUp({ content: `🎮 Partida 3v3 encontrada! Canal: <#${channel.id}>`, ephemeral: true });
+          }
+        }
+        return; // Na fila, aguardando oponente
+      }
+    }
+
+    // 1.07 — Troca de personagem em 3v3
+    if (interaction.isButton() && interaction.customId.startsWith("team_swap_")) {
+      const battleId = interaction.customId.replace("team_swap_", "");
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle || battle.state !== "choosing_action") return interaction.reply({ content: "❌ Não é possível trocar agora.", ephemeral: true });
+      if (battle.currentPlayerTurnId !== interaction.user.id) return interaction.reply({ content: "❌ Não é seu turno!", ephemeral: true });
+
+      const isP1 = interaction.user.id === battle.player1Id;
+      const team = isP1 ? battle.p1Team : battle.p2Team;
+      const activeIdx = isP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+
+      const benchOptions = team
+        .map((c, i) => ({ c, i }))
+        .filter(({ c, i }) => i !== activeIdx && c.isAlive())
+        .map(({ c, i }) => ({ label: `${c.name} [Lv${c.level}] — ${c.health}/${c.maxHealth} HP`, value: String(i) }));
+
+      if (benchOptions.length === 0) return interaction.reply({ content: "❌ Sem personagens no banco para trocar.", ephemeral: true });
+
+      const swapMenu = new StringSelectMenuBuilder()
+        .setCustomId(`team_doswap_${battleId}`)
+        .setPlaceholder("Escolha o personagem para entrar em campo")
+        .addOptions(benchOptions);
+
+      return interaction.reply({ content: "Escolha quem entra em campo (gasta o turno):", components: [new ActionRowBuilder().addComponents(swapMenu)], ephemeral: true });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("team_doswap_")) {
+      const battleId = interaction.customId.replace("team_doswap_", "");
+      const newIdx = parseInt(interaction.values[0]);
+      const battle = BattleEngine.processTeamSwap(battleId, interaction.user.id, newIdx);
+      if (!battle) return interaction.reply({ content: "❌ Troca inválida.", ephemeral: true });
+
+      await interaction.update({ content: "✅ Personagem trocado!", components: [] });
+
+      const embed = EmbedManager.createBattleEmbed(battle);
+      const components = battle.state === "finished" ? [] : ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
+      await safeEditBattleMessage(interaction.client, battle, { embeds: [embed], components });
+      return;
     }
 
     // 1.1 Lógica de Abandono de Combate
@@ -2614,24 +2753,47 @@ module.exports = {
       const parts = interaction.customId.split("_");
       const playerId = parts[parts.length - 1];
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão de missões!", ephemeral: true });
-      const embed = new EmbedBuilder()
-        .setTitle("📜 Menu de Missões")
-        .setDescription("Selecione o tipo de missão que deseja visualizar.")
-        .setColor("#2ECC71")
-        .setThumbnail(interaction.user.displayAvatarURL());
+      const { embeds, components } = missionsCommand.createMainMenuEmbed(playerId);
+      return interaction.update({ embeds, components });
+    }
 
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId(`show_daily_missions_${playerId}`)
-            .setLabel("Missões Diárias")
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId(`show_weekly_missions_${playerId}`)
-            .setLabel("Missões Semanais")
-            .setStyle(ButtonStyle.Primary)
-        );
-      return interaction.update({ embeds: [embed], components: [row] });
+    if (interaction.isButton() && interaction.customId.startsWith("show_level_missions_")) {
+      const parts = interaction.customId.split("_");
+      const playerId = parts[parts.length - 1];
+      if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua sessão de missões!", ephemeral: true });
+      const { embeds, components } = missionsCommand.createLevelMissionsEmbed(playerId);
+      return interaction.update({ embeds, components });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("claim_level_milestone_")) {
+      // customId: claim_level_milestone_{lvl}_{userId}
+      const parts = interaction.customId.split("_");
+      const userId = interaction.user.id;
+      const lvl = parseInt(parts[3]);
+      const ownerId = parts[4];
+      if (userId !== ownerId) return interaction.reply({ content: "Esta não é a sua sessão!", ephemeral: true });
+
+      const missionId = `level_milestone_${lvl}`;
+      if (missionRepository.isClaimed(userId, missionId)) {
+        return interaction.reply({ content: "❌ Você já resgatou esta recompensa.", ephemeral: true });
+      }
+
+      const player = playerRepository.getPlayer(userId);
+      if ((player.level || 1) < lvl) {
+        return interaction.reply({ content: `❌ Você ainda não atingiu o nível ${lvl}.`, ephemeral: true });
+      }
+
+      playerRepository.updatePlayer(userId, {
+        zenith_fragments: (player.zenith_fragments || 0) + missionsCommand.LEVEL_REWARD_ZENITH
+      });
+      missionRepository.claimReward(userId, missionId);
+
+      const { embeds, components } = missionsCommand.createLevelMissionsEmbed(userId);
+      return interaction.update({
+        content: `✅ **Recompensa de Nível ${lvl} resgatada!** +${missionsCommand.LEVEL_REWARD_ZENITH} ${require("../config/emojis").ZENITH}`,
+        embeds,
+        components
+      });
     }
 
     // --- Lógica de Resgate de Missões ---

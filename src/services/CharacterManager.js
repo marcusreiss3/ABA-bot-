@@ -594,9 +594,13 @@ class CharacterManager {
       baseSkills.push(new Skill({ id: "itachi_crow", name: "Genjutsu de Corvos", description: "Oponente fica **ATORDOADO**.", type: "attack", cost: 40, damage: 30, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "pain") {
       baseSkills[0].name = "Shinra Tensei";
+      baseSkills[0].damage = 45;
+      baseSkills[0].cooldown = 2;
       baseSkills[0].effect = { type: "stun", duration: 1 };
       baseSkills[0].description = "Onda de repulsão gravitacional que **ATORDOA**.";
       baseSkills[1].name = "Chibaku Tensei";
+      baseSkills[1].damage = 80;
+      baseSkills[1].cooldown = 3;
       baseSkills[1].effect = { type: "stun", duration: 1 };
       baseSkills[1].description = "Cria um ponto gravitacional que **ATORDOA** e prende.";
       baseSkills.push(new Skill({ id: "pain_absorb", name: "Absorção de Chakra", description: "Recupera 50 de energia.", type: "buff", cost: 0, cooldown: 3 }));

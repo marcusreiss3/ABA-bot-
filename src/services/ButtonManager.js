@@ -96,6 +96,23 @@ class ButtonManager {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(isDisabled);
 
+    // Botão de troca de personagem no 3v3
+    if (battle && battle.isTeamPvp && !isDisabled) {
+      const isP1Turn = battle.currentPlayerTurnId === battle.player1Id;
+      const team = isP1Turn ? battle.p1Team : battle.p2Team;
+      const activeIdx = isP1Turn ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+      const hasBench = team && team.some((c, i) => i !== activeIdx && c.isAlive());
+      if (hasBench) {
+        const swapButton = new ButtonBuilder()
+          .setCustomId(`team_swap_${battleId}`)
+          .setLabel("🔄 Trocar Personagem (gasta turno)")
+          .setStyle(ButtonStyle.Secondary);
+        const swapRow = new ActionRowBuilder().addComponents(recoverButton, swapButton, abandonButton);
+        rows.push(swapRow);
+        return rows;
+      }
+    }
+
     const buttonRow = new ActionRowBuilder().addComponents(recoverButton, abandonButton);
     rows.push(buttonRow);
 

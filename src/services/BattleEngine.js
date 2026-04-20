@@ -9,6 +9,112 @@ const Emojis = require("../config/emojis.js");
 class BattleEngine {
   constructor() {
     this.activeBattles = new Map();
+    // 3v3 ranked: saved teams and queue (in-memory, per session)
+    this.rankedTeams = new Map();    // playerId -> [instId1, instId2, instId3]
+    this.rankedTeamQueue = [];       // [{playerId, joinedAt}]
+  }
+
+  // ── 3v3 Team Management ──────────────────────────────────────────────────────
+
+  setRankedTeam(playerId, instanceIds) {
+    this.rankedTeams.set(playerId, instanceIds);
+  }
+
+  getRankedTeam(playerId) {
+    return this.rankedTeams.get(playerId) || null;
+  }
+
+  addToTeamQueue(playerId) {
+    if (!this.rankedTeamQueue.find(e => e.playerId === playerId)) {
+      this.rankedTeamQueue.push({ playerId, joinedAt: Date.now() });
+    }
+  }
+
+  removeFromTeamQueue(playerId) {
+    this.rankedTeamQueue = this.rankedTeamQueue.filter(e => e.playerId !== playerId);
+  }
+
+  isInTeamQueue(playerId) {
+    return !!this.rankedTeamQueue.find(e => e.playerId === playerId);
+  }
+
+  startTeamBattle(p1Id, p2Id, channelId) {
+    const battleId = Math.random().toString(36).substring(2, 9);
+    const p1InstIds = this.rankedTeams.get(p1Id);
+    const p2InstIds = this.rankedTeams.get(p2Id);
+
+    const buildTeam = (instIds, ownerId) => instIds.map(instId => {
+      const inst = playerRepository.getCharacterInstance(instId);
+      const char = CharacterManager.getCharacter(inst.character_id, inst);
+      char.ownerId = ownerId;
+      return char;
+    });
+
+    const p1Team = buildTeam(p1InstIds, p1Id);
+    const p2Team = buildTeam(p2InstIds, p2Id);
+
+    const character1 = p1Team[0];
+    const character2 = p2Team[0];
+
+    character1.ownerId = p1Id;
+    character2.ownerId = p2Id;
+
+    const turnOrder = Math.random() < 0.5 ? [p1Id, p2Id] : [p2Id, p1Id];
+
+    const battle = new Battle({
+      id: battleId,
+      player1Id: p1Id,
+      player2Id: p2Id,
+      character1,
+      character2,
+      turnOrder,
+      currentPlayerTurnId: turnOrder[0],
+      state: "choosing_action",
+      lastActionMessage: "⚔️ **3v3 Ranqueado iniciado!** O destino decidirá quem ataca primeiro."
+    });
+
+    battle.isTeamPvp = true;
+    battle.isRanked = true;
+    battle.isPve = false;
+    battle.type = "pvp";
+    battle.channelId = channelId;
+    battle.startedAt = Date.now();
+    battle.p1Team = p1Team;
+    battle.p2Team = p2Team;
+    battle.p1ActiveIdx = 0;
+    battle.p2ActiveIdx = 0;
+
+    this.activeBattles.set(battleId, battle);
+    return battle;
+  }
+
+  processTeamSwap(battleId, playerId, newCharIdx) {
+    const battle = this.getBattle(battleId);
+    if (!battle || battle.state !== "choosing_action" || battle.currentPlayerTurnId !== playerId) return null;
+    if (!battle.isTeamPvp) return null;
+
+    const isP1 = playerId === battle.player1Id;
+    const team = isP1 ? battle.p1Team : battle.p2Team;
+    const activeIdx = isP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+
+    if (newCharIdx === activeIdx || !team[newCharIdx] || !team[newCharIdx].isAlive()) return null;
+
+    const oldChar = team[activeIdx];
+    const newChar = team[newCharIdx];
+
+    if (isP1) {
+      battle.p1ActiveIdx = newCharIdx;
+      battle.character1 = newChar;
+    } else {
+      battle.p2ActiveIdx = newCharIdx;
+      battle.character2 = newChar;
+    }
+
+    battle.lastActionMessage = `🔄 **${oldChar.name}** saiu de campo! **${newChar.name}** entrou! *(turno gasto)*`;
+    battle.switchTurn();
+    this.endTurnUpdate(battle);
+    battle.state = "choosing_action";
+    return battle;
   }
 
   startBattle(player1Id, player2Id, p1Instance, p2Instance, isPve = false, partyMembers = null, isRanked = false, channelId = null) {
@@ -177,11 +283,16 @@ class BattleEngine {
     if (this.isPlayerInBattle(playerId)) {
       return { can: false, reason: "Você já está em um combate ativo!" };
     }
-    
-    // Verificação de fila ranqueada
+
+    // Verificação de fila ranqueada (1v1)
     const playerRepository = require("../database/repositories/playerRepository");
     if (playerRepository.isInQueue(playerId)) {
       return { can: false, reason: "Você já está na fila ranqueada! Saia da fila para iniciar outra atividade." };
+    }
+
+    // Verificação de fila ranqueada 3v3
+    if (this.isInTeamQueue(playerId)) {
+      return { can: false, reason: "Você já está na fila 3v3 ranqueada! Aguarde ou cancele." };
     }
 
     return { can: true };
@@ -926,30 +1037,67 @@ class BattleEngine {
         });
       } else if (!battle.isPve) {
         if (defender.health <= 0) {
-          battle.state = "finished";
-          battle.winnerId = attacker.ownerId;
-          battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
-          
-          // Missões PVP
-          if (battle.isRanked) {
-            missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
-            missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
-            // Título: Soberano da Carnificina
-            titleRepository.addProgress(battle.winnerId, "pvp_champion");
-          } else {
-            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
-            missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
-          }
+          // 3v3: tentar auto-swap antes de declarar fim
+          if (battle.isTeamPvp) {
+            const defIsP1 = defender === battle.character1;
+            const team = defIsP1 ? battle.p1Team : battle.p2Team;
+            const activeIdx = defIsP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+            const nextIdx = team.findIndex((c, i) => i !== activeIdx && c.isAlive());
 
-          // Recompensa de PA se for ranqueado
-          if (battle.isRanked) {
-            const RankManager = require("./RankManager");
-            const winnerResult = RankManager.updatePA(battle.winnerId, true);
-            const loserId = (battle.player1Id === battle.winnerId) ? battle.player2Id : battle.player1Id;
-            const loserResult = RankManager.updatePA(loserId, false);
-            
-            battle.lastActionMessage += `\n📈 **${attacker.name}** ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
-            battle.lastActionMessage += `\n📉 O oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado!`;
+
+            if (nextIdx >= 0) {
+              // Auto-swap gratuito
+              if (defIsP1) {
+                battle.p1ActiveIdx = nextIdx;
+                battle.character1 = team[nextIdx];
+              } else {
+                battle.p2ActiveIdx = nextIdx;
+                battle.character2 = team[nextIdx];
+              }
+              battle.lastActionMessage += `\n⚡ **${team[nextIdx].name}** entra automaticamente em campo!`;
+              // Batalha continua — não encerra
+            } else {
+              // Toda a equipe morreu
+              battle.state = "finished";
+              battle.winnerId = attacker.ownerId;
+              battle.lastActionMessage += `\n\n🏆 **Todos os personagens do oponente foram derrotados! ${attacker.name} e seu time vencem!**`;
+
+              if (battle.isRanked) {
+                missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+                missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+                titleRepository.addProgress(battle.winnerId, "pvp_champion");
+                const RankManager = require("./RankManager");
+                const winnerResult = RankManager.updatePA(battle.winnerId, true);
+                const loserId = battle.winnerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+                const loserResult = RankManager.updatePA(loserId, false);
+                battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+                battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+              }
+            }
+          } else {
+            // 1v1 normal
+            battle.state = "finished";
+            battle.winnerId = attacker.ownerId;
+            battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
+
+            if (battle.isRanked) {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+              missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+              titleRepository.addProgress(battle.winnerId, "pvp_champion");
+            } else {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+              missionRepository.addProgress(battle.winnerId, "win_3_pvp_casual");
+            }
+
+            if (battle.isRanked) {
+              const RankManager = require("./RankManager");
+              const winnerResult = RankManager.updatePA(battle.winnerId, true);
+              const loserId = (battle.player1Id === battle.winnerId) ? battle.player2Id : battle.player1Id;
+              const loserResult = RankManager.updatePA(loserId, false);
+              battle.lastActionMessage += `\n📈 **${attacker.name}** ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+              battle.lastActionMessage += `\n📉 O oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            }
           }
         }
       } else {
@@ -1220,13 +1368,14 @@ class BattleEngine {
   }
 
   applyStatusTick(character, battle) {
+    const isPartyPve = battle && battle.isPve && battle.partyCharacters && battle.partyCharacters.length > 1;
     character.statusEffects.forEach(effect => {
       let tickDamage = 0;
       if (effect.type === "burn") {
-        tickDamage = Math.floor(character.maxHealth * effect.value);
+        tickDamage = Math.floor(character.maxHealth * effect.value * (isPartyPve ? 0.5 : 1));
         battle.lastActionMessage += `\n🔥 **${character.name}** sofreu **${tickDamage}** de Queimadura!`;
       } else if (effect.type === "bleed") {
-        tickDamage = Math.floor(character.health * effect.value);
+        tickDamage = Math.floor(character.health * effect.value * (isPartyPve ? 0.5 : 1));
         battle.lastActionMessage += `\n🩸 **${character.name}** sofreu **${tickDamage}** de Sangramento!`;
       } else if (effect.type === "brutal_counter") {
         character.health = Math.max(0, character.health - effect.value);

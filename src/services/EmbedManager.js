@@ -57,17 +57,39 @@ class EmbedManager {
         value: this.formatCharStats(char2),
         inline: true
       });
+    } else if (battle.isTeamPvp) {
+      const formatTeam = (team, activeIdx, label) => {
+        return team.map((c, i) => {
+          const active = i === activeIdx;
+          const dead = !c.isAlive();
+          const icon = dead ? "💀" : active ? "⚔️" : "💤";
+          const hp = dead ? "DERROTADO" : `${c.health}/${c.maxHealth} HP`;
+          return `${icon} **${c.name}** [Lv${c.level}] — ${hp}`;
+        }).join("\n");
+      };
+      embed.addFields(
+        {
+          name: `🔵 Time de <@${battle.player1Id}>`,
+          value: formatTeam(battle.p1Team, battle.p1ActiveIdx),
+          inline: true
+        },
+        {
+          name: `🔴 Time de <@${battle.player2Id}>`,
+          value: formatTeam(battle.p2Team, battle.p2ActiveIdx),
+          inline: true
+        }
+      );
     } else {
       embed.addFields(
-        { 
-          name: `🥋 ${char1.name} (P1) [Lvl ${char1.level}]`, 
-          value: this.formatCharStats(char1), 
-          inline: true 
+        {
+          name: `🥋 ${char1.name} (P1) [Lvl ${char1.level}]`,
+          value: this.formatCharStats(char1),
+          inline: true
         },
-        { 
-          name: `🥋 ${char2.name} (P2) [Lvl ${char2.level}]`, 
-          value: this.formatCharStats(char2), 
-          inline: true 
+        {
+          name: `🥋 ${char2.name} (P2) [Lvl ${char2.level}]`,
+          value: this.formatCharStats(char2),
+          inline: true
         }
       );
     }
