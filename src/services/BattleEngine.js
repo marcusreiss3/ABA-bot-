@@ -139,7 +139,7 @@ class BattleEngine {
       if (partySize > 1) {
         const extraMembers = partySize - 1;
         const healthMultiplier = 1 + extraMembers * 0.5; // 50% a mais de vida por pessoa extra
-        const damageMultiplier = 1 + extraMembers * 1.5; // 150% a mais de dano por pessoa extra
+        const damageMultiplier = 1 + extraMembers * 0.7; // 70% a mais de dano por pessoa extra
         const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
 
         character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
@@ -189,7 +189,7 @@ class BattleEngine {
       if (partySize > 1) {
         const extraMembers = partySize - 1;
         const healthMultiplier = 1 + extraMembers * 0.5; // 50% a mais de vida por pessoa extra
-        const damageMultiplier = 1 + extraMembers * 1.5; // 150% a mais de dano por pessoa extra
+        const damageMultiplier = 1 + extraMembers * 0.7; // 70% a mais de dano por pessoa extra
         const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
 
         character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
@@ -661,7 +661,7 @@ class BattleEngine {
             if (ok) damage = Math.floor(damage * (1 - artifact.secondaryEffect.value));
           }
         });
-        const finalDamage = defender.takeDamage(damage, skill.damageType);
+        const finalDamage = defender.takeDamage(damage);
         // Hogyoku e Mahoraga stacks
         if (finalDamage > 0) {
           attacker.equippedArtifacts.forEach(a => { if (a.effectType === "stacking_damage") attacker.addStack("hogyoku", 6); });
@@ -837,7 +837,7 @@ class BattleEngine {
         reaction.startCooldown();
         
         if (reaction.effect.type === "damage_reduction") {
-          if (reaction.effect.negateElemental && skillUsed.damageType === 'elemental') {
+          if (reaction.effect.negateElemental && skillUsed.elementType) {
             damageToApply = 0;
             avoidedEffect = true;
             battle.lastActionMessage += `\n⚔️ **${reaction.name}** anulou completamente o ataque elemental!`;
@@ -889,7 +889,7 @@ class BattleEngine {
       }
     });
 
-    const finalDamage = defender.takeDamage(damageToApply, skillUsed.damageType);
+    const finalDamage = defender.takeDamage(damageToApply);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
 
     // ── Stacks pós-ataque ─────────────────────────────────────────────────
@@ -1466,6 +1466,11 @@ class BattleEngine {
     battle.state = "choosing_action";
   }
 
+  static ELEMENT_STRONG = {
+    fogo: 'vento', vento: 'terra', terra: 'agua', agua: 'gelo',
+    gelo: 'raio', raio: 'luz', luz: 'escuridao', escuridao: 'fogo',
+  };
+
   calculateDamage(attacker, defender, skill, battle) {
     let damage = skill.damage;
     attacker.equippedArtifacts.forEach(artifact => {
@@ -1473,7 +1478,7 @@ class BattleEngine {
         const conditionMet = !artifact.conditionType ||
           (artifact.conditionType === "anime"      && attacker.anime === artifact.conditionValue) ||
           (artifact.conditionType === "character"  && attacker.id   === artifact.conditionValue) ||
-          (artifact.conditionType === "damageType" && skill.damageType === artifact.conditionValue) ||
+          (artifact.conditionType === "damageType" && skill.elementType === artifact.conditionValue) ||
           (artifact.conditionType === "hpAdvantage" && attacker.health > defender.health);
         if (conditionMet) {
           if (artifact.effectUnit === "percentage") damage *= (1 + artifact.effectValue);
@@ -1581,6 +1586,20 @@ class BattleEngine {
     defender.buffs.forEach(buff => {
       if (buff.type === "debuff_damage_taken") damage *= (1 + buff.value);
     });
+
+    // ── Vantagem Elemental ────────────────────────────────────────────────────
+    const attackEl = skill.elementType;
+    const defEl    = defender.element;
+    if (attackEl && defEl && BattleEngine.ELEMENT_STRONG[attackEl] === defEl) {
+      const sameElement = attacker.element === attackEl;
+      const bonus = sameElement ? 1.5 : 1.25;
+      damage *= bonus;
+      if (sameElement) {
+        battle.lastActionMessage += `\n🔥 **Super Efetivo!** O elemento do atacante potencializa o golpe!`;
+      } else {
+        battle.lastActionMessage += `\n✨ **Golpe Efetivo!** Vantagem elemental!`;
+      }
+    }
 
     return Math.floor(damage);
   }

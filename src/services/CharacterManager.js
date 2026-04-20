@@ -17,6 +17,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Naruto (Clássico)",
         anime: "naruto",
+        element: "vento",
         health: 110,
         maxHealth: 110,
         energy: 100,
@@ -24,11 +25,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/kbDbGYx/imagem-2026-04-16-232348110.png",
         skills: [
-          new Skill({ id: "punch", name: "Soco", description: "Um soco básico.", type: "attack", cost: 5, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/RGvWK7F6/undefined-Imgur.gifhttps://i.ibb.co/Z1BSgBSs/undefined-Imgur-1.gif" }),
+          new Skill({ id: "punch", name: "Soco", description: "Soco básico.", type: "attack", cost: 5, damage: 12, elementType: 'vento', gifUrl: "https://i.ibb.co/RGvWK7F6/undefined-Imgur.gifhttps://i.ibb.co/Z1BSgBSs/undefined-Imgur-1.gif" }),
           new Skill({ id: "kage_bunshin", name: "Kage Bunshin", description: "Cria clones (stack até 3x).", type: "buff", cost: 15, cooldown: 1, gifUrl: "https://i.pinimg.com/originals/35/46/7a/35467acda53a479e31600e1e44181def.gif" }),
-          new Skill({ id: "rasengan", name: "Rasengan", description: "Esfera de energia que **ATORDOA**.", type: "attack", cost: 35, damage: 35, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/VY0p4kvw/naruto-rasengan.gif" }),
-          new Skill({ id: "kyuubi_chakra", name: "Chakra da Kyuubi", description: "Recupera 20% da vida total.", type: "heal", cost: 40, healPercent: 20, cooldown: 4, gifUrl: "https://i.ibb.co/TD1KKW69/Adobe-Express-y-Bdemv-J.gif" }),
-          new Skill({ id: "substitution", name: "Substituição", description: "Reduz o dano recebido em 50%.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/JWsZ0d7S/Adobe-Express-ILD5-E3-A.gif" })
+          new Skill({ id: "rasengan", name: "Rasengan", description: "ATORDOA 1t.", type: "attack", cost: 35, damage: 35, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/VY0p4kvw/naruto-rasengan.gif" }),
+          new Skill({ id: "kyuubi_chakra", name: "Chakra da Kyuubi", description: "Cura 20% HP.", type: "heal", cost: 40, healPercent: 20, cooldown: 4, gifUrl: "https://i.ibb.co/TD1KKW69/Adobe-Express-y-Bdemv-J.gif" }),
+          new Skill({ id: "substitution", name: "Substituição", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/JWsZ0d7S/Adobe-Express-ILD5-E3-A.gif" })
         ]
       });
     }
@@ -40,6 +41,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Goku (Base)",
         anime: "dragonball",
+        element: "raio",
         health: 110,
         maxHealth: 110,
         energy: 100,
@@ -47,11 +49,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/Y4gG3XNw/imagem-2026-04-16-231555597.png",
         skills: [
-          new Skill({ id: "kick", name: "Chute", description: "Um chute rápido.", type: "attack", cost: 8, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/qLnG1fnJ/goku-kick.gif" }),
-          new Skill({ id: "kaioken", name: "Kaioken", description: "Dano +50%, mas sofre 10% de auto-dano.", type: "buff", cost: 20, cooldown: 3, gifUrl: "https://i.pinimg.com/originals/23/a0/41/23a041ae7b7e0e4b4ab41c0c8e3fb67c.gif" }),
-          new Skill({ id: "kamehameha", name: "Kamehameha", description: "Rajada de energia que causa **QUEIMADURA**.", type: "attack", cost: 40, damage: 40, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.ibb.co/hRX5MvwK/kamehameha-goku.gif" }),
-          new Skill({ id: "solar_flare", name: "Solar Flare", description: "Cega o oponente (**ATORDOAMENTO**).", type: "attack", cost: 20, damage: 5, damageType: 'elemental', cooldown: 4, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.pinimg.com/originals/1a/2b/3c/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.gif" }),
-          new Skill({ id: "instant_transmission", name: "Teletransporte", description: "Esquiva completamente do ataque (100% redução).", type: "reaction", cost: 45, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.pinimg.com/originals/9f/8e/7d/9f8e7d6c5b4a3d2f1e0d9c8b7a6f5e4d.gif" })
+          new Skill({ id: "kick", name: "Chute", description: "Chute rápido.", type: "attack", cost: 8, damage: 12, elementType: 'raio', gifUrl: "https://i.ibb.co/qLnG1fnJ/goku-kick.gif" }),
+          new Skill({ id: "kaioken", name: "Kaioken", description: "Dano +50%, sofre 10% de auto-dano.", type: "buff", cost: 20, cooldown: 3, gifUrl: "https://i.pinimg.com/originals/23/a0/41/23a041ae7b7e0e4b4ab41c0c8e3fb67c.gif" }),
+          new Skill({ id: "kamehameha", name: "Kamehameha", description: "QUEIMADURA 3% × 2t.", type: "attack", cost: 40, damage: 40, elementType: 'raio', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.ibb.co/hRX5MvwK/kamehameha-goku.gif" }),
+          new Skill({ id: "solar_flare", name: "Solar Flare", description: "ATORDOA 1t.", type: "attack", cost: 20, damage: 5, elementType: 'luz', cooldown: 4, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.pinimg.com/originals/1a/2b/3c/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.gif" }),
+          new Skill({ id: "instant_transmission", name: "Teletransporte", description: "Esquiva 100%.", type: "reaction", cost: 45, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.pinimg.com/originals/9f/8e/7d/9f8e7d6c5b4a3d2f1e0d9c8b7a6f5e4d.gif" })
         ]
       });
     }
@@ -63,6 +65,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Itadori Yuji",
         anime: "jujutsukaisen",
+        element: "escuridao",
         health: 110,
         maxHealth: 110,
         energy: 100,
@@ -70,11 +73,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/tMk9cXVM/image.png",
         skills: [
-          new Skill({ id: "divergent_fist", name: "Punho Divergente", description: "Dano físico duplo com delay.", type: "attack", cost: 10, damage: 15, damageType: 'fisico', gifUrl: "https://i.ibb.co/RTDGYbqS/Adobe-Express-ap2-A1-Bd-Imgur.gif" }),
-          new Skill({ id: "manji_kick", name: "Chute Manji", description: "Chute acrobático rápido.", type: "attack", cost: 12, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/0ySWgLfT/Adobe-Express-B2ye-B1a.gif" }),
-          new Skill({ id: "black_flash", name: "Black Flash", description: "30% de chance de causar 3x de dano.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/f2/12/83/f21283042ce025fb4fbcc67813bc792a.gif" }),
-          new Skill({ id: "slaughter_demon", name: "Slaughter Demon", description: "Ataque com adaga que causa **SANGRAMENTO**.", type: "attack", cost: 20, damage: 20, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.ibb.co/sp19bsr6/Adobe-Express-Ru-WXNKo-Imgur-1.gif" }),
-          new Skill({ id: "cursed_guard", name: "Guarda Amaldiçoada", description: "Protege com energia, reduzindo 70% do dano.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/3yMFqyvs/Adobe-Express-CQpua6-U-Imgur.gif" })
+          new Skill({ id: "divergent_fist", name: "Punho Divergente", description: "Soco com delay de maldição.", type: "attack", cost: 10, damage: 15, elementType: 'escuridao', gifUrl: "https://i.ibb.co/RTDGYbqS/Adobe-Express-ap2-A1-Bd-Imgur.gif" }),
+          new Skill({ id: "manji_kick", name: "Chute Manji", description: "Chute acrobático rápido.", type: "attack", cost: 12, damage: 12, elementType: 'escuridao', gifUrl: "https://i.ibb.co/0ySWgLfT/Adobe-Express-B2ye-B1a.gif" }),
+          new Skill({ id: "black_flash", name: "Black Flash", description: "30% chance de 3× dano.", type: "attack", cost: 30, damage: 25, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/f2/12/83/f21283042ce025fb4fbcc67813bc792a.gif" }),
+          new Skill({ id: "slaughter_demon", name: "Slaughter Demon", description: "SANGRAMENTO 5% × 2t.", type: "attack", cost: 20, damage: 20, elementType: 'escuridao', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.ibb.co/sp19bsr6/Adobe-Express-Ru-WXNKo-Imgur-1.gif" }),
+          new Skill({ id: "cursed_guard", name: "Guarda Amaldiçoada", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/3yMFqyvs/Adobe-Express-CQpua6-U-Imgur.gif" })
         ]
       });
     }
@@ -86,6 +89,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Monkey D. Luffy",
         anime: "onepiece",
+        element: "fogo",
         health: 110,
         maxHealth: 110,
         energy: 100,
@@ -94,11 +98,11 @@ class CharacterManager {
         imageUrl: "https://i.ibb.co/vxm9dv4V/20260323-1249-Image-Generation-remix-01kmdp30hqf95a44yqpsrdr2mj.png",
         passives: { physicalReduction: 0.3 },
         skills: [
-          new Skill({ id: "pistol", name: "Gomu Gomu no Pistol", description: "Soco de longa distância.", type: "attack", cost: 8, damage: 12, damageType: 'fisico', gifUrl: "https://imgur.com/a/axgCyJd.gif" }),
-          new Skill({ id: "gatling", name: "Gomu Gomu no Gatling", description: "Sequência de socos que causa **SANGRAMENTO**.", type: "attack", cost: 25, damage: 25, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://imgur.com/a/9PP9fGm.gif" }),
-          new Skill({ id: "red_hawk", name: "Red Hawk", description: "Ataque flamejante que causa **QUEIMADURA**.", type: "attack", cost: 40, damage: 35, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.pinimg.com/originals/2e/f0/e6/2ef0e6649c833ae65d78e3cab875c4ee.gif"  }),
-          new Skill({ id: "meat_break", name: "Pausa para Carne", description: "Luffy come carne e recupera 25% de HP.", type: "heal", cost: 35, healPercent: 25, cooldown: 5, gifUrl: "https://imgur.com/a/xMSWOqs.gif" }),
-          new Skill({ id: "rubber_dodge", name: "Esquiva de Borracha", description: "Usa seu corpo de borracha para reduzir o dano do golpe, reduz 80% do dano.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.2 }, gifUrl: "https://imgur.com/a/zlCtal6.gif" })
+          new Skill({ id: "pistol", name: "Gomu Gomu no Pistol", description: "Soco de borracha.", type: "attack", cost: 8, damage: 12, elementType: 'fogo', gifUrl: "https://imgur.com/a/axgCyJd.gif" }),
+          new Skill({ id: "gatling", name: "Gomu Gomu no Gatling", description: "SANGRAMENTO 5% × 2t.", type: "attack", cost: 25, damage: 25, elementType: 'fogo', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://imgur.com/a/9PP9fGm.gif" }),
+          new Skill({ id: "red_hawk", name: "Red Hawk", description: "QUEIMADURA 3% × 2t.", type: "attack", cost: 40, damage: 35, elementType: 'fogo', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.pinimg.com/originals/2e/f0/e6/2ef0e6649c833ae65d78e3cab875c4ee.gif" }),
+          new Skill({ id: "meat_break", name: "Pausa para Carne", description: "Cura 25% HP.", type: "heal", cost: 35, healPercent: 25, cooldown: 5, gifUrl: "https://imgur.com/a/xMSWOqs.gif" }),
+          new Skill({ id: "rubber_dodge", name: "Esquiva de Borracha", description: "-80% dano recebido. Passiva: -30% todo dano.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.2 }, gifUrl: "https://imgur.com/a/zlCtal6.gif" })
         ]
       });
     }
@@ -110,6 +114,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Edward Elric",
         anime: "fullmetalalchemist",
+        element: "terra",
         health: 100,
         maxHealth: 100,
         energy: 100,
@@ -117,11 +122,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/R4gVjygQ/image.png",
         skills: [
-          new Skill({ id: "alchemy_punch", name: "Soco Alquímico", description: "Soco básico com alquimia.", type: "attack", cost: 5, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/H5bdF8v/6jtb-ZYL-Imgur-1.gif" }),
-          new Skill({ id: "metal_strike", name: "Braço de Metal", description: "Golpe pesado com o automail.", type: "attack", cost: 15, damage: 22, damageType: 'fisico', cooldown: 0, gifUrl: "https://i.ibb.co/qYq8sHBy/VAV2ssz-Imgur.gif" }),
-          new Skill({ id: "transmutation", name: "Transmutação", description: "Transforma o chão e ataca com espinhos de terra, causa **SANGRAMENTO**.", type: "attack", cost: 25, damage: 28, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.08 }, gifUrl: "https://i.pinimg.com/originals/9f/b7/2d/9fb72dba38d3f843d8d3c5e04f9da0a7.gif" }),
-          new Skill({ id: "alchemic_reconstruction", name: "Reconstrução Alquímica", description: "Reconstrói o corpo com alquimia e recupera 20% de HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/FkLx1Q1D/Gew-Cdr-I-Imgur.gif" }),
-          new Skill({ id: "earth_wall", name: "Muralha de Pedra", description: "Reduz o dano recebido em 50%.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/fzcsCkBv/9p5-HNZs-Imgur.gif" })
+          new Skill({ id: "alchemy_punch", name: "Soco Alquímico", description: "Soco básico.", type: "attack", cost: 5, damage: 12, elementType: 'terra', gifUrl: "https://i.ibb.co/H5bdF8v/6jtb-ZYL-Imgur-1.gif" }),
+          new Skill({ id: "metal_strike", name: "Braço de Metal", description: "Golpe pesado.", type: "attack", cost: 15, damage: 22, elementType: 'terra', cooldown: 0, gifUrl: "https://i.ibb.co/qYq8sHBy/VAV2ssz-Imgur.gif" }),
+          new Skill({ id: "transmutation", name: "Transmutação", description: "SANGRAMENTO 8% × 2t.", type: "attack", cost: 25, damage: 28, elementType: 'terra', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.08 }, gifUrl: "https://i.pinimg.com/originals/9f/b7/2d/9fb72dba38d3f843d8d3c5e04f9da0a7.gif" }),
+          new Skill({ id: "alchemic_reconstruction", name: "Reconstrução Alquímica", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/FkLx1Q1D/Gew-Cdr-I-Imgur.gif" }),
+          new Skill({ id: "earth_wall", name: "Muralha de Pedra", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/fzcsCkBv/9p5-HNZs-Imgur.gif" })
         ]
       });
     }
@@ -133,6 +138,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Tanjiro Kamado",
         anime: "demonslayer",
+        element: "agua",
         health: 100,
         maxHealth: 100,
         energy: 100,
@@ -140,11 +146,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/S4PKvr3R/image.png",
         skills: [
-          new Skill({ id: "water_breathing", name: "Corte de Água Superficial", description: "Corte fluido com respiração da água.", type: "attack", cost: 8, damage: 12, damageType: 'fisico', gifUrl: "https://i.ibb.co/7xtZX2C2/l8-Ufd-OX-Imgur.gif" }),
-          new Skill({ id: "water_dragon", name: "Dança do Dragão de Água", description: "Ataque contínuo e fluido, que parece uma grande corrente de água.", type: "attack", cost: 20, damage: 20, damageType: 'fisico', cooldown: 1, gifUrl: "https://i.ibb.co/bg0MxH5v/Fu-Up-EPq-Imgur.gif" }),
-          new Skill({ id: "hinokami_kagura", name: "Hinokami Kagura", description: "Dança do Deus do Fogo — causa **QUEIMADURA**.", type: "attack", cost: 35, damage: 32, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.pinimg.com/originals/88/c4/0f/88c40ff6249496001b1e8794699b0395.gif" }),
-          new Skill({ id: "total_concentration", name: "Concentração Total", description: "Aumenta o foco e recupera 50 de energia.", type: "buff", cost: 0, cooldown: 3, gifUrl: "https://i.ibb.co/CpFhyhmh/bk-Zcthh-Imgur-1.gif" }),
-          new Skill({ id: "water_guard", name: "Roda de Água", description: "Reduz o dano recebido em 50%.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/cXstBjCW/lpo-CB7m-Imgur-1.gif" })
+          new Skill({ id: "water_breathing", name: "Corte de Água Superficial", description: "Corte fluido.", type: "attack", cost: 8, damage: 12, elementType: 'agua', gifUrl: "https://i.ibb.co/7xtZX2C2/l8-Ufd-OX-Imgur.gif" }),
+          new Skill({ id: "water_dragon", name: "Dança do Dragão de Água", description: "Corrente contínua.", type: "attack", cost: 20, damage: 20, elementType: 'agua', cooldown: 1, gifUrl: "https://i.ibb.co/bg0MxH5v/Fu-Up-EPq-Imgur.gif" }),
+          new Skill({ id: "hinokami_kagura", name: "Hinokami Kagura", description: "QUEIMADURA 3% × 2t.", type: "attack", cost: 35, damage: 32, elementType: 'fogo', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.pinimg.com/originals/88/c4/0f/88c40ff6249496001b1e8794699b0395.gif" }),
+          new Skill({ id: "total_concentration", name: "Concentração Total", description: "Recupera 50 de energia.", type: "buff", cost: 0, cooldown: 3, gifUrl: "https://i.ibb.co/CpFhyhmh/bk-Zcthh-Imgur-1.gif" }),
+          new Skill({ id: "water_guard", name: "Roda de Água", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.5 }, gifUrl: "https://i.ibb.co/cXstBjCW/lpo-CB7m-Imgur-1.gif" })
         ]
       });
     }
@@ -156,6 +162,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Asta",
         anime: "blackclover",
+        element: "escuridao",
         health: 100,
         maxHealth: 100,
         energy: 100,
@@ -163,11 +170,11 @@ class CharacterManager {
         rarity: "EC",
         imageUrl: "https://i.ibb.co/4gZVSBFY/image.png",
         skills: [
-          new Skill({ id: "demon_sword", name: "Espada Demoníaca", description: "Corte com a Espada Matadora de Demônios.", type: "attack", cost: 10, damage: 14, damageType: 'fisico', gifUrl: "https://i.ibb.co/JRGhqdfC/sword-fighting-asta-black-clover-23u3olzvb103u9zd.gif" }),
-          new Skill({ id: "black_divider", name: "Black Divider", description: "Corte longo de energia anti-magia.", type: "attack", cost: 20, damage: 22, damageType: 'fisico', cooldown: 1, gifUrl: "https://i.ibb.co/KxdycKmB/yami-noelle.gif" }),
-          new Skill({ id: "black_hurricane", name: "Black Hurricane", description: "Turbilhão de energia anti-magia.", type: "attack", cost: 30, damage: 32, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.ibb.co/bjtKrjjd/black-clover-heart-kingdom-arc.gif" }),
-          new Skill({ id: "anti_magic_heal", name: "Vontade Inabalável", description: "Recupera 20% de HP com pura determinação.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/spnRJRXG/asta-black-clover.gif" }),
-          new Skill({ id: "counter_slash", name: "Contra-Anulação", description: "**Anula ataques elementais** e reduz 50% de **ataques físicos**.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.5, negateElemental: true }, gifUrl: "https://i.ibb.co/231Wrrff/black-clover-asta.gif" })
+          new Skill({ id: "demon_sword", name: "Espada Demoníaca", description: "Corte anti-magia.", type: "attack", cost: 10, damage: 14, elementType: 'escuridao', gifUrl: "https://i.ibb.co/JRGhqdfC/sword-fighting-asta-black-clover-23u3olzvb103u9zd.gif" }),
+          new Skill({ id: "black_divider", name: "Black Divider", description: "Corte longo.", type: "attack", cost: 20, damage: 22, elementType: 'escuridao', cooldown: 1, gifUrl: "https://i.ibb.co/KxdycKmB/yami-noelle.gif" }),
+          new Skill({ id: "black_hurricane", name: "Black Hurricane", description: "Turbilhão anti-magia.", type: "attack", cost: 30, damage: 32, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.ibb.co/bjtKrjjd/black-clover-heart-kingdom-arc.gif" }),
+          new Skill({ id: "anti_magic_heal", name: "Vontade Inabalável", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/spnRJRXG/asta-black-clover.gif" }),
+          new Skill({ id: "counter_slash", name: "Contra-Anulação", description: "Anula ataques com elemento. -50% em ataques sem elemento.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.5, negateElemental: true }, gifUrl: "https://i.ibb.co/231Wrrff/black-clover-asta.gif" })
         ]
       });
     }
@@ -179,6 +186,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "EVA-01",
         anime: "evangelion",
+        element: "raio",
         health: 170,
         maxHealth: 170,
         baseMaxHealth: 170,
@@ -187,11 +195,11 @@ class CharacterManager {
         rarity: "AL",
         imageUrl: "https://i.ibb.co/4nJkwZ1b/eva.png",
         skills: [
-          new Skill({ id: "eva_punch", name: "Golpe do EVA", description: "Soco devastador do Eva-01.", type: "attack", cost: 10, damage: 18, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/dd/3d/d3/dd3dd343a80c9014477ebbb7b6d9f067.gif" }),
-          new Skill({ id: "charged_strike", name: "Impacto Cargado", description: "Soco carregado que **ATORDOA** o oponente.", type: "attack", cost: 30, damage: 28, damageType: 'fisico', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/27Xj3nV1/neon-genesis-robot.gif" }),
-          new Skill({ id: "positron_beam", name: "Rifle Posítron", description: "Rifle anti-AT Field. Dano escala com a Taxa de Sincronização.", type: "attack", cost: 40, damage: 38, damageType: 'elemental', cooldown: 3, gifUrl: "https://i.ibb.co/2JxdK2G/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f.gif" }),
-          new Skill({ id: "at_field", name: "Avanço Veloz", description: "Avança com extrema velocidade para cima do alvo. Aumenta o dano do próximo ataque em +30%.", type: "buff", cost: 25, cooldown: 2, gifUrl: "https://i.pinimg.com/originals/91/4c/ea/914cea573a12f795a2ce98b096a570c8.gif" }),
-          new Skill({ id: "at_field_def", name: "Campo AT Defensivo", description: "Barreira de AT Field. Reduz 70% do dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/XgS0Kcm/0kdoqqyn9rqb1.gif" })
+          new Skill({ id: "eva_punch", name: "Golpe do EVA", description: "Soco devastador.", type: "attack", cost: 10, damage: 18, elementType: 'raio', gifUrl: "https://i.pinimg.com/originals/dd/3d/d3/dd3dd343a80c9014477ebbb7b6d9f067.gif" }),
+          new Skill({ id: "charged_strike", name: "Impacto Cargado", description: "ATORDOA 1t.", type: "attack", cost: 30, damage: 28, elementType: 'raio', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/27Xj3nV1/neon-genesis-robot.gif" }),
+          new Skill({ id: "positron_beam", name: "Rifle Posítron", description: "Escala com Taxa de Sincronização.", type: "attack", cost: 40, damage: 38, elementType: 'raio', cooldown: 3, gifUrl: "https://i.ibb.co/2JxdK2G/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f.gif" }),
+          new Skill({ id: "at_field", name: "Avanço Veloz", description: "+30% dano no próximo ataque.", type: "buff", cost: 25, cooldown: 2, gifUrl: "https://i.pinimg.com/originals/91/4c/ea/914cea573a12f795a2ce98b096a570c8.gif" }),
+          new Skill({ id: "at_field_def", name: "Campo AT Defensivo", description: "-70% dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/XgS0Kcm/0kdoqqyn9rqb1.gif" })
         ]
       });
     }
@@ -203,6 +211,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Shinji Ikari",
         anime: "evangelion",
+        element: "raio",
         health: 5,
         maxHealth: 5,
         baseMaxHealth: 5,
@@ -211,8 +220,8 @@ class CharacterManager {
         rarity: "AL",
         imageUrl: "https://i.ibb.co/7xd4LLjr/shinji.png",
         skills: [
-          new Skill({ id: "determination", name: "Determinação", description: "Não desista! (Usada 3x, **TRANSFORMA** no EVA-01).", type: "buff", cost: 0, cooldown: 0, gifUrl: "https://i.pinimg.com/originals/d8/a5/17/d8a517c5e9b3cb3bd308d8cfc5d25fba.gif" }),
-          new Skill({ id: "scream", name: "Correr", description: "Shinji corre para se proteger. Reduz 50% do dano.", type: "reaction", cost: 0, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 } })
+          new Skill({ id: "determination", name: "Determinação", description: "3× transforma no EVA-01.", type: "buff", cost: 0, cooldown: 0, gifUrl: "https://i.pinimg.com/originals/d8/a5/17/d8a517c5e9b3cb3bd308d8cfc5d25fba.gif" }),
+          new Skill({ id: "scream", name: "Correr", description: "-70% dano recebido.", type: "reaction", cost: 0, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 } })
         ]
       });
     }
@@ -224,6 +233,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Dio Brando",
         anime: "jojo",
+        element: "escuridao",
         health: 150,
         maxHealth: 150,
         energy: 120,
@@ -231,11 +241,11 @@ class CharacterManager {
         rarity: "AL",
         imageUrl: "https://i.ibb.co/MygrTX2g/Adobe-Express-file.png",
         skills: [
-          new Skill({ id: "muda_muda", name: "Muda Muda!", description: "Sequência de socos rápidos do The World.", type: "attack", cost: 15, damage: 25, damageType: 'fisico', gifUrl: "https://i.ibb.co/ccJG0c0Z/jojo-jotaro.gif" }),
-          new Skill({ id: "knife_throw", name: "Lançamento de Facas", description: "Lança facas que causam **SANGRAMENTO**.", type: "attack", cost: 20, damage: 30, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.08 }, gifUrl: "https://i.ibb.co/C57BXwXw/1mt-Jh-S.gif" }),
-          new Skill({ id: "the_world", name: "The World: Toki wo Tomare!", description: "Para o tempo, **ATORDOANDO** o oponente por 2 turnos.", type: "attack", cost: 70, damage: 40, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 2 }, gifUrl: "https://i.pinimg.com/originals/af/c8/7b/afc87b53146aaeaf78eaad0bb50fd8a2.gif" }),
-          new Skill({ id: "vampiric_heal", name: "Cura Vampírica", description: "Drena o sangue e recupera 20% de HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 4, gifUrl: "https://i.ibb.co/5XrGrts4/OVn-Wtj8-Imgur.gif" }),
-          new Skill({ id: "the_world_dodge", name: "Esquiva Temporal", description: "Para o tempo por um instante para desviar (100% redução).", type: "reaction", cost: 40, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.ibb.co/d0gvpRNq/0s2k-Rw5-Imgur.gif" })
+          new Skill({ id: "muda_muda", name: "Muda Muda!", description: "Socos rápidos do The World.", type: "attack", cost: 15, damage: 25, elementType: 'escuridao', gifUrl: "https://i.ibb.co/ccJG0c0Z/jojo-jotaro.gif" }),
+          new Skill({ id: "knife_throw", name: "Lançamento de Facas", description: "SANGRAMENTO 8% × 2t.", type: "attack", cost: 20, damage: 30, elementType: 'escuridao', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.08 }, gifUrl: "https://i.ibb.co/C57BXwXw/1mt-Jh-S.gif" }),
+          new Skill({ id: "the_world", name: "The World: Toki wo Tomare!", description: "ATORDOA 2t.", type: "attack", cost: 70, damage: 40, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 2 }, gifUrl: "https://i.pinimg.com/originals/af/c8/7b/afc87b53146aaeaf78eaad0bb50fd8a2.gif" }),
+          new Skill({ id: "vampiric_heal", name: "Cura Vampírica", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 4, gifUrl: "https://i.ibb.co/5XrGrts4/OVn-Wtj8-Imgur.gif" }),
+          new Skill({ id: "the_world_dodge", name: "Esquiva Temporal", description: "Esquiva 100%.", type: "reaction", cost: 40, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.ibb.co/d0gvpRNq/0s2k-Rw5-Imgur.gif" })
         ]
       });
     }
@@ -247,6 +257,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Levi Ackerman",
         anime: "attackontitan",
+        element: "vento",
         health: 120,
         maxHealth: 120,
         energy: 120,
@@ -255,11 +266,11 @@ class CharacterManager {
         imageUrl: "https://i.ibb.co/d0YVsCq8/image.png",
         passives: { executionZone: true },
         skills: [
-          new Skill({ id: "corte_horizontal", name: "Corte Horizontal", description: "Corte horizontal usando o DMT. +1 marca.", type: "attack", cost: 15, damage: 30, damageType: 'fisico', gifUrl: "https://i.ibb.co/9HGf1cCB/l4g-e.gif" }),
-          new Skill({ id: "investida_com_dmt", name: "Investida com DMT", description: "Dá uma investida com o DMT. +1 marca", type: "attack", cost: 20, damage: 35, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.pinimg.com/originals/42/a2/47/42a247170df602e311f0914ee692da26.gif" }),
-          new Skill({ id: "tempestade_de_laminas", name: "Tempestade de Lâminas", description: "Uma sequência de golpes rápidos usando as lâminas.", type: "attack", cost: 35, damage: 55, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/45/7f/5c/457f5c86d073bcf7c63dbec5eb746376.gif" }),
-          new Skill({ id: "foco_do_capitao", name: "Foco do Capitão", description: "Gera +2 marcas e remove sangramento e queimadura de si mesmo.", type: "buff", cost: 20, cooldown: 2, gifUrl: "https://i.ibb.co/QFKbSrqM/levi-aot.gif" }),
-          new Skill({ id: "contra_ataque_perfeito", name: "Contra-Ataque Perfeito", description: "Reação que reduz 70% de dano.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/d4YfrPSH/aot-levi.gif" })
+          new Skill({ id: "corte_horizontal", name: "Corte Horizontal", description: "+1 marca.", type: "attack", cost: 15, damage: 30, elementType: 'vento', gifUrl: "https://i.ibb.co/9HGf1cCB/l4g-e.gif" }),
+          new Skill({ id: "investida_com_dmt", name: "Investida com DMT", description: "+1 marca. SANGRAMENTO 5% × 2t.", type: "attack", cost: 20, damage: 35, elementType: 'vento', effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.pinimg.com/originals/42/a2/47/42a247170df602e311f0914ee692da26.gif" }),
+          new Skill({ id: "tempestade_de_laminas", name: "Tempestade de Lâminas", description: "Sequência de golpes. +150% se Fury Mode.", type: "attack", cost: 35, damage: 55, elementType: 'vento', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/45/7f/5c/457f5c86d073bcf7c63dbec5eb746376.gif" }),
+          new Skill({ id: "foco_do_capitao", name: "Foco do Capitão", description: "+2 marcas, remove status negativos.", type: "buff", cost: 20, cooldown: 2, gifUrl: "https://i.ibb.co/QFKbSrqM/levi-aot.gif" }),
+          new Skill({ id: "contra_ataque_perfeito", name: "Contra-Ataque Perfeito", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/d4YfrPSH/aot-levi.gif" })
         ]
       });
     }
@@ -271,19 +282,20 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Denji",
         anime: "chainsawman",
+        element: "fogo",
         health: 130,
         maxHealth: 130,
         energy: 100,
         maxEnergy: 100,
         rarity: "AL",
-        imageUrl: "https://i.ibb.co/G4CVN7Dz/image.png", 
+        imageUrl: "https://i.ibb.co/G4CVN7Dz/image.png",
         skills: [
-          new Skill({ id: "chainsaw_slash", name: "Corte de Motosserra", description: "Ataque básico que causa dano físico e aplica um pequeno **SANGRAMENTO**.", type: "attack", cost: 10, damage: 20, damageType: 'fisico', effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.ibb.co/Mkvzt7B0/chainsaw-man-denji.gif" } ),
-          new Skill({ id: "reckless_strike", name: "Golpe Imprudente", description: "Ataque pesado que causa alto dano, mas Denji perde **15% do seu HP atual**.", type: "attack", cost: 25, damage: 45, damageType: 'fisico', selfDamage: 0.15, gifUrl: "https://i.ibb.co/HL1X5TD3/chainsaw-man-denji-1.gif" }),
-          new Skill({ id: "brutal_evisceration", name: "Evisceração Brutal", description: "Causa dano massivo e aplica um **SANGRAMENTO** forte e duradouro.", type: "attack", cost: 40, damage: 55, damageType: 'fisico', cooldown: 3, effect: { type: "bleed", duration: 4, value: 0.10 }, gifUrl: "https://i.ibb.co/VKYzYn7/Adobe-Express-chainsaw-man-anime.gif"}),
-          new Skill({ id: "blood_consumption", name: "Consumo de Sangue", description: "Denji bebe o sangue do inimigo, recuperando **20% de HP**.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/KzDVmFWP/denjiblood.gif" }),
-          new Skill({ id: "chainsaw_man_form", name: "Chainsaw Man", description: "O Chainsaw Man desperta sua verdadeira forma! Dano aumenta drasticamente, mas perde HP a cada turno.", type: "buff", cost: 50, cooldown: 5, effect: { type: "transform", duration: 3 }, gifUrl: "https://i.ibb.co/YJyKjMP/image.png" }),
-          new Skill({ id: "reckless_defense", name: "Defesa Imprudente", description: "Reduz o dano recebido em **40%**, mas ainda permite que parte do dano passe.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.6 }, gifUrl: "https://i.ibb.co/4g8hc08D/chainsaw-man-anime.gif" })
+          new Skill({ id: "chainsaw_slash", name: "Corte de Motosserra", description: "SANGRAMENTO 5% × 2t.", type: "attack", cost: 10, damage: 20, elementType: 'fogo', effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.ibb.co/Mkvzt7B0/chainsaw-man-denji.gif" }),
+          new Skill({ id: "reckless_strike", name: "Golpe Imprudente", description: "Alto dano. Denji perde 15% HP.", type: "attack", cost: 25, damage: 45, elementType: 'fogo', selfDamage: 0.15, gifUrl: "https://i.ibb.co/HL1X5TD3/chainsaw-man-denji-1.gif" }),
+          new Skill({ id: "brutal_evisceration", name: "Evisceração Brutal", description: "SANGRAMENTO 10% × 4t.", type: "attack", cost: 40, damage: 55, elementType: 'fogo', cooldown: 3, effect: { type: "bleed", duration: 4, value: 0.10 }, gifUrl: "https://i.ibb.co/VKYzYn7/Adobe-Express-chainsaw-man-anime.gif" }),
+          new Skill({ id: "blood_consumption", name: "Consumo de Sangue", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3, gifUrl: "https://i.ibb.co/KzDVmFWP/denjiblood.gif" }),
+          new Skill({ id: "chainsaw_man_form", name: "Chainsaw Man", description: "+80% dano por 3t. TRANSFORMA.", type: "buff", cost: 50, cooldown: 5, effect: { type: "transform", duration: 3 }, gifUrl: "https://i.ibb.co/YJyKjMP/image.png" }),
+          new Skill({ id: "reckless_defense", name: "Defesa Imprudente", description: "-40% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.6 }, gifUrl: "https://i.ibb.co/4g8hc08D/chainsaw-man-anime.gif" })
         ]
       });
     }
@@ -296,6 +308,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Frieren",
         anime: "frieren",
+        element: "luz",
         health: 155,
         maxHealth: 155,
         energy: 130,
@@ -303,12 +316,12 @@ class CharacterManager {
         rarity: "AL",
         imageUrl: "https://i.ibb.co/q3Pqj41W/frieren.png",
         skills: [
-          new Skill({ id: "basic_magic", name: "Magia Básica", description: "Disparo de mana concentrada.", type: "attack", cost: 10, damage: 22, damageType: 'elemental', gifUrl: "https://i.ibb.co/qMc8xhL9/frieren-sousou-no-frieren.gif" }),
-          new Skill({ id: "mana_analysis", name: "Análise de Mana", description: "Analisa a mana do alvo por 1 turno. O próximo ataque causa **+50% de dano**.", type: "buff", cost: 10, cooldown: 0, gifUrl: "https://i.ibb.co/21XGVNgs/frieren-aura.gif" }),
-          new Skill({ id: "zoltraak", name: "Zoltraak", description: "Magia de abate — disparo concentrado de mana que perfura defesas.", type: "attack", cost: 35, damage: 65, damageType: 'elemental', cooldown: 3, gifUrl: "https://i.ibb.co/7NKGzDbJ/frieren-zoltraak.gif" }),
-          new Skill({ id: "surprise_attack", name: "Ataque Surpresa", description: "Empurrão mágico inesperado que **ATORDOA** o oponente por 1 turno.", type: "attack", cost: 25, damage: 40, damageType: 'elemental', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/fKbNk89/clone-frieren-frieren-attacks-fern.gif" }),
-          new Skill({ id: "black_hole", name: "Buraco Negro", description: "Colapso dimensional — dano massivo e **QUEIMADURA** por 2 turnos. Carrega a cada 3 ataques.", type: "attack", cost: 60, damage: 95, damageType: 'elemental', cooldown: 3, initialCooldown: 3, effect: { type: "burn", duration: 2, value: 0.07 }, gifUrl: "https://i.ibb.co/jCcyR1L/anime-spell-1.gif" }),
-          new Skill({ id: "frieren_counter", name: "Contra-Magia", description: "Interrompe o ataque com barreira de mana. **50% de chance** de aplicar um contra-ataque.", type: "reaction", cost: 15, effect: { type: "damage_reduction", value: 0.7 }, gifUrl: "https://i.ibb.co/21XGVNgs/frieren-aura.gif", counterGifUrl: "https://i.imgur.com/z5TISn2.gif" })
+          new Skill({ id: "basic_magic", name: "Magia Básica", description: "Disparo de mana.", type: "attack", cost: 10, damage: 22, elementType: 'luz', gifUrl: "https://i.ibb.co/qMc8xhL9/frieren-sousou-no-frieren.gif" }),
+          new Skill({ id: "mana_analysis", name: "Análise de Mana", description: "+50% dano no próximo ataque.", type: "buff", cost: 10, cooldown: 0, gifUrl: "https://i.ibb.co/21XGVNgs/frieren-aura.gif" }),
+          new Skill({ id: "zoltraak", name: "Zoltraak", description: "Perfura defesas.", type: "attack", cost: 35, damage: 65, elementType: 'luz', cooldown: 3, gifUrl: "https://i.ibb.co/7NKGzDbJ/frieren-zoltraak.gif" }),
+          new Skill({ id: "surprise_attack", name: "Ataque Surpresa", description: "ATORDOA 1t.", type: "attack", cost: 25, damage: 40, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/fKbNk89/clone-frieren-frieren-attacks-fern.gif" }),
+          new Skill({ id: "black_hole", name: "Buraco Negro", description: "QUEIMADURA 7% × 2t. Começa em recarga.", type: "attack", cost: 60, damage: 95, elementType: 'escuridao', cooldown: 3, initialCooldown: 3, effect: { type: "burn", duration: 2, value: 0.07 }, gifUrl: "https://i.ibb.co/jCcyR1L/anime-spell-1.gif" }),
+          new Skill({ id: "frieren_counter", name: "Contra-Magia", description: "-30% dano. 50% chance de contra-ataque.", type: "reaction", cost: 15, effect: { type: "damage_reduction", value: 0.7 }, gifUrl: "https://i.ibb.co/21XGVNgs/frieren-aura.gif", counterGifUrl: "https://i.imgur.com/z5TISn2.gif" })
         ]
       });
     }
@@ -320,18 +333,19 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Itachi Uchiha",
         anime: "naruto",
+        element: "fogo",
         health: 145,
         maxHealth: 145,
         energy: 130,
         maxEnergy: 130,
         rarity: "AL",
-        imageUrl: "https://i.ibb.co/yBRwVXq4/image.png", 
+        imageUrl: "https://i.ibb.co/yBRwVXq4/image.png",
         skills: [
-          new Skill({ id: "kunai_throw", name: "Lançamento de Kunai", description: "Arremessa kunais com precisão cirúrgica.", type: "attack", cost: 10, damage: 18, damageType: 'fisico', gifUrl: "https://i.ibb.co/gMVqKR4x/c-V6u-M5-L-Imgur.gif" }),
-          new Skill({ id: "genjutsu_shackles", name: "Genjutsu", description: "Aplica um debuff de dano e reduz o dano do inimigo em 15% por 2 turnos.", type: "attack", cost: 25, damage: 20, damageType: 'elemental', cooldown: 2, effect: { type: "debuff_damage", value: 0.15, duration: 2 }, gifUrl: "https://i.ibb.co/MkXh1LBX/f9ap-IJL-Imgur.gif" }),
-          new Skill({ id: "amaterasu", name: "Amaterasu", description: "Chamas negras que causam **QUEIMADURA** por 3 turnos.", type: "attack", cost: 35, damage: 30, damageType: 'elemental', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.08 }, gifUrl: "https://i.pinimg.com/originals/0f/fa/db/0ffadb0006cc5c7293736c224455dbfd.gif"}),
-          new Skill({ id: "tsukuyomi", name: "Tsukuyomi", description: "Atordoa o inimigo por 1 turno e aumenta o dano recebido por ele em 25% por 2 turnos.", type: "attack", cost: 50, damage: 15, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 1, debuff_damage_taken: 0.25, debuff_duration: 2 }, gifUrl: "https://i.ibb.co/F46Bz0gG/l7toz-DE-Imgur.gif" }),
-          new Skill({ id: "susanoo_defense", name: "Susanoo: Defesa Perfeita", description: "Reduz o dano recebido em 75% no próximo ataque.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.25 }, gifUrl: "https://i.ibb.co/RJpgwWW/MVGBCae-Imgur.gif" })
+          new Skill({ id: "kunai_throw", name: "Lançamento de Kunai", description: "Precisão cirúrgica.", type: "attack", cost: 10, damage: 18, elementType: 'fogo', gifUrl: "https://i.ibb.co/gMVqKR4x/c-V6u-M5-L-Imgur.gif" }),
+          new Skill({ id: "genjutsu_shackles", name: "Genjutsu", description: "-15% dano inimigo × 2t.", type: "attack", cost: 25, damage: 20, elementType: 'escuridao', cooldown: 2, effect: { type: "debuff_damage", value: 0.15, duration: 2 }, gifUrl: "https://i.ibb.co/MkXh1LBX/f9ap-IJL-Imgur.gif" }),
+          new Skill({ id: "amaterasu", name: "Amaterasu", description: "QUEIMADURA 8% × 3t.", type: "attack", cost: 35, damage: 30, elementType: 'fogo', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.08 }, gifUrl: "https://i.pinimg.com/originals/0f/fa/db/0ffadb0006cc5c7293736c224455dbfd.gif" }),
+          new Skill({ id: "tsukuyomi", name: "Tsukuyomi", description: "ATORDOA 1t. +25% dano recebido × 2t.", type: "attack", cost: 50, damage: 15, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 1, debuff_damage_taken: 0.25, debuff_duration: 2 }, gifUrl: "https://i.ibb.co/F46Bz0gG/l7toz-DE-Imgur.gif" }),
+          new Skill({ id: "susanoo_defense", name: "Susanoo: Defesa Perfeita", description: "-75% dano recebido.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.25 }, gifUrl: "https://i.ibb.co/RJpgwWW/MVGBCae-Imgur.gif" })
         ]
       });
     }
@@ -343,6 +357,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Satoru Gojo",
         anime: "jujutsukaisen",
+        element: "luz",
         health: 180,
         maxHealth: 180,
         energy: 150,
@@ -350,37 +365,36 @@ class CharacterManager {
         rarity: "EM",
         imageUrl: "https://i.ibb.co/whYQRrDQ/image.png",
         skills: [
-          new Skill({ id: "red_attack", name: "Reversão: Vermelho", description: "Ataque padrão de energia amaldiçoada.", type: "attack", cost: 20, damage: 40, damageType: 'elemental', gifUrl: "https://i.pinimg.com/originals/c7/63/19/c76319fb38068493dd49d2229619c0e4.gif"}),
-          new Skill({ id: "blue_attack", name: "Convergência: Azul", description: "Causa dano e **ATORDOA** o inimigo por 1 turno.", type: "attack", cost: 40, damage: 50, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.pinimg.com/originals/c5/5e/2f/c55e2f0e85f49c0a1a555ad6f84ef019.gif" }),
-          new Skill({ id: "purple_attack", name: "Imaginário: Roxo", description: "Causa dano colossal, **IGNORA REAÇÕES** e aplica **SANGRAMENTO** por 2 turnos.", type: "attack", cost: 80, damage: 100, damageType: 'elemental', cooldown: 5, effect: { type: "ignore_reaction", damage_multiplier: 1.5, bleed: { duration: 2, value: 0.06 } }, gifUrl: "https://i.pinimg.com/originals/22/81/36/228136787949a85c103a630c753726aa.gif"}),
-          new Skill({ id: "domain_expansion", name: "Expansão de Domínio: Vazio Ilimitado", description: "**ATORDOA** o inimigo por 2 turnos, ignorando imunidades a atordoamento.", type: "attack", cost: 70, damage: 40, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 2, ignore_immunity: true }, gifUrl: "https://i.pinimg.com/originals/cb/26/25/cb262560dbf553b91deeec5bd35d216b.gif"}),
-          new Skill({ id: "infinity_reaction", name: "Infinito", description: "Anula completamente o dano recebido.", type: "reaction", cost: 45, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.ibb.co/Y4nk7WV0/gojo-satoru.gif" })
+          new Skill({ id: "red_attack", name: "Reversão: Vermelho", description: "Ataque de energia amaldiçoada.", type: "attack", cost: 20, damage: 40, elementType: 'luz', gifUrl: "https://i.pinimg.com/originals/c7/63/19/c76319fb38068493dd49d2229619c0e4.gif" }),
+          new Skill({ id: "blue_attack", name: "Convergência: Azul", description: "ATORDOA 1t.", type: "attack", cost: 40, damage: 50, elementType: 'luz', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.pinimg.com/originals/c5/5e/2f/c55e2f0e85f49c0a1a555ad6f84ef019.gif" }),
+          new Skill({ id: "purple_attack", name: "Imaginário: Roxo", description: "Ignora reações. SANGRAMENTO 6% × 2t.", type: "attack", cost: 80, damage: 100, elementType: 'luz', cooldown: 5, effect: { type: "ignore_reaction", damage_multiplier: 1.5, bleed: { duration: 2, value: 0.06 } }, gifUrl: "https://i.pinimg.com/originals/22/81/36/228136787949a85c103a630c753726aa.gif" }),
+          new Skill({ id: "domain_expansion", name: "Expansão de Domínio: Vazio Ilimitado", description: "ATORDOA 2t (ignora imunidade).", type: "attack", cost: 70, damage: 40, elementType: 'luz', cooldown: 5, effect: { type: "stun", duration: 2, ignore_immunity: true }, gifUrl: "https://i.pinimg.com/originals/cb/26/25/cb262560dbf553b91deeec5bd35d216b.gif" }),
+          new Skill({ id: "infinity_reaction", name: "Infinito", description: "Anula 100% do dano.", type: "reaction", cost: 45, cooldown: 3, effect: { type: "damage_reduction", value: 0.0 }, gifUrl: "https://i.ibb.co/Y4nk7WV0/gojo-satoru.gif" })
         ]
       });
     }
 
     if (characterId === "sung_jin_woo") {
-      // Reação pessoal de Jin-Woo (não pertence a nenhuma sombra — instinto da classe assassino)
-      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 35, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
+      const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "-70% dano recebido.", type: "reaction", cost: 35, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
 
       const igrisSkills = [
-        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "Golpe preciso de Igris. Aplica **1 Marca de Sangue**. Ao atingir 3 marcas, dano bônus automático (escala com seu HP).", type: "attack", cost: 15, damage: 32, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
-        new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "Investida devastadora de Igris. Aplica **2 Marcas de Sangue**.", type: "attack", cost: 25, damage: 45, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
-        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome todas as **Marcas de Sangue** (bônus por marca escala com seu HP). Sem marcas: dano base. Sempre aplica 1 nova marca.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 1 }),
+        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "+1 Marca de Sangue. 3 marcas = dano bônus.", type: "attack", cost: 15, damage: 32, elementType: 'escuridao', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
+        new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "+2 Marcas de Sangue.", type: "attack", cost: 25, damage: 45, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
+        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome marcas (bônus escala com HP). +1 marca.", type: "attack", cost: 30, damage: 25, elementType: 'escuridao', cooldown: 1 }),
         sjwReaction,
       ];
 
       const beruSkills = [
-        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Ataque rápido que drena vitalidade. Roubo de vida passivo (5% do dano). 25% de chance de golpe duplo.", type: "attack", cost: 15, damage: 28, damageType: 'fisico', cooldown: 1}),
-        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 golpes garantidos + 35% de chance de um 3º. Cada hit cura **2% do HP máximo**.", type: "attack", cost: 25, damage: 16, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
-        new Skill({ id: "sjw_devorar", name: "Devorar", description: "Golpe devastador com alto dano. 25% de chance de golpe duplo.", type: "attack", cost: 35, damage: 52, damageType: 'fisico', cooldown: 2 }),
+        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Lifesteal 5%. 25% chance golpe duplo.", type: "attack", cost: 15, damage: 28, elementType: 'escuridao', cooldown: 1 }),
+        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 hits + 35% chance 3º. Cada hit cura 2% HP.", type: "attack", cost: 25, damage: 16, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
+        new Skill({ id: "sjw_devorar", name: "Devorar", description: "25% chance golpe duplo.", type: "attack", cost: 35, damage: 52, elementType: 'escuridao', cooldown: 2 }),
         sjwReaction,
       ];
 
       const tankSkills = [
-        new Skill({ id: "sjw_impacto_pesado", name: "Impacto Pesado", description: "Dano médio que reduz o próximo ataque do inimigo em **25%**.", type: "attack", cost: 20, damage: 40, damageType: 'fisico', effect: { type: "debuff_damage", value: 0.25, duration: 1 }, gifUrl: "https://i.ibb.co/nqHmrM0k/sung-jin-woo-vs.gif" }),
-        new Skill({ id: "sjw_postura_inabalavel", name: "Postura Inabalável", description: "Reduz o dano recebido em **30%** por 2 turnos (passivo, sem reação).", type: "buff", cost: 20, cooldown: 2 }),
-        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Postura de contra-ataque por 2 turnos: quem atacar Sung Jin-Woo sofrerá **18% do HP dele** de dano por turno.", type: "buff", cost: 25, cooldown: 3 }),
+        new Skill({ id: "sjw_impacto_pesado", name: "Impacto Pesado", description: "-25% dano inimigo × 1t.", type: "attack", cost: 20, damage: 40, elementType: 'escuridao', effect: { type: "debuff_damage", value: 0.25, duration: 1 }, gifUrl: "https://i.ibb.co/nqHmrM0k/sung-jin-woo-vs.gif" }),
+        new Skill({ id: "sjw_postura_inabalavel", name: "Postura Inabalável", description: "-30% dano recebido × 2t (passivo).", type: "buff", cost: 20, cooldown: 2 }),
+        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Contra-ataque por 2t: 18% HP do inimigo por turno.", type: "buff", cost: 25, cooldown: 3 }),
         sjwReaction,
       ];
 
@@ -390,6 +404,7 @@ class CharacterManager {
         level: instanceData.level || 1,
         name: "Sung Jin-Woo",
         anime: "sololeveling",
+        element: "escuridao",
         health: 185,
         maxHealth: 185,
         energy: 150,
@@ -415,6 +430,7 @@ class CharacterManager {
             id: bossData.id,
             name: bossData.name,
             anime: bossData.anime,
+            element: this.getBossElement(bossData.id),
             health: bossData.health,
             maxHealth: bossData.health,
             energy: bossData.energy,
@@ -437,6 +453,7 @@ class CharacterManager {
             id: bossData.id,
             name: bossData.name,
             anime: world.id,
+            element: this.getBossElement(bossData.id),
             health: bossData.health,
             maxHealth: bossData.health,
             energy: bossData.energy,
@@ -460,6 +477,7 @@ class CharacterManager {
             id: bossData.id,
             name: bossData.name,
             anime: bossData.anime,
+            element: this.getBossElement(bossData.id),
             health: bossData.health,
             maxHealth: bossData.health,
             energy: bossData.energy,
@@ -533,197 +551,213 @@ class CharacterManager {
     return char;
   }
 
+  static getBossElement(bossId) {
+    const map = {
+      // Story bosses
+      raditz: 'raio', vegeta: 'raio', freeza: 'gelo', cell: 'escuridao', majin_boo: 'escuridao',
+      orochimaru: 'escuridao', gaara: 'terra', itachi_npc: 'fogo', pain: 'vento', madara: 'fogo',
+      jaw_titan: 'terra', armored_titan: 'terra', attack_titan: 'escuridao', f_titan: 'terra', colossal_titan: 'fogo',
+      cursed_spirit: 'escuridao', aoi_todo: 'terra', mahito: 'escuridao', kenjaku: 'escuridao', sukuna: 'fogo',
+      // Challenge bosses
+      buggy: 'vento', haruta: 'escuridao', neferpitou: 'vento', rui: 'escuridao', esdeath: 'gelo', dabi: 'fogo',
+      // Tower bosses
+      saibaman: 'escuridao', buggytower: 'vento', team_rocket: 'escuridao', zabuza: 'agua',
+      stain: 'escuridao', hisoka: 'escuridao', ulquiorra: 'escuridao', garou: 'terra',
+      doflamingo: 'vento', android17: 'raio',
+    };
+    return map[bossId] || null;
+  }
+
   static generateBossSkills(bossId, worldId) {
+    const el = this.getBossElement(bossId) || 'escuridao';
     const baseSkills = [
-      new Skill({ id: "boss_atk_1", name: "Ataque Rápido", description: "Um golpe veloz.", type: "attack", cost: 15, damage: 30, damageType: 'fisico' }),
-      new Skill({ id: "boss_atk_2", name: "Explosão de Energia", description: "Dano em área.", type: "attack", cost: 35, damage: 60, damageType: 'elemental' }),
-      new Skill({ id: "boss_def", name: "Guarda do Boss", description: "Reduz 70% do dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.3 } })
+      new Skill({ id: "boss_atk_1", name: "Ataque Rápido", description: "Golpe veloz.", type: "attack", cost: 15, damage: 30, elementType: el }),
+      new Skill({ id: "boss_atk_2", name: "Explosão de Energia", description: "Dano em área.", type: "attack", cost: 35, damage: 60, elementType: el }),
+      new Skill({ id: "boss_def", name: "Guarda do Boss", description: "-70% dano recebido.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.3 } })
     ];
 
     if (bossId === "raditz") {
       baseSkills[0].name = "Double Sunday";
       baseSkills[1].name = "Shining Friday";
-      baseSkills.push(new Skill({ id: "raditz_tail", name: "Golpe de Cauda", description: "Paralisa o oponente (**ATORDOA**).", type: "attack", cost: 25, damage: 20, damageType: 'fisico', cooldown: 2, effect: { type: "stun", duration: 1 } }));
+      baseSkills.push(new Skill({ id: "raditz_tail", name: "Golpe de Cauda", description: "ATORDOA 1t.", type: "attack", cost: 25, damage: 20, elementType: 'raio', cooldown: 2, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "vegeta") {
       baseSkills[0].name = "Galick Gun";
       baseSkills[1].name = "Big Bang Attack";
       baseSkills[1].effect = { type: "burn", duration: 2, value: 0.06 };
-      baseSkills[1].description = "Explosão de ki que causa **QUEIMADURA**.";
-      baseSkills.push(new Skill({ id: "vegeta_pride", name: "Orgulho Saiyajin", description: "Aumenta o dano em 50%.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.5, duration: 2 } }));
+      baseSkills[1].description = "QUEIMADURA 6% × 2t.";
+      baseSkills.push(new Skill({ id: "vegeta_pride", name: "Orgulho Saiyajin", description: "+50% dano por 2t.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.5, duration: 2 } }));
     } else if (bossId === "freeza") {
       baseSkills[0].name = "Death Beam";
       baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
-      baseSkills[0].description = "Raio preciso que perfura e causa **SANGRAMENTO**.";
+      baseSkills[0].description = "SANGRAMENTO 5% × 2t.";
       baseSkills[1].name = "Death Ball";
       baseSkills[1].effect = { type: "burn", duration: 3, value: 0.08 };
-      baseSkills[1].description = "Esfera de energia que causa **QUEIMADURA** intensa.";
-      baseSkills.push(new Skill({ id: "freeza_tele", name: "Teletransporte Cruel", description: "Esquiva-se completamente do ataque.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
+      baseSkills[1].description = "QUEIMADURA 8% × 3t.";
+      baseSkills.push(new Skill({ id: "freeza_tele", name: "Teletransporte Cruel", description: "Esquiva 100%.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
     } else if (bossId === "cell") {
       baseSkills[0].name = "Kamehameha Perfeito";
       baseSkills[0].effect = { type: "burn", duration: 2, value: 0.07 };
-      baseSkills[0].description = "Kamehameha perfeito que causa **QUEIMADURA**.";
+      baseSkills[0].description = "QUEIMADURA 7% × 2t.";
       baseSkills[1].name = "Absorção Celular";
       baseSkills[1].effect = { type: "bleed", duration: 3, value: 0.06 };
-      baseSkills[1].description = "Suga a energia vital do oponente causando **SANGRAMENTO**.";
-      baseSkills.push(new Skill({ id: "cell_regen", name: "Regeneração Celular", description: "Recupera 20% da vida máxima.", type: "heal", cost: 40, healPercent: 20, cooldown: 4 }));
+      baseSkills[1].description = "SANGRAMENTO 6% × 3t.";
+      baseSkills.push(new Skill({ id: "cell_regen", name: "Regeneração Celular", description: "Cura 20% HP.", type: "heal", cost: 40, healPercent: 20, cooldown: 4 }));
     } else if (bossId === "majin_boo") {
       baseSkills[0].name = "Feixe de Chocolate";
       baseSkills[1].name = "Explosão Planetária";
       baseSkills[1].effect = { type: "burn", duration: 2, value: 0.07 };
-      baseSkills[1].description = "Explosão de energia que causa **QUEIMADURA** massiva.";
-      baseSkills.push(new Skill({ id: "boo_regen", name: "Regeneração Infinita", description: "Recupera 30% da vida máxima.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
+      baseSkills[1].description = "QUEIMADURA 7% × 2t.";
+      baseSkills.push(new Skill({ id: "boo_regen", name: "Regeneração Infinita", description: "Cura 30% HP.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
     } else if (bossId === "orochimaru") {
       baseSkills[0].name = "Kusanagi";
       baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
-      baseSkills[0].description = "Espada lendária que causa **SANGRAMENTO**.";
+      baseSkills[0].description = "SANGRAMENTO 5% × 2t.";
       baseSkills[1].name = "Mãos de Serpente";
-      baseSkills.push(new Skill({ id: "oro_poison", name: "Veneno de Cobra", description: "Causa **SANGRAMENTO** contínuo.", type: "attack", cost: 25, damage: 15, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.08 } }));
+      baseSkills.push(new Skill({ id: "oro_poison", name: "Veneno de Cobra", description: "SANGRAMENTO 8% × 3t.", type: "attack", cost: 25, damage: 15, elementType: 'escuridao', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.08 } }));
     } else if (bossId === "gaara") {
       baseSkills[0].name = "Caixão de Areia";
       baseSkills[1].name = "Funeral de Areia";
       baseSkills[1].effect = { type: "bleed", duration: 3, value: 0.07 };
-      baseSkills[1].description = "A areia corta por dentro causando **SANGRAMENTO**.";
-      baseSkills.push(new Skill({ id: "gaara_shield", name: "Escudo de Areia", description: "Defesa absoluta (95% redução).", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.05 } }));
+      baseSkills[1].description = "SANGRAMENTO 7% × 3t.";
+      baseSkills.push(new Skill({ id: "gaara_shield", name: "Escudo de Areia", description: "-95% dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.05 } }));
     } else if (bossId === "itachi_npc") {
       baseSkills[0].name = "Amaterasu";
       baseSkills[0].effect = { type: "burn", duration: 3, value: 0.08 };
-      baseSkills[0].description = "Chamas negras eternas que causam **QUEIMADURA** severa.";
+      baseSkills[0].description = "QUEIMADURA 8% × 3t.";
       baseSkills[1].name = "Tsukuyomi";
       baseSkills[1].effect = { type: "stun", duration: 1 };
-      baseSkills[1].description = "Genjutsu que distorce o tempo — **ATORDOA** o oponente.";
-      baseSkills.push(new Skill({ id: "itachi_crow", name: "Genjutsu de Corvos", description: "Oponente fica **ATORDOADO**.", type: "attack", cost: 40, damage: 30, damageType: 'elemental', cooldown: 3, effect: { type: "stun", duration: 1 } }));
+      baseSkills[1].description = "ATORDOA 1t.";
+      baseSkills.push(new Skill({ id: "itachi_crow", name: "Genjutsu de Corvos", description: "ATORDOA 1t.", type: "attack", cost: 40, damage: 30, elementType: 'escuridao', cooldown: 3, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "pain") {
       baseSkills[0].name = "Shinra Tensei";
       baseSkills[0].damage = 45;
       baseSkills[0].cooldown = 2;
       baseSkills[0].effect = { type: "stun", duration: 1 };
-      baseSkills[0].description = "Onda de repulsão gravitacional que **ATORDOA**.";
+      baseSkills[0].description = "ATORDOA 1t.";
       baseSkills[1].name = "Chibaku Tensei";
       baseSkills[1].damage = 80;
       baseSkills[1].cooldown = 3;
       baseSkills[1].effect = { type: "stun", duration: 1 };
-      baseSkills[1].description = "Cria um ponto gravitacional que **ATORDOA** e prende.";
-      baseSkills.push(new Skill({ id: "pain_absorb", name: "Absorção de Chakra", description: "Recupera 50 de energia.", type: "buff", cost: 0, cooldown: 3 }));
+      baseSkills[1].description = "ATORDOA 1t.";
+      baseSkills.push(new Skill({ id: "pain_absorb", name: "Absorção de Chakra", description: "Recupera 50 energia.", type: "buff", cost: 0, cooldown: 3 }));
     } else if (bossId === "madara") {
       baseSkills[0].name = "Katon: Goka Mekkyaku";
       baseSkills[1].name = "Susano'o Slash";
-      baseSkills.push(new Skill({ id: "madara_meteor", name: "Tengai Shinsei", description: "Dano massivo e **QUEIMADURA**.", type: "attack", cost: 60, damage: 100, damageType: 'elemental', cooldown: 5, effect: { type: "burn", duration: 3, value: 0.1 } }));
+      baseSkills.push(new Skill({ id: "madara_meteor", name: "Tengai Shinsei", description: "QUEIMADURA 10% × 3t.", type: "attack", cost: 60, damage: 100, elementType: 'fogo', cooldown: 5, effect: { type: "burn", duration: 3, value: 0.1 } }));
     } else if (bossId === "jaw_titan") {
       baseSkills[0].name = "Mandíbula de Aço";
       baseSkills[1].name = "Garras Devastadoras";
-      baseSkills.push(new Skill({ id: "jaw_frenzy", name: "Fúria Predadora", description: "Ataque frenético que causa **SANGRAMENTO** severo.", type: "attack", cost: 35, damage: 60, damageType: 'fisico', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.09 } }));
+      baseSkills.push(new Skill({ id: "jaw_frenzy", name: "Fúria Predadora", description: "SANGRAMENTO 9% × 3t.", type: "attack", cost: 35, damage: 60, elementType: 'terra', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.09 } }));
     } else if (bossId === "armored_titan") {
       baseSkills[0].name = "Carga Blindada";
       baseSkills[1].name = "Impacto de Armadura";
-      baseSkills.push(new Skill({ id: "armor_shell", name: "Carapaça de Aço", description: "Armadura absoluta (90% redução de dano).", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.10 } }));
-      baseSkills.push(new Skill({ id: "armor_slam", name: "Esmagamento de Titã", description: "Golpe devastador que **ATORDOA** o oponente.", type: "attack", cost: 50, damage: 90, damageType: 'fisico', cooldown: 4, effect: { type: "stun", duration: 1 } }));
+      baseSkills.push(new Skill({ id: "armor_shell", name: "Carapaça de Aço", description: "-90% dano recebido.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.10 } }));
+      baseSkills.push(new Skill({ id: "armor_slam", name: "Esmagamento de Titã", description: "ATORDOA 1t.", type: "attack", cost: 50, damage: 90, elementType: 'terra', cooldown: 4, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "attack_titan") {
       baseSkills[0].name = "Punho do Titã";
       baseSkills[1].name = "Fúria de Eren";
-      baseSkills.push(new Skill({ id: "founding_scream", name: "Rugido Fundador", description: "Grito que **ATORDOA** por 2 turnos e causa **SANGRAMENTO**.", type: "attack", cost: 65, damage: 80, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 2, bleed: { duration: 2, value: 0.07 } } }));
-      baseSkills.push(new Skill({ id: "titan_regen", name: "Regeneração de Titã", description: "Recupera 25% da vida máxima.", type: "heal", cost: 45, healPercent: 25, cooldown: 5 }));
+      baseSkills.push(new Skill({ id: "founding_scream", name: "Rugido Fundador", description: "ATORDOA 2t. SANGRAMENTO 7% × 2t.", type: "attack", cost: 65, damage: 80, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 2, bleed: { duration: 2, value: 0.07 } } }));
+      baseSkills.push(new Skill({ id: "titan_regen", name: "Regeneração de Titã", description: "Cura 25% HP.", type: "heal", cost: 45, healPercent: 25, cooldown: 5 }));
     } else if (bossId === "f_titan") {
       baseSkills[0].name = "Soco Endurecido";
       baseSkills[1].name = "Grito de Chamada";
-      baseSkills.push(new Skill({ id: "titan_harden", name: "Endurecimento Cristalino", description: "Reduz 80% do dano.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.2 } }));
+      baseSkills.push(new Skill({ id: "titan_harden", name: "Endurecimento Cristalino", description: "-80% dano recebido.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.2 } }));
     } else if (bossId === "colossal_titan") {
       baseSkills[0].name = "Pisada Gigante";
       baseSkills[1].name = "Vapor Escaldante";
-      baseSkills.push(new Skill({ id: "titan_steam", name: "Explosão de Vapor", description: "Causa **QUEIMADURA** em todos.", type: "attack", cost: 45, damage: 50, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.05 } }));
+      baseSkills.push(new Skill({ id: "titan_steam", name: "Explosão de Vapor", description: "QUEIMADURA 5% × 2t.", type: "attack", cost: 45, damage: 50, elementType: 'fogo', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.05 } }));
     } else if (bossId === "cursed_spirit") {
       baseSkills[0].name = "Golpe Amaldiçoado";
       baseSkills[0].damage = 95;
       baseSkills[1].name = "Energia Maldita";
       baseSkills[1].damage = 140;
-      baseSkills.push(new Skill({ id: "cursed_devour", name: "Devorar Maldição", description: "Absorve energia e recupera 6% de HP.", type: "heal", cost: 40, healPercent: 6, cooldown: 4 }));
-      baseSkills.push(new Skill({ id: "cursed_barrier", name: "Domínio Primitivo", description: "Barreira de maldição — reduz 75% do dano.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.25 } }));
+      baseSkills.push(new Skill({ id: "cursed_devour", name: "Devorar Maldição", description: "Cura 6% HP.", type: "heal", cost: 40, healPercent: 6, cooldown: 4 }));
+      baseSkills.push(new Skill({ id: "cursed_barrier", name: "Domínio Primitivo", description: "-75% dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.25 } }));
     } else if (bossId === "aoi_todo") {
       baseSkills[0].name = "Soco Divergente";
       baseSkills[0].damage = 100;
-      baseSkills[0].damageType = 'fisico';
       baseSkills[1].name = "Boogie Woogie";
       baseSkills[1].damage = 120;
-      baseSkills[1].description = "Troca de posições instantânea que confunde e **ATORDOA** o oponente.";
+      baseSkills[1].description = "ATORDOA 1t.";
       baseSkills[1].effect = { type: "stun", duration: 1 };
       baseSkills[1].cooldown = 3;
-      baseSkills.push(new Skill({ id: "todo_clap", name: "Palma Fantasma", description: "Palmada com energia maldita — **ATORDOA** e causa sangramento.", type: "attack", cost: 55, damage: 110, damageType: 'fisico', cooldown: 4, effect: { type: "bleed", duration: 2, value: 0.07 } }));
+      baseSkills.push(new Skill({ id: "todo_clap", name: "Palma Fantasma", description: "ATORDOA 1t. SANGRAMENTO 7% × 2t.", type: "attack", cost: 55, damage: 110, elementType: 'terra', cooldown: 4, effect: { type: "bleed", duration: 2, value: 0.07 } }));
     } else if (bossId === "mahito") {
       baseSkills[0].name = "Transfiguração Leve";
       baseSkills[0].damage = 110;
-      baseSkills[0].description = "Molda a alma do alvo, causando dano interno.";
+      baseSkills[0].description = "Dano interno.";
       baseSkills[1].name = "Transfiguração Ídola";
       baseSkills[1].damage = 150;
-      baseSkills[1].description = "Deforma profundamente a alma — dano massivo.";
-      baseSkills.push(new Skill({ id: "mahito_domain", name: "Domínio: Autopersonificação da Perfeição", description: "Domínio expansivo que envolve o alvo — **ATORDOA** por 2 turnos.", type: "attack", cost: 70, damage: 130, damageType: 'elemental', cooldown: 5, effect: { type: "stun", duration: 2 } }));
-      baseSkills.push(new Skill({ id: "mahito_regen", name: "Forma Perfeita", description: "Reestrutura o próprio corpo, recuperando 20% de HP.", type: "heal", cost: 45, healPercent: 20, cooldown: 4 }));
+      baseSkills[1].description = "Dano massivo.";
+      baseSkills.push(new Skill({ id: "mahito_domain", name: "Domínio: Autopersonificação da Perfeição", description: "ATORDOA 2t.", type: "attack", cost: 70, damage: 130, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 2 } }));
+      baseSkills.push(new Skill({ id: "mahito_regen", name: "Forma Perfeita", description: "Cura 20% HP.", type: "heal", cost: 45, healPercent: 20, cooldown: 4 }));
     } else if (bossId === "kenjaku") {
       baseSkills[0].name = "Técnica Roubada";
       baseSkills[0].damage = 120;
-      baseSkills[0].damageType = 'elemental';
       baseSkills[1].name = "Invocação Amaldiçoada";
       baseSkills[1].damage = 160;
-      baseSkills[1].description = "Invoca maldições acumuladas ao longo de séculos.";
-      baseSkills.push(new Skill({ id: "kenjaku_absorb", name: "Absorção", description: "Rouba energia do oponente — causa **QUEIMADURA** por 3 turnos.", type: "attack", cost: 60, damage: 100, damageType: 'elemental', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.06 } }));
-      baseSkills.push(new Skill({ id: "kenjaku_barrier", name: "Barreira", description: "Barreira milenar — reduz 80% do dano.", type: "reaction", cost: 35, cooldown: 3, effect: { type: "damage_reduction", value: 0.20 } }));
+      baseSkills[1].description = "Invoca maldições acumuladas.";
+      baseSkills.push(new Skill({ id: "kenjaku_absorb", name: "Absorção", description: "QUEIMADURA 6% × 3t.", type: "attack", cost: 60, damage: 100, elementType: 'escuridao', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.06 } }));
+      baseSkills.push(new Skill({ id: "kenjaku_barrier", name: "Barreira", description: "-80% dano recebido.", type: "reaction", cost: 35, cooldown: 3, effect: { type: "damage_reduction", value: 0.20 } }));
     } else if (bossId === "sukuna") {
       baseSkills[0].name = "Clivar";
       baseSkills[0].damage = 140;
-      baseSkills[0].damageType = 'fisico';
       baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.08 };
-      baseSkills[0].description = "Garra impregnada de energia maldita — causa **SANGRAMENTO**.";
+      baseSkills[0].description = "SANGRAMENTO 8% × 2t.";
       baseSkills[1].name = "Flecha de Fogo";
       baseSkills[1].damage = 180;
-      baseSkills[1].description = "Chamas da maldição — **QUEIMADURA** devastadora.";
+      baseSkills[1].description = "QUEIMADURA 8% × 3t.";
       baseSkills[1].effect = { type: "burn", duration: 3, value: 0.08 };
-      baseSkills.push(new Skill({ id: "sukuna_slash", name: "Desmantelar", description: "Corte invisível que **SANGRA** profundamente por 3 turnos.", type: "attack", cost: 55, damage: 160, damageType: 'fisico', cooldown: 3, effect: { type: "bleed", duration: 3, value: 0.10 } }));
-      baseSkills.push(new Skill({ id: "sukuna_domain", name: "Expansão: Santuário Malevolente", description: "O domínio mais poderoso já visto — **ATORDOA** por 2 turnos e causa dano absurdo.", type: "attack", cost: 90, damage: 200, damageType: 'elemental', cooldown: 6, effect: { type: "stun", duration: 2 } }));
-      baseSkills.push(new Skill({ id: "sukuna_regen", name: "Técnica de Cura Reversa", description: "Cura reversa suprema — recupera 30% de HP.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
+      baseSkills.push(new Skill({ id: "sukuna_slash", name: "Desmantelar", description: "SANGRAMENTO 10% × 3t.", type: "attack", cost: 55, damage: 160, elementType: 'escuridao', cooldown: 3, effect: { type: "bleed", duration: 3, value: 0.10 } }));
+      baseSkills.push(new Skill({ id: "sukuna_domain", name: "Expansão: Santuário Malevolente", description: "ATORDOA 2t.", type: "attack", cost: 90, damage: 200, elementType: 'fogo', cooldown: 6, effect: { type: "stun", duration: 2 } }));
+      baseSkills.push(new Skill({ id: "sukuna_regen", name: "Técnica de Cura Reversa", description: "Cura 30% HP.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
     }
 
     return baseSkills;
   }
 
   static generateChallengeBossSkills(bossId) {
+    const el = this.getBossElement(bossId) || 'escuridao';
     const baseSkills = [
-      new Skill({ id: "boss_atk_1", name: "Ataque Rápido", description: "Um golpe veloz.", type: "attack", cost: 15, damage: 50, damageType: 'fisico' }),
-      new Skill({ id: "boss_atk_2", name: "Explosão de Energia", description: "Dano em área.", type: "attack", cost: 35, damage: 100, damageType: 'elemental' }),
-      new Skill({ id: "boss_def", name: "Guarda do Boss", description: "Reduz 70% do dano.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.3 } })
+      new Skill({ id: "boss_atk_1", name: "Ataque Rápido", description: "Golpe veloz.", type: "attack", cost: 15, damage: 50, elementType: el }),
+      new Skill({ id: "boss_atk_2", name: "Explosão de Energia", description: "Dano em área.", type: "attack", cost: 35, damage: 100, elementType: el }),
+      new Skill({ id: "boss_def", name: "Guarda do Boss", description: "-70% dano recebido.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.3 } })
     ];
 
     if (bossId === "buggy") {
       baseSkills[0].name = "Bara Bara Ho";
       baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.05 };
-      baseSkills[0].description = "Lança partes do corpo como projéteis cortantes — causa **SANGRAMENTO**.";
+      baseSkills[0].description = "SANGRAMENTO 5% × 2t.";
       baseSkills[1].name = "Bara Bara Festival";
-      baseSkills.push(new Skill({ id: "buggy_split", name: "Separação", description: "Esquiva-se completamente do ataque.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
+      baseSkills.push(new Skill({ id: "buggy_split", name: "Separação", description: "Esquiva 100%.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.0 } }));
     } else if (bossId === "haruta") {
       baseSkills[0].name = "Corte Maldito";
       baseSkills[0].effect = { type: "bleed", duration: 2, value: 0.06 };
-      baseSkills[0].description = "Corte impregnado de energia amaldiçoada — causa **SANGRAMENTO**.";
+      baseSkills[0].description = "SANGRAMENTO 6% × 2t.";
       baseSkills[1].name = "Técnica Amaldiçoada";
       baseSkills[1].effect = { type: "stun", duration: 1 };
-      baseSkills[1].description = "Técnica de energia amaldiçoada que **ATORDOA** o oponente.";
-      baseSkills.push(new Skill({ id: "haruta_luck", name: "Sorte Milagrosa", description: "Reduz o dano recebido em 90%.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.1 } }));
+      baseSkills[1].description = "ATORDOA 1t.";
+      baseSkills.push(new Skill({ id: "haruta_luck", name: "Sorte Milagrosa", description: "-90% dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.1 } }));
     } else if (bossId === "neferpitou") {
       baseSkills[0].name = "Terpsichora";
       baseSkills[1].name = "Garra de Gato";
-      baseSkills.push(new Skill({ id: "pitou_jump", name: "Salto Predador", description: "Ataca e **ATORDOA** o oponente.", type: "attack", cost: 40, damage: 80, damageType: 'fisico', cooldown: 3, effect: { type: "stun", duration: 1 } }));
+      baseSkills.push(new Skill({ id: "pitou_jump", name: "Salto Predador", description: "ATORDOA 1t.", type: "attack", cost: 40, damage: 80, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1 } }));
     } else if (bossId === "rui") {
       baseSkills[0].name = "Fios de Aço";
       baseSkills[1].name = "Prisão de Fios";
-      baseSkills.push(new Skill({ id: "rui_blood", name: "Arte de Sangue", description: "Causa **SANGRAMENTO** severo.", type: "attack", cost: 35, damage: 70, damageType: 'elemental', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.1 } }));
+      baseSkills.push(new Skill({ id: "rui_blood", name: "Arte de Sangue", description: "SANGRAMENTO 10% × 3t.", type: "attack", cost: 35, damage: 70, elementType: 'escuridao', cooldown: 2, effect: { type: "bleed", duration: 3, value: 0.1 } }));
     } else if (bossId === "esdeath") {
       baseSkills[0].name = "Weissschnabel";
       baseSkills[1].name = "Grauphorn";
-      baseSkills.push(new Skill({ id: "esdeath_freeze", name: "Mahapadma", description: "Congela o tempo (**ATORDOA** por 2 turnos).", type: "attack", cost: 80, damage: 40, damageType: 'elemental', cooldown: 6, effect: { type: "stun", duration: 2 } }));
+      baseSkills.push(new Skill({ id: "esdeath_freeze", name: "Mahapadma", description: "ATORDOA 2t.", type: "attack", cost: 80, damage: 40, elementType: 'gelo', cooldown: 6, effect: { type: "stun", duration: 2 } }));
     } else if (bossId === "dabi") {
       baseSkills[0].name = "Chamas Azuis";
       baseSkills[0].effect = { type: "burn", duration: 1, value: 0.03 };
-      baseSkills[0].description = "Chamas criotérmicas que causam **QUEIMADURA** leve.";
+      baseSkills[0].description = "QUEIMADURA 3% × 1t.";
       baseSkills[1].name = "Prominence Burn";
       baseSkills[1].effect = { type: "burn", duration: 2, value: 0.04 };
-      baseSkills[1].description = "Explosão de chamas azuis — **QUEIMADURA** moderada.";
-      baseSkills.push(new Skill({ id: "dabi_burn", name: "Cremação", description: "Incineração total — **QUEIMADURA** severa por 2 turnos.", type: "attack", cost: 50, damage: 110, damageType: 'elemental', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.07 } }));
+      baseSkills[1].description = "QUEIMADURA 4% × 2t.";
+      baseSkills.push(new Skill({ id: "dabi_burn", name: "Cremação", description: "QUEIMADURA 7% × 2t.", type: "attack", cost: 50, damage: 110, elementType: 'fogo', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.07 } }));
     }
 
     return baseSkills;

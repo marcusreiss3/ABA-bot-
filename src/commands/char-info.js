@@ -1,5 +1,27 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
 const CharacterManager = require("../services/CharacterManager");
+const Emojis = require("../config/emojis");
+
+const ELEMENT_ICONS = {
+  vento:     Emojis.ELEMENTO_VENTO,
+  agua:      Emojis.ELEMENTO_AGUA,
+  fogo:      Emojis.ELEMENTO_FOGO,
+  gelo:      Emojis.ELEMENTO_GELO,
+  terra:     Emojis.ELEMENTO_TERRA,
+  escuridao: Emojis.ELEMENTO_ESCURIDAO,
+  raio:      Emojis.ELEMENTO_RAIO,
+  luz:       Emojis.ELEMENTO_LUZ,
+};
+const ELEMENT_NAMES = {
+  vento: 'Vento', agua: 'Água', fogo: 'Fogo', gelo: 'Gelo',
+  terra: 'Terra', escuridao: 'Escuridão', raio: 'Raio', luz: 'Luz',
+};
+function elemDisplay(elementType) {
+  if (!elementType) return 'N/A';
+  const icon = ELEMENT_ICONS[elementType] || '';
+  const name = ELEMENT_NAMES[elementType] || elementType;
+  return icon ? `${icon} ${name}` : name;
+}
 
 // ── Catálogo de personagens jogáveis ─────────────────────────────────────────
 const CHARS = {
@@ -35,7 +57,6 @@ const RARITY_DESC   = {
   EM: "Entidades de poder incomparável. Os mais raros do Nexus Interdimensional.",
 };
 const TYPE_ICON  = { attack: "⚔️", buff: "💠", heal: "💚", reaction: "🛡️" };
-const DMG_ICON   = { fisico: "👊", elemental: "🔮" };
 
 // ── Formata o efeito em texto curto ──────────────────────────────────────────
 function fxStr(effect) {
@@ -68,8 +89,8 @@ function skillLine(skill) {
   const parts = [`**${skill.name}**`];
 
   if (skill.type === "attack" && skill.damage) {
-    const tipo = skill.damageType === "elemental" ? "elemental" : "físico";
-    parts.push(`${skill.damage} dmg ${tipo}`);
+    parts.push(`${skill.damage} dmg`);
+    parts.push(elemDisplay(skill.elementType));
   }
   if (skill.type === "heal" && skill.healPercent) {
     parts.push(`Cura ${skill.healPercent}% HP`);
@@ -151,19 +172,25 @@ function createCharEmbed(charId) {
   const rarity = char.rarity;
   const color  = RARITY_COLOR[rarity] || "#1a0a2e";
 
+  const elIcon = char.element ? (ELEMENT_ICONS[char.element] || '') : '';
+  const elName = char.element ? (ELEMENT_NAMES[char.element] || char.element) : 'N/A';
+
   const passiveLines = [];
-  if (char.passives?.physicalReduction) passiveLines.push(`Reduz ${Math.round(char.passives.physicalReduction * 100)}% de dano físico`);
+  if (char.passives?.physicalReduction) passiveLines.push(`Reduz ${Math.round(char.passives.physicalReduction * 100)}% de dano recebido`);
   if (char.passives?.executionZone)      passiveLines.push("Execução: dano dobrado abaixo de 20% HP");
 
-  const descParts = [`HP: ${char.maxHealth}  ·  Energia: ${char.maxEnergy}`];
-  if (passiveLines.length) descParts.push(`\n**Passivas**\n${passiveLines.join("\n")}`);
+  const descParts = [
+    `${elIcon} **Elemento:** ${elName}`,
+    `HP: ${char.maxHealth}  ·  Energia: ${char.maxEnergy}`,
+  ];
+  if (passiveLines.length) descParts.push(`**Passivas**\n${passiveLines.join("\n")}`);
 
   const embed = new EmbedBuilder()
     .setAuthor({ name: `${RARITY_LABEL[rarity]} — ${char.name}` })
     .setTitle(char.name)
     .setColor(color)
     .setThumbnail(char.imageUrl || null)
-    .setDescription(descParts.join(""));
+    .setDescription(descParts.join("\n"));
 
   // Sung Jin-Woo: múltiplos sets de sombras
   if (charId === "sung_jin_woo" && char.shadowSkillSets) {

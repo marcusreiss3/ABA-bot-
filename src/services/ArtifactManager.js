@@ -145,8 +145,6 @@ class ArtifactManager {
           effectType: "damage",
           effectValue: 0.15,
           effectUnit: "percentage",
-          conditionType: "damageType",   // apenas dano físico
-          conditionValue: "fisico",
         });
         break;
       case "roda_mahoraga":

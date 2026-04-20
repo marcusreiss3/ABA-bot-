@@ -5,7 +5,7 @@ class Skill {
    * @param {string} data.name - Nome
    * @param {string} data.description - Descrição
    * @param {string} data.type - 'attack', 'buff', 'reaction', 'heal'
-   * @param {string} [data.damageType] - 'fisico' ou 'elemental'
+   * @param {string} [data.elementType] - tipo elemental do ataque (vento, fogo, etc.) ou null
    * @param {number} data.cost - Custo de energia
    * @param {number} [data.damage] - Dano base
    * @param {number} [data.cooldown] - Turnos de recarga
@@ -18,7 +18,7 @@ class Skill {
     this.name = data.name;
     this.description = data.description;
     this.type = data.type;
-    this.damageType = data.damageType || 'fisico';
+    this.elementType = data.elementType || null;
     this.cost = data.cost;
     this.damage = data.damage || 0;
     this.cooldown = data.cooldown || 0;

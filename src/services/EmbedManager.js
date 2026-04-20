@@ -5,6 +5,20 @@ const FragmentMap = require("../config/fragmentMap");
 const storyConfig = require("../config/storyConfig");
 const FRAGMENTS_NEEDED = 100;
 
+function elementIcon(element) {
+  const map = {
+    vento:     Emojis.ELEMENTO_VENTO,
+    agua:      Emojis.ELEMENTO_AGUA,
+    fogo:      Emojis.ELEMENTO_FOGO,
+    gelo:      Emojis.ELEMENTO_GELO,
+    terra:     Emojis.ELEMENTO_TERRA,
+    escuridao: Emojis.ELEMENTO_ESCURIDAO,
+    raio:      Emojis.ELEMENTO_RAIO,
+    luz:       Emojis.ELEMENTO_LUZ,
+  };
+  return element ? (map[element] || '') : '';
+}
+
 const WORLD_COLORS = {
   dragonball: "#FF6B00",
   naruto:     "#4A90D9",
@@ -31,14 +45,14 @@ class EmbedManager {
     if (battle.type === "boss-rush") {
       // No Boss Rush, char1 é o Boss (P1)
       embed.addFields({
-        name: `🔥 ${char1.name} (BOSS) [Lvl ${char1.level}]`,
+        name: `🔥 ${elementIcon(char1.element)} ${char1.name} (BOSS) [Lvl ${char1.level}]`,
         value: this.formatCharStats(char1),
         inline: false
       });
       // Mostrar o trio desafiante
       battle.partyCharacters.forEach((char, index) => {
         embed.addFields({
-          name: `👤 ${char.name} (P${index + 1}) [Lvl ${char.level}]`,
+          name: `👤 ${elementIcon(char.element)} ${char.name} (P${index + 1}) [Lvl ${char.level}]`,
           value: this.formatCharStats(char),
           inline: true
         });
@@ -47,23 +61,23 @@ class EmbedManager {
       // No PVE normal, char2 é o Boss
       battle.partyCharacters.forEach((char, index) => {
         embed.addFields({
-          name: `${index === 0 ? "👑" : "👤"} ${char.name} (P${index + 1}) [Lvl ${char.level}]`,
+          name: `${index === 0 ? "👑" : "👤"} ${elementIcon(char.element)} ${char.name} (P${index + 1}) [Lvl ${char.level}]`,
           value: this.formatCharStats(char),
           inline: true
         });
       });
       embed.addFields({
-        name: `👾 ${char2.name} (BOSS) [Lvl ${char2.level}]`,
+        name: `👾 ${elementIcon(char2.element)} ${char2.name} (BOSS) [Lvl ${char2.level}]`,
         value: this.formatCharStats(char2),
         inline: true
       });
     } else {
       const p1Label = battle.isTeamPvp
-        ? `🥋 ${char1.name} (${battle.p1DisplayName || battle.player1Id}) [Lvl ${char1.level}]`
-        : `🥋 ${char1.name} (P1) [Lvl ${char1.level}]`;
+        ? `🥋 ${elementIcon(char1.element)} ${char1.name} (${battle.p1DisplayName || battle.player1Id}) [Lvl ${char1.level}]`
+        : `🥋 ${elementIcon(char1.element)} ${char1.name} (P1) [Lvl ${char1.level}]`;
       const p2Label = battle.isTeamPvp
-        ? `🥋 ${char2.name} (${battle.p2DisplayName || battle.player2Id}) [Lvl ${char2.level}]`
-        : `🥋 ${char2.name} (P2) [Lvl ${char2.level}]`;
+        ? `🥋 ${elementIcon(char2.element)} ${char2.name} (${battle.p2DisplayName || battle.player2Id}) [Lvl ${char2.level}]`
+        : `🥋 ${elementIcon(char2.element)} ${char2.name} (P2) [Lvl ${char2.level}]`;
       embed.addFields(
         { name: p1Label, value: this.formatCharStats(char1), inline: true },
         { name: p2Label, value: this.formatCharStats(char2), inline: true }
@@ -351,7 +365,8 @@ class EmbedManager {
         const isEquipped  = player.equipped_instance_id === inst.id ? " ⚔️" : "";
         const isProtected = inst.protected ? " 🔒" : "";
 
-        const entry = `${charData.name} \`Lv${inst.level}\` \`#${inst.id}\`${artIcons}${isEquipped}${isProtected}`;
+        const elIcon = charData.element ? elementIcon(charData.element) + ' ' : '';
+        const entry = `${elIcon}${charData.name} \`Lv${inst.level}\` \`#${inst.id}\`${artIcons}${isEquipped}${isProtected}`;
         rarityGroups[rarity]?.push(entry);
         if (!rarityGroups[rarity]) rarityGroups.EC.push(entry);
       });

@@ -360,7 +360,7 @@ function describeArtifact(art) {
       if (art.conditionType === "anime")       cond = ` *(personagens do universo ${ANIME_LABELS[art.conditionValue] || art.conditionValue})*`;
       if (art.conditionType === "character")   cond = ` *(apenas ${CHAR_LABELS[art.conditionValue] || art.conditionValue})*`;
       if (art.conditionType === "hpAdvantage") cond = " *(quando com mais HP que o oponente)*";
-      if (art.conditionType === "damageType")  cond = ` *(apenas ataques físicos)*`;
+      if (art.conditionType === "damageType")  cond = ` *(apenas ataques com elemento ${art.conditionValue})*`;
       lines.push(`→ +${Math.round(art.effectValue * 100)}% de dano${cond}`);
       break;
     }

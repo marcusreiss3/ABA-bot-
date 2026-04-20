@@ -1,4 +1,14 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
+const Emojis = require("../config/emojis");
+
+const ELEMENT_NAME = {
+  vento: 'Vento', agua: 'Água', fogo: 'Fogo', gelo: 'Gelo',
+  terra: 'Terra', escuridao: 'Escuridão', raio: 'Raio', luz: 'Luz',
+};
+function elemTag(elementType) {
+  if (!elementType) return 'N/A';
+  return `[${ELEMENT_NAME[elementType] || elementType}]`;
+}
 
 class ButtonManager {
   static createActionComponents(battleId, character, isDisabled = false, battle = null) {
@@ -66,9 +76,12 @@ class ButtonManager {
         label = `${skill.name} (⏳ ${skill.currentCooldown} turno(s))`;
       }
 
+      const baseDesc = skill.description || "";
+      const elPart = skill.type === "attack" ? ` · ${elemTag(skill.elementType)}` : "";
+      const fullDesc = (baseDesc + elPart).substring(0, 100);
       return {
         label: label,
-        description: (skill.description || "Sem descrição disponível.").substring(0, 100),
+        description: fullDesc || "Sem descrição.",
         value: skill.id,
         emoji: this.getSkillEmoji(skill)
       };
@@ -122,7 +135,7 @@ class ButtonManager {
   static getSkillEmoji(skill) {
     if (skill.type === "heal") return "💚";
     if (skill.type === "buff") return "✨";
-    if (skill.damageType === "elemental") return "🔥";
+    if (skill.elementType) return "🔥";
     return "🥊";
   }
 

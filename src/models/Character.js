@@ -20,6 +20,7 @@ class Character {
     this.instanceId = data.instanceId || null;
     this.name = data.name;
     this.anime = data.anime;
+    this.element = data.element || null;
     this.baseHealth = data.health;
     this.baseMaxHealth = data.maxHealth;
     this.energy = data.energy;
@@ -118,13 +119,11 @@ class Character {
     return this.health > 0;
   }
 
-  takeDamage(amount, damageType = 'fisico') {
+  takeDamage(amount, _damageType) {
     let finalDamage = amount;
-    
-    if (damageType === 'fisico' && this.passives.physicalReduction) {
+    if (this.passives.physicalReduction) {
       finalDamage *= (1 - this.passives.physicalReduction);
     }
-
     this.health = Math.max(0, this.health - Math.floor(finalDamage));
     return Math.floor(finalDamage);
   }
