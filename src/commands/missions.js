@@ -17,7 +17,10 @@ function createDailyMissionsEmbed(userId) {
     const isDone = progress >= m.goal;
     const bar = buildBar(progress, m.goal);
     const status = claimed ? "✅" : isDone ? "⭐" : "⏳";
-    const rewardText = `${Emojis.ZENITH} ${m.reward.zenith} · 🪨 ${m.reward.soulStone.qty}x Pedra ${m.reward.soulStone.id.split('_')[2].toUpperCase()}`;
+    const ssLevel = m.reward.soulStone.id.split('_')[2]; // "1", "2" ou "3"
+    const ssRoman = { "1": "I", "2": "II", "3": "III" }[ssLevel] || ssLevel;
+    const ssEmoji = Emojis[`SOUL_STONE_${ssLevel}`] || "🪨";
+    const rewardText = `${Emojis.ZENITH} ${m.reward.zenith} · ${ssEmoji} ${m.reward.soulStone.qty}x Pedra da Alma ${ssRoman}`;
     return `${status} **${m.label}**\n${bar} \`${progress}/${m.goal}\`\n↳ ${rewardText}`;
   }).join("\n\n");
 
@@ -60,7 +63,10 @@ function createWeeklyMissionsEmbed(userId) {
     const isDone = progress >= m.goal;
     const bar = buildBar(progress, m.goal);
     const status = claimed ? "✅" : isDone ? "⭐" : "⏳";
-    const rewardText = `${Emojis.ZENITH} ${m.reward.zenith} · 🪨 ${m.reward.soulStone.qty}x Pedra ${m.reward.soulStone.id.split('_')[2].toUpperCase()}`;
+    const ssLevel = m.reward.soulStone.id.split('_')[2]; // "1", "2" ou "3"
+    const ssRoman = { "1": "I", "2": "II", "3": "III" }[ssLevel] || ssLevel;
+    const ssEmoji = Emojis[`SOUL_STONE_${ssLevel}`] || "🪨";
+    const rewardText = `${Emojis.ZENITH} ${m.reward.zenith} · ${ssEmoji} ${m.reward.soulStone.qty}x Pedra da Alma ${ssRoman}`;
     return `${status} **${m.label}**\n${bar} \`${progress}/${m.goal}\`\n↳ ${rewardText}`;
   }).join("\n\n");
 

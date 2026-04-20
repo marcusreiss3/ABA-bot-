@@ -2327,6 +2327,12 @@ module.exports = {
             });
 
             const battle = BattleEngine.startTeamBattle(ownerId, entry.playerId, channel.id);
+            try {
+              const m1 = await interaction.guild.members.fetch(ownerId);
+              const m2 = await interaction.guild.members.fetch(entry.playerId);
+              battle.p1DisplayName = m1.displayName;
+              battle.p2DisplayName = m2.displayName;
+            } catch (_) {}
             const embed = EmbedManager.createBattleEmbed(battle);
             const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 

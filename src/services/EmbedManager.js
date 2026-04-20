@@ -59,10 +59,10 @@ class EmbedManager {
       });
     } else {
       const p1Label = battle.isTeamPvp
-        ? `🥋 ${char1.name} (<@${battle.player1Id}>) [Lvl ${char1.level}]`
+        ? `🥋 ${char1.name} (${battle.p1DisplayName || battle.player1Id}) [Lvl ${char1.level}]`
         : `🥋 ${char1.name} (P1) [Lvl ${char1.level}]`;
       const p2Label = battle.isTeamPvp
-        ? `🥋 ${char2.name} (<@${battle.player2Id}>) [Lvl ${char2.level}]`
+        ? `🥋 ${char2.name} (${battle.p2DisplayName || battle.player2Id}) [Lvl ${char2.level}]`
         : `🥋 ${char2.name} (P2) [Lvl ${char2.level}]`;
       embed.addFields(
         { name: p1Label, value: this.formatCharStats(char1), inline: true },
