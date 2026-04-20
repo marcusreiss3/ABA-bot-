@@ -364,9 +364,9 @@ class CharacterManager {
       const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "Memória muscular da classe assassino — Jin-Woo recua nas sombras no momento certo, reduzindo **70% do dano**.", type: "reaction", cost: 35, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
 
       const igrisSkills = [
-        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "Golpe preciso de Igris. Aplica **1 Marca de Sangue**. Ao atingir 3 marcas, dano bônus automático (+40).", type: "attack", cost: 15, damage: 32, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
+        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "Golpe preciso de Igris. Aplica **1 Marca de Sangue**. Ao atingir 3 marcas, dano bônus automático (escala com seu HP).", type: "attack", cost: 15, damage: 32, damageType: 'fisico', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
         new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "Investida devastadora de Igris. Aplica **2 Marcas de Sangue**.", type: "attack", cost: 25, damage: 45, damageType: 'fisico', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
-        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome todas as **Marcas de Sangue** (+50 dano/marca). Sem marcas: dano base. Sempre aplica 1 nova marca.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 1 }),
+        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome todas as **Marcas de Sangue** (bônus por marca escala com seu HP). Sem marcas: dano base. Sempre aplica 1 nova marca.", type: "attack", cost: 30, damage: 25, damageType: 'fisico', cooldown: 1 }),
         sjwReaction,
       ];
 
@@ -380,7 +380,7 @@ class CharacterManager {
       const tankSkills = [
         new Skill({ id: "sjw_impacto_pesado", name: "Impacto Pesado", description: "Dano médio que reduz o próximo ataque do inimigo em **25%**.", type: "attack", cost: 20, damage: 40, damageType: 'fisico', effect: { type: "debuff_damage", value: 0.25, duration: 1 }, gifUrl: "https://i.ibb.co/nqHmrM0k/sung-jin-woo-vs.gif" }),
         new Skill({ id: "sjw_postura_inabalavel", name: "Postura Inabalável", description: "Reduz o dano recebido em **30%** por 2 turnos (passivo, sem reação).", type: "buff", cost: 20, cooldown: 2 }),
-        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Postura de contra-ataque por 2 turnos: quem atacar Sung Jin-Woo sofrerá **10% do HP dele** de dano por turno.", type: "buff", cost: 25, cooldown: 3 }),
+        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Postura de contra-ataque por 2 turnos: quem atacar Sung Jin-Woo sofrerá **18% do HP dele** de dano por turno.", type: "buff", cost: 25, cooldown: 3 }),
         sjwReaction,
       ];
 

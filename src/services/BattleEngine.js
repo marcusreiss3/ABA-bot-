@@ -446,24 +446,27 @@ class BattleEngine {
       let markBonus = 0;
       let markMsg = "";
 
+      const burstBonus  = Math.floor(attacker.maxHealth * 0.12); // auto-burst ao atingir 3 marcas
+      const markPerMark = Math.floor(attacker.maxHealth * 0.10); // Execução: bônus por marca
+
       if (skill.id === "sjw_corte_preciso") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 1);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 55;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+55** de dano bônus!`;
+          markBonus = burstBonus;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+${burstBonus}** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_investida_cavaleiro") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 2);
         if (attacker.stacks["blood_marks"] >= 3) {
-          markBonus = 55;
-          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+55** de dano bônus!`;
+          markBonus = burstBonus;
+          markMsg = `\n⚔️ **MARCA DE SANGUE x3!** Igris dispara! **+${burstBonus}** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
       } else if (skill.id === "sjw_execucao_carmesim") {
         const existing = attacker.stacks["blood_marks"];
         if (existing > 0) {
-          markBonus = existing * 50;
+          markBonus = existing * markPerMark;
           markMsg = `\n🗡️ **Execução Carmesim!** ${existing} marca(s) consumida(s)! **+${markBonus}** de dano bônus!`;
           attacker.stacks["blood_marks"] = 0;
         }
@@ -487,7 +490,7 @@ class BattleEngine {
     // --- Sung Jin-Woo: Contra-Ataque Brutal (Tank) ---
     if (skill.id === "sjw_contra_ataque_brutal") {
       attacker.addBuff({ id: "sjw_contra_ataque_brutal", type: "counter_brutal", duration: 2 });
-      battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.10)}** de dano por turno por 2 turnos.`;
+      battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.18)}** de dano por turno por 2 turnos.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
       battle.state = "choosing_action";
@@ -793,13 +796,13 @@ class BattleEngine {
     // --- Sung Jin-Woo: mecânicas de defesa (Tank) ao ser atacado ---
     if (defender.id === "sung_jin_woo" && finalDamage > 0) {
       if (defender.activeShadow === "tank") {
-        const passiveCounter = Math.floor(defender.maxHealth * 0.05);
+        const passiveCounter = Math.floor(defender.maxHealth * 0.07);
         attacker.health = Math.max(0, attacker.health - passiveCounter);
         battle.lastActionMessage += `\n🛡️ **Instinto de Tank:** **${attacker.name}** sofreu **${passiveCounter}** de contra-ataque!`;
       }
       const counterBuff = defender.buffs.find(b => b.id === "sjw_contra_ataque_brutal");
       if (counterBuff) {
-        const counterDmg = Math.floor(defender.maxHealth * 0.10);
+        const counterDmg = Math.floor(defender.maxHealth * 0.18);
         attacker.addStatusEffect({ type: "brutal_counter", value: counterDmg, duration: 2 });
         battle.lastActionMessage += `\n⚔️ **Contra-Ataque Brutal!** **${attacker.name}** sofrerá **${counterDmg}** de dano por 2 turnos!`;
       }
@@ -1305,7 +1308,7 @@ class BattleEngine {
 
       // Tank: regeneração passiva de 4% do HP máximo no início de cada turno
       if (nextPlayer.activeShadow === "tank" && nextPlayer.isAlive()) {
-        const regen = Math.floor(nextPlayer.maxHealth * 0.04);
+        const regen = Math.floor(nextPlayer.maxHealth * 0.05);
         nextPlayer.health = Math.min(nextPlayer.maxHealth, nextPlayer.health + regen);
         battle.lastActionMessage += `\n🛡️ **Regeneração de Sombra:** Sung Jin-Woo recuperou **${regen}** HP (Tank passivo).`;
       }
