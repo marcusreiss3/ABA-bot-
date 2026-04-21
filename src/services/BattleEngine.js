@@ -215,6 +215,8 @@ class BattleEngine {
       battle.p1ActiveIdx = 0;
       battle.isPveTeam = true;
       battle.character1 = teamChars[0];
+      // isPveTeam uses character1/p1Team directly — partyCharacters would conflict
+      battle.partyCharacters = null;
     }
 
     battle.startedAt = Date.now();
@@ -702,6 +704,19 @@ class BattleEngine {
             this.handlePveRewards(battle);
             const partyMembers = battle.partyMembers || [battle.player1Id];
             partyMembers.forEach(id => missionRepository.addProgress(id, "win_pve"));
+          } else if (battle.isPveTeam && battle.p1Team) {
+            battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado e está fora de combate!`;
+            battle.switchTurn();
+            const nextIdx = battle.p1Team.findIndex((c, i) => i !== battle.p1ActiveIdx && c.isAlive());
+            if (nextIdx >= 0) {
+              battle.p1ActiveIdx = nextIdx;
+              battle.character1 = battle.p1Team[nextIdx];
+              battle.lastActionMessage += `\n⚡ **${battle.p1Team[nextIdx].name}** entra em campo!`;
+            } else {
+              battle.state = "finished";
+              battle.winnerId = battle.player2Id;
+              battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+            }
           } else if (!battle.isPve) {
             battle.state = "finished";
             battle.winnerId = attacker.ownerId;
