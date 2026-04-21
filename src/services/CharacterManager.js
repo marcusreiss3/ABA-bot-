@@ -197,7 +197,7 @@ class CharacterManager {
         skills: [
           new Skill({ id: "eva_punch", name: "Golpe do EVA", description: "Soco devastador.", type: "attack", cost: 10, damage: 18, elementType: 'raio', gifUrl: "https://i.pinimg.com/originals/dd/3d/d3/dd3dd343a80c9014477ebbb7b6d9f067.gif" }),
           new Skill({ id: "charged_strike", name: "Impacto Cargado", description: "ATORDOA 1t.", type: "attack", cost: 30, damage: 28, elementType: 'raio', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/27Xj3nV1/neon-genesis-robot.gif" }),
-          new Skill({ id: "positron_beam", name: "Rifle Posítron", description: "Escala com Taxa de Sincronização.", type: "attack", cost: 40, damage: 38, elementType: 'raio', cooldown: 3, gifUrl: "https://i.ibb.co/2JxdK2G/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f.gif" }),
+          new Skill({ id: "positron_beam", name: "Rifle Posítron", description: "QUEIMADURA 3% × 1t. Escala com Taxa de Sincronização.", type: "attack", cost: 40, damage: 38, elementType: 'raio', cooldown: 3, effect: { type: "burn", duration: 2, value: 0.03 }, gifUrl: "https://i.ibb.co/2JxdK2G/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f.gif" }),
           new Skill({ id: "at_field", name: "Avanço Veloz", description: "+30% dano no próximo ataque.", type: "buff", cost: 25, cooldown: 2, gifUrl: "https://i.pinimg.com/originals/91/4c/ea/914cea573a12f795a2ce98b096a570c8.gif" }),
           new Skill({ id: "at_field_def", name: "Campo AT Defensivo", description: "-70% dano recebido.", type: "reaction", cost: 30, cooldown: 3, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://i.ibb.co/XgS0Kcm/0kdoqqyn9rqb1.gif" })
         ]
@@ -378,23 +378,23 @@ class CharacterManager {
       const sjwReaction = new Skill({ id: "sjw_instinto_assassino", name: "Instinto do Assassino", description: "-70% dano recebido.", type: "reaction", cost: 35, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } });
 
       const igrisSkills = [
-        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "+1 Marca de Sangue. 3 marcas = dano bônus.", type: "attack", cost: 15, damage: 32, elementType: 'escuridao', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
-        new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "+2 Marcas de Sangue.", type: "attack", cost: 25, damage: 45, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
-        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome marcas (bônus escala com HP). +1 marca.", type: "attack", cost: 30, damage: 25, elementType: 'escuridao', cooldown: 1 }),
+        new Skill({ id: "sjw_corte_preciso", name: "Corte Preciso", description: "+1 Marca de Sangue. 3 marcas = dano bônus.", type: "attack", cost: 20, damage: 25, elementType: 'escuridao', gifUrl: "https://i.pinimg.com/originals/31/64/72/31647234c454b429d811d8875d5db412.gif" }),
+        new Skill({ id: "sjw_investida_cavaleiro", name: "Investida do Cavaleiro", description: "+2 Marcas de Sangue.", type: "attack", cost: 30, damage: 38, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.ibb.co/Tq7PBMMn/BORMfi-J-Imgur.gif" }),
+        new Skill({ id: "sjw_execucao_carmesim", name: "Execução Carmesim", description: "Consome marcas (bônus escala com HP). +1 marca.", type: "attack", cost: 35, damage: 20, elementType: 'escuridao', cooldown: 2 }),
         sjwReaction,
       ];
 
       const beruSkills = [
-        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Lifesteal 5%. 25% chance golpe duplo.", type: "attack", cost: 15, damage: 28, elementType: 'escuridao', cooldown: 1 }),
-        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 hits + 35% chance 3º. Cada hit cura 2% HP.", type: "attack", cost: 25, damage: 16, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
-        new Skill({ id: "sjw_devorar", name: "Devorar", description: "25% chance golpe duplo.", type: "attack", cost: 35, damage: 52, elementType: 'escuridao', cooldown: 2 }),
+        new Skill({ id: "sjw_garras_vorazes", name: "Garras Vorazes", description: "Lifesteal 5%. 15% chance golpe duplo.", type: "attack", cost: 20, damage: 22, elementType: 'escuridao', cooldown: 1 }),
+        new Skill({ id: "sjw_frenesi_predador", name: "Frenesi do Predador", description: "2 hits + 35% chance 3º. Cada hit cura 2% HP.", type: "attack", cost: 30, damage: 14, elementType: 'escuridao', cooldown: 2, gifUrl: "https://i.pinimg.com/originals/05/62/dc/0562dc48c43421cdf41f1efac5ffe519.gif" }),
+        new Skill({ id: "sjw_devorar", name: "Devorar", description: "15% chance golpe duplo.", type: "attack", cost: 40, damage: 42, elementType: 'escuridao', cooldown: 2 }),
         sjwReaction,
       ];
 
       const tankSkills = [
-        new Skill({ id: "sjw_impacto_pesado", name: "Impacto Pesado", description: "-25% dano inimigo × 1t.", type: "attack", cost: 20, damage: 40, elementType: 'escuridao', effect: { type: "debuff_damage", value: 0.25, duration: 1 }, gifUrl: "https://i.ibb.co/nqHmrM0k/sung-jin-woo-vs.gif" }),
+        new Skill({ id: "sjw_impacto_pesado", name: "Impacto Pesado", description: "-25% dano inimigo × 1t.", type: "attack", cost: 25, damage: 30, elementType: 'escuridao', effect: { type: "debuff_damage", value: 0.25, duration: 1 }, gifUrl: "https://i.ibb.co/nqHmrM0k/sung-jin-woo-vs.gif" }),
         new Skill({ id: "sjw_postura_inabalavel", name: "Postura Inabalável", description: "-30% dano recebido × 2t (passivo).", type: "buff", cost: 20, cooldown: 2 }),
-        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Contra-ataque por 2t: 18% HP do inimigo por turno.", type: "buff", cost: 25, cooldown: 3 }),
+        new Skill({ id: "sjw_contra_ataque_brutal", name: "Contra-Ataque Brutal", description: "Contra-ataque: 10% HP do inimigo por 1t.", type: "buff", cost: 30, cooldown: 3 }),
         sjwReaction,
       ];
 
@@ -656,8 +656,8 @@ class CharacterManager {
     } else if (bossId === "attack_titan") {
       baseSkills[0].name = "Punho do Titã";
       baseSkills[1].name = "Fúria de Eren";
-      baseSkills.push(new Skill({ id: "founding_scream", name: "Rugido Fundador", description: "ATORDOA 2t. SANGRAMENTO 7% × 2t.", type: "attack", cost: 65, damage: 80, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 2, bleed: { duration: 2, value: 0.07 } } }));
-      baseSkills.push(new Skill({ id: "titan_regen", name: "Regeneração de Titã", description: "Cura 25% HP.", type: "heal", cost: 45, healPercent: 25, cooldown: 5 }));
+      baseSkills.push(new Skill({ id: "founding_scream", name: "Rugido Fundador", description: "ATORDOA 1t. SANGRAMENTO 5% × 2t.", type: "attack", cost: 65, damage: 80, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 1, bleed: { duration: 2, value: 0.05 } } }));
+      baseSkills.push(new Skill({ id: "titan_regen", name: "Regeneração de Titã", description: "Cura 12% HP.", type: "heal", cost: 45, healPercent: 12, cooldown: 5 }));
     } else if (bossId === "f_titan") {
       baseSkills[0].name = "Soco Endurecido";
       baseSkills[1].name = "Grito de Chamada";
@@ -709,8 +709,8 @@ class CharacterManager {
       baseSkills[1].description = "QUEIMADURA 8% × 3t.";
       baseSkills[1].effect = { type: "burn", duration: 3, value: 0.08 };
       baseSkills.push(new Skill({ id: "sukuna_slash", name: "Desmantelar", description: "SANGRAMENTO 10% × 3t.", type: "attack", cost: 55, damage: 160, elementType: 'escuridao', cooldown: 3, effect: { type: "bleed", duration: 3, value: 0.10 } }));
-      baseSkills.push(new Skill({ id: "sukuna_domain", name: "Expansão: Santuário Malevolente", description: "ATORDOA 2t.", type: "attack", cost: 90, damage: 200, elementType: 'fogo', cooldown: 6, effect: { type: "stun", duration: 2 } }));
-      baseSkills.push(new Skill({ id: "sukuna_regen", name: "Técnica de Cura Reversa", description: "Cura 30% HP.", type: "heal", cost: 50, healPercent: 30, cooldown: 5 }));
+      baseSkills.push(new Skill({ id: "sukuna_domain", name: "Expansão: Santuário Malevolente", description: "ATORDOA 1t.", type: "attack", cost: 90, damage: 200, elementType: 'fogo', cooldown: 7, effect: { type: "stun", duration: 1 } }));
+      baseSkills.push(new Skill({ id: "sukuna_regen", name: "Técnica de Cura Reversa", description: "Cura 15% HP.", type: "heal", cost: 50, healPercent: 15, cooldown: 6 }));
     }
 
     return baseSkills;

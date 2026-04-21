@@ -409,6 +409,11 @@ class BattleEngine {
     skill.startCooldown();
     
     this.applyStatusTick(attacker, battle);
+    if (!attacker.isAlive()) {
+      this._handleDoTDeath(attacker, battle);
+      this.endTurnUpdate(battle);
+      return battle;
+    }
 
     battle.lastPendingSkill = skill;
 
@@ -557,8 +562,8 @@ class BattleEngine {
       let markBonus = 0;
       let markMsg = "";
 
-      const burstBonus  = Math.floor(attacker.maxHealth * 0.12); // auto-burst ao atingir 3 marcas
-      const markPerMark = Math.floor(attacker.maxHealth * 0.10); // Execução: bônus por marca
+      const burstBonus  = Math.floor(attacker.maxHealth * 0.06); // auto-burst ao atingir 3 marcas
+      const markPerMark = Math.floor(attacker.maxHealth * 0.05); // Execução: bônus por marca
 
       if (skill.id === "sjw_corte_preciso") {
         attacker.stacks["blood_marks"] = Math.min(3, attacker.stacks["blood_marks"] + 1);
@@ -601,7 +606,7 @@ class BattleEngine {
     // --- Sung Jin-Woo: Contra-Ataque Brutal (Tank) ---
     if (skill.id === "sjw_contra_ataque_brutal") {
       attacker.addBuff({ id: "sjw_contra_ataque_brutal", type: "counter_brutal", duration: 2 });
-      battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.18)}** de dano por turno por 2 turnos.`;
+      battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.10)}** de dano no próximo turno.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
       battle.state = "choosing_action";
@@ -709,6 +714,11 @@ class BattleEngine {
 
     const character = battle.getCurrentPlayer();
     this.applyStatusTick(character, battle);
+    if (!character.isAlive()) {
+      this._handleDoTDeath(character, battle);
+      this.endTurnUpdate(battle);
+      return battle;
+    }
 
     character.recoverEnergy(25);
     battle.lastActionMessage = `**${character.name}** concentrou sua energia e recuperou 25 pontos!`;
@@ -907,21 +917,21 @@ class BattleEngine {
     // --- Sung Jin-Woo: mecânicas de defesa (Tank) ao ser atacado ---
     if (defender.id === "sung_jin_woo" && finalDamage > 0) {
       if (defender.activeShadow === "tank") {
-        const passiveCounter = Math.floor(defender.maxHealth * 0.07);
+        const passiveCounter = Math.floor(defender.maxHealth * 0.04);
         attacker.health = Math.max(0, attacker.health - passiveCounter);
         battle.lastActionMessage += `\n🛡️ **Instinto de Tank:** **${attacker.name}** sofreu **${passiveCounter}** de contra-ataque!`;
       }
       const counterBuff = defender.buffs.find(b => b.id === "sjw_contra_ataque_brutal");
       if (counterBuff) {
-        const counterDmg = Math.floor(defender.maxHealth * 0.18);
-        attacker.addStatusEffect({ type: "brutal_counter", value: counterDmg, duration: 2 });
-        battle.lastActionMessage += `\n⚔️ **Contra-Ataque Brutal!** **${attacker.name}** sofrerá **${counterDmg}** de dano por 2 turnos!`;
+        const counterDmg = Math.floor(defender.maxHealth * 0.10);
+        attacker.addStatusEffect({ type: "brutal_counter", value: counterDmg, duration: 1 });
+        battle.lastActionMessage += `\n⚔️ **Contra-Ataque Brutal!** **${attacker.name}** sofrerá **${counterDmg}** de dano por 1 turno!`;
       }
     }
 
     // --- Sung Jin-Woo: Beru lifesteal ---
     if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
-      const lifesteal = Math.floor(finalDamage * 0.08);
+      const lifesteal = Math.floor(finalDamage * 0.05);
       if (lifesteal > 0) {
         attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
         battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
@@ -1367,6 +1377,88 @@ class BattleEngine {
     return this.processRecoverEnergy(battle.id, battle.player2Id);
   }
 
+  _handleDoTDeath(character, battle) {
+    const missionRepository = require("../database/repositories/missionRepository");
+    battle.lastActionMessage += `\n💀 **${character.name}** foi derrotado pelos efeitos de status!`;
+
+    if (battle.isPve) {
+      if (character === battle.character2) {
+        // Boss morreu pelo DoT (raro mas possível)
+        battle.state = "finished";
+        battle.winnerId = "players";
+        battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+        this.handlePveRewards(battle);
+      } else {
+        const allDead = battle.partyCharacters
+          ? battle.partyCharacters.every(c => !c.isAlive())
+          : !battle.character1.isAlive();
+        if (allDead) {
+          battle.state = "finished";
+          battle.winnerId = battle.player2Id;
+          battle.lastActionMessage += `\n\n💀 Todos os jogadores foram derrotados! O Boss venceu.`;
+          if (battle.type === "tower") {
+            const cooldownTime = 35 * 60 * 1000;
+            const availableAt = Date.now() + cooldownTime;
+            (battle.partyMembers || [battle.player1Id]).forEach(mId => playerRepository.updateTowerCooldown(mId, availableAt));
+          }
+        }
+      }
+      return;
+    }
+
+    if (battle.type === "boss-rush") {
+      const allDead = battle.partyCharacters.every(c => !c.isAlive());
+      if (allDead) {
+        battle.state = "finished";
+        battle.winnerId = battle.player1Id;
+        battle.lastActionMessage += `\n\n💀 Todos os desafiantes foram derrotados! O Boss venceu!`;
+        missionRepository.addProgress(battle.player1Id, "play_boss_rush");
+      }
+      return;
+    }
+
+    if (battle.isTeamPvp) {
+      const charIsP1 = character === battle.character1;
+      const team = charIsP1 ? battle.p1Team : battle.p2Team;
+      const activeIdx = charIsP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+      const nextIdx = team.findIndex((c, i) => i !== activeIdx && c.isAlive());
+      if (nextIdx >= 0) {
+        if (charIsP1) { battle.p1ActiveIdx = nextIdx; battle.character1 = team[nextIdx]; }
+        else { battle.p2ActiveIdx = nextIdx; battle.character2 = team[nextIdx]; }
+        battle.lastActionMessage += `\n⚡ **${team[nextIdx].name}** entra automaticamente em campo!`;
+        return;
+      }
+      const winnerId = charIsP1 ? battle.player2Id : battle.player1Id;
+      battle.state = "finished";
+      battle.winnerId = winnerId;
+      battle.lastActionMessage += `\n\n🏆 Todos os personagens do time adversário foram derrotados!`;
+      if (battle.isRanked) {
+        const RankManager = require("./RankManager");
+        RankManager.updatePA(winnerId, true);
+        RankManager.updatePA(character.ownerId, false);
+        missionRepository.addProgress(winnerId, "win_pvp_ranked");
+        titleRepository.addProgress(winnerId, "pvp_champion");
+      }
+      return;
+    }
+
+    // PVP 1v1
+    const winnerId = character.ownerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+    const winnerChar = character === battle.character1 ? battle.character2 : battle.character1;
+    battle.state = "finished";
+    battle.winnerId = winnerId;
+    battle.lastActionMessage += `\n🏆 **${winnerChar.name}** venceu o combate!`;
+    if (battle.isRanked) {
+      const RankManager = require("./RankManager");
+      RankManager.updatePA(winnerId, true);
+      RankManager.updatePA(character.ownerId, false);
+      missionRepository.addProgress(winnerId, "win_pvp_ranked");
+      titleRepository.addProgress(winnerId, "pvp_champion");
+    } else {
+      missionRepository.addProgress(winnerId, "win_pvp_casual");
+    }
+  }
+
   applyStatusTick(character, battle) {
     const isPartyPve = battle && battle.isPve && battle.partyCharacters && battle.partyCharacters.length > 1;
     character.statusEffects.forEach(effect => {
@@ -1575,7 +1667,7 @@ class BattleEngine {
       }
       // Beru: golpe duplo em Garras e Devorar (25%)
       else if (attacker.activeShadow === "beru" && (skill.id === "sjw_garras_vorazes" || skill.id === "sjw_devorar")) {
-        if (Math.random() < 0.25) {
+        if (Math.random() < 0.15) {
           damage *= 2;
           battle.lastActionMessage += `\n⚡ **Golpe Duplo!** Beru ataca novamente!`;
         }

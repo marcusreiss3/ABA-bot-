@@ -1482,19 +1482,26 @@ module.exports = {
       const bossData = diff.bosses[Math.floor(Math.random() * diff.bosses.length)];
       
       const embed = new EmbedBuilder()
-        .setTitle(`⚔️ Desafio: ${diff.emoji} ${diff.name}`)
-        .setDescription(`Você encontrou o boss **${bossData.name}** do anime **${bossData.anime}**!\n\nPrepare-se para o combate!`)
-        .setColor("#FF4500")
+        .setTitle(`${diff.emoji} ${diff.name} — Um Inimigo Surge`)
+        .setDescription(
+          `> *"Apenas os mais fortes chegam até aqui."*\n\n` +
+          `O destino cruzou seu caminho com **${bossData.name}**.\n` +
+          `Ele não mostrará piedade. Você também não deve.\n\n` +
+          `─────────────────────────`
+        )
+        .setColor("#1a0a2e")
         .setThumbnail(bossData.imageUrl)
         .addFields(
-          { name: "Nível", value: bossData.level.toString(), inline: true },
-          { name: "Vida", value: bossData.health.toString(), inline: true }
-        );
+          { name: "👤 Boss", value: bossData.name, inline: true },
+          { name: "📺 Anime", value: bossData.anime, inline: true },
+          { name: "💀 Vida", value: `\`${bossData.health}\``, inline: true }
+        )
+        .setFooter({ text: "Não há volta. Apenas vitória ou derrota." });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`challenge_start_${diffKey}_${bossData.id}_${playerId}`)
-          .setLabel("INICIAR COMBATE")
+          .setLabel("⚔️ ENFRENTAR")
           .setStyle(ButtonStyle.Danger)
       );
 

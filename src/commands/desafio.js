@@ -16,10 +16,15 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("🎮 Modo Desafio")
-      .setDescription("Escolha uma dificuldade para enfrentar um boss aleatório. O cooldown é global e compartilhado entre todos!")
-      .setColor("#FF4500")
-      .setTimestamp();
+      .setTitle("⚔️ Modo Desafio")
+      .setDescription(
+        "**Provadores de força se reúnem aqui.**\nEscolha uma dificuldade e enfrente um chefe poderoso em combate direto.\n\n" +
+        "─────────────────────────\n" +
+        "🗓️ O cooldown é por dificuldade e reinicia diariamente.\n" +
+        "👥 Pode ser enfrentado em party."
+      )
+      .setColor("#3B0A45")
+      .setThumbnail("https://i.ibb.co/XZgZVnm8/image.png");
 
     const row = new ActionRowBuilder();
 
@@ -50,7 +55,7 @@ module.exports = {
       );
     }
 
-    embed.setFooter({ text: "Pode ser jogado solo ou em party!" });
+    embed.setFooter({ text: "A glória pertence a quem ousou enfrentar o impossível." });
 
     await message.reply({ embeds: [embed], components: [row] });
   }
