@@ -689,7 +689,7 @@ class CharacterManager {
       baseSkills[1].name = "Transfiguração Ídola";
       baseSkills[1].damage = 150;
       baseSkills[1].description = "Dano massivo.";
-      baseSkills.push(new Skill({ id: "mahito_domain", name: "Domínio: Autopersonificação da Perfeição", description: "ATORDOA 2t.", type: "attack", cost: 70, damage: 130, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 2 } }));
+      baseSkills.push(new Skill({ id: "mahito_domain", name: "Domínio: Autopersonificação da Perfeição", description: "ATORDOA 1t.", type: "attack", cost: 70, damage: 130, elementType: 'escuridao', cooldown: 5, effect: { type: "stun", duration: 1 } }));
       baseSkills.push(new Skill({ id: "mahito_regen", name: "Forma Perfeita", description: "Cura 20% HP.", type: "heal", cost: 45, healPercent: 20, cooldown: 4 }));
     } else if (bossId === "kenjaku") {
       baseSkills[0].name = "Técnica Roubada";

@@ -14,17 +14,23 @@ module.exports = {
       .setColor("#1a1a2e")
       .setThumbnail(message.author.displayAvatarURL())
       .addFields(
-        { name: "🥋 Combatente",  value: "Defina seu guerreiro principal",       inline: true },
-        { name: "🛡️ Relíquias",   value: "Gerencie artefatos dos personagens",   inline: true },
-        { name: "🎖️ Título",      value: "Exiba sua conquista no perfil",        inline: true }
+        { name: "🥋 Combatente Solo", value: "Guerreiro para PVE e PVP casual",     inline: true },
+        { name: "👥 Time 3v3",        value: "Time para PVP ranqueado e mundos JJK+", inline: true },
+        { name: "🛡️ Relíquias",       value: "Artefatos dos personagens",            inline: true },
+        { name: "🎖️ Título",          value: "Exiba sua conquista no perfil",        inline: true }
       )
       .setFooter({ text: "Anime Battle Arena • Câmara de Equipamentos" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`equip_choice_char_${message.author.id}`)
-        .setLabel("Combatente")
+        .setLabel("Combatente Solo")
         .setEmoji("🥋")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`equip_choice_team_${message.author.id}`)
+        .setLabel("Time 3v3")
+        .setEmoji("👥")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId(`equip_choice_artifact_${message.author.id}`)

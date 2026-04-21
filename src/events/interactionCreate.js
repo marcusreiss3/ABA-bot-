@@ -305,6 +305,44 @@ module.exports = {
         return interaction.update({ embeds: [embed], components: [row] });
       }
 
+      if (type === "team") {
+        const chars = playerRepository.getPlayerCharacters(userId);
+        if (chars.length < 3) {
+          return interaction.update({ embeds: [EmbedManager.createStatusEmbed("Você precisa de ao menos 3 personagens para montar um time 3v3!", false)], components: [] });
+        }
+
+        const savedTeam = BattleEngine.getRankedTeam(userId);
+        let savedInfo = "Nenhum time salvo.";
+        if (savedTeam && savedTeam.length === 3) {
+          savedInfo = savedTeam.map((instId, i) => {
+            const inst = playerRepository.getCharacterInstance(instId);
+            const c = CharacterManager.getCharacter(inst.character_id, inst);
+            return `${i + 1}. **${c.name}** [Lv${inst.level}]`;
+          }).join("\n");
+        }
+
+        const options = chars.slice(0, 25).map(inst => {
+          const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+          return { label: `${charDef.name} [Lv${inst.level}]`, value: String(inst.id), description: `Raridade: ${charDef.rarity}` };
+        });
+
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId(`equip_team_select_${userId}`)
+          .setPlaceholder("Selecione 3 personagens (1º entra em campo primeiro)")
+          .setMinValues(3).setMaxValues(3)
+          .addOptions(options);
+
+        const embed = new EmbedBuilder()
+          .setTitle("👥 Montar Time 3v3")
+          .setDescription(
+            `Selecione **3 personagens** para compor seu time.\nO primeiro da lista entra em campo no início da batalha.\n\nUsado no **PVP Ranqueado** e no **Modo História a partir do mundo JJK**.\n\n─────────────────────────\n**Time atual:**\n${savedInfo}`
+          )
+          .setColor("#1a1a2e")
+          .setFooter({ text: "O time fica salvo até você alterá-lo." });
+
+        return interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+      }
+
       if (type === "artifact") {
         const ownedChars = playerRepository.getPlayerCharacters(userId);
         const artifacts = playerRepository.getPlayerArtifacts(userId);
@@ -1648,13 +1686,9 @@ module.exports = {
       const bossId = parts.slice(2, -1).join("_");
       const playerId = parts[parts.length - 1];
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
-      
+
       const player = playerRepository.getPlayer(playerId);
-      if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
-      
-      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
-      const playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
-      
+
       let worldData, bossData;
       const allBosses = [];
       storyConfig.worlds.forEach(w => {
@@ -1662,22 +1696,49 @@ module.exports = {
         const b = w.bosses.find(x => x.id === bossId);
         if (b) { worldData = w; bossData = b; }
       });
-      
+
+      const jjkWorldIdx = storyConfig.worlds.findIndex(w => w.id === "jjk");
+      const currentWorldIdx = storyConfig.worlds.findIndex(w => w.id === worldData?.id);
+      const isTeamWorld = currentWorldIdx >= jjkWorldIdx;
+
+      let playerChar;
+      if (isTeamWorld) {
+        const teamInstIds = BattleEngine.getRankedTeam(playerId);
+        if (!teamInstIds || teamInstIds.length < 3) {
+          return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
+        }
+        const inst = playerRepository.getCharacterInstance(teamInstIds[0]);
+        playerChar = CharacterManager.getCharacter(inst.character_id, inst);
+      } else {
+        if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
+        const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+        playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
+      }
+
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
       const globalBossIndex = allBosses.findIndex(b => b.id === bossId);
       const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-      
+
       if (globalBossIndex > 0 && lastDefeatedIndex < globalBossIndex - 1) {
         return interaction.reply({ content: "Você ainda não desbloqueou este desafio!", ephemeral: true });
       }
 
       const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
+      if (isTeamWorld) {
+        const teamInstIds = BattleEngine.getRankedTeam(playerId);
+        const teamNames = teamInstIds.map(id => {
+          const inst = playerRepository.getCharacterInstance(id);
+          const c = CharacterManager.getCharacter(inst.character_id, inst);
+          return c.name;
+        }).join(" / ");
+        introEmbed.addFields({ name: "👥 Seu Time", value: teamNames, inline: false });
+      }
       const isBossDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
       const startButton = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel(isBossDefeated ? "BOSS DERROTADO" : "INICIAR COMBATE").setStyle(isBossDefeated ? ButtonStyle.Success : ButtonStyle.Danger).setDisabled(isBossDefeated)
       );
-      
+
       return interaction.update({ embeds: [introEmbed], components: [startButton] });
     }
 
@@ -1781,13 +1842,9 @@ module.exports = {
       const bossId = parts.slice(2, -1).join("_");
       const playerId = parts[parts.length - 1];
       if (interaction.user.id !== playerId) return interaction.reply({ content: "Esta não é a sua jornada!", ephemeral: true });
-      
+
       const player = playerRepository.getPlayer(playerId);
-      if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
-      
-      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
-      const playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
-      
+
       let worldData, bossData;
       const allBosses = [];
       storyConfig.worlds.forEach(w => {
@@ -1795,22 +1852,49 @@ module.exports = {
         const b = w.bosses.find(x => x.id === bossId);
         if (b) { worldData = w; bossData = b; }
       });
-      
+
+      const jjkWorldIdx = storyConfig.worlds.findIndex(w => w.id === "jjk");
+      const currentWorldIdx = storyConfig.worlds.findIndex(w => w.id === worldData?.id);
+      const isTeamWorld = currentWorldIdx >= jjkWorldIdx;
+
+      let playerChar;
+      if (isTeamWorld) {
+        const teamInstIds = BattleEngine.getRankedTeam(playerId);
+        if (!teamInstIds || teamInstIds.length < 3) {
+          return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
+        }
+        const inst = playerRepository.getCharacterInstance(teamInstIds[0]);
+        playerChar = CharacterManager.getCharacter(inst.character_id, inst);
+      } else {
+        if (!player.equipped_instance_id) return interaction.reply({ content: "Equipe um personagem antes de lutar! Use `!equip`", ephemeral: true });
+        const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+        playerChar = CharacterManager.getCharacter(charInstance.character_id, charInstance);
+      }
+
       const progress = playerRepository.getStoryProgress(playerId);
       const lastDefeated = progress.last_boss_defeated;
       const globalBossIndex = allBosses.findIndex(b => b.id === bossId);
       const lastDefeatedIndex = allBosses.findIndex(b => b.id === lastDefeated);
-      
+
       if (globalBossIndex > 0 && lastDefeatedIndex < globalBossIndex - 1) {
         return interaction.reply({ content: "Você ainda não desbloqueou este desafio!", ephemeral: true });
       }
 
       const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
+      if (isTeamWorld) {
+        const teamInstIds = BattleEngine.getRankedTeam(playerId);
+        const teamNames = teamInstIds.map(id => {
+          const inst = playerRepository.getCharacterInstance(id);
+          const c = CharacterManager.getCharacter(inst.character_id, inst);
+          return c.name;
+        }).join(" / ");
+        introEmbed.addFields({ name: "👥 Seu Time", value: teamNames, inline: false });
+      }
       const isBossDefeated = allBosses.findIndex(b => b.id === lastDefeated) >= globalBossIndex;
       const startButton = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`pve_start_${bossId}_${playerId}`).setLabel(isBossDefeated ? "BOSS DERROTADO" : "INICIAR COMBATE").setStyle(isBossDefeated ? ButtonStyle.Success : ButtonStyle.Danger).setDisabled(isBossDefeated)
       );
-      
+
       return interaction.update({ embeds: [introEmbed], components: [startButton] });
     }
 
@@ -1936,40 +2020,58 @@ module.exports = {
       }
 
       const player = playerRepository.getPlayer(playerId);
-      const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
-      
-      // Verificar se o jogador está em uma party
-      const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
-      const partyMembers = party ? party.members : [playerId];
-      
+
       // Lista ordenada de todos os bosses do modo história
       const allStoryBossesOrdered = [];
-      storyConfig.worlds.forEach(w => allStoryBossesOrdered.push(...w.bosses));
+      let worldDataForBoss;
+      storyConfig.worlds.forEach(w => {
+        allStoryBossesOrdered.push(...w.bosses);
+        if (w.bosses.find(b => b.id === bossId)) worldDataForBoss = w;
+      });
       const currentBossIndex = allStoryBossesOrdered.findIndex(b => b.id === bossId);
 
-      // Validar se todos os membros têm personagens equipados e não estão em combate
-      for (const memberId of partyMembers) {
-        const memberPlayer = playerRepository.getPlayer(memberId);
-        if (!memberPlayer.equipped_instance_id) {
-          const memberUser = await interaction.client.users.fetch(memberId);
-          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** não tem um personagem equipado!`, false)], ephemeral: true });
+      const jjkWorldIdx = storyConfig.worlds.findIndex(w => w.id === "jjk");
+      const bossWorldIdx = storyConfig.worlds.findIndex(w => w.id === worldDataForBoss?.id);
+      const isTeamWorld = bossWorldIdx >= jjkWorldIdx;
+
+      let charInstance, pveTeamInstances = null, partyMembers;
+
+      if (isTeamWorld) {
+        const teamInstIds = BattleEngine.getRankedTeam(playerId);
+        if (!teamInstIds || teamInstIds.length < 3) {
+          return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
         }
-        if (memberId !== playerId) {
-          const memberStatus = BattleEngine.canStartBattle(memberId);
-          if (!memberStatus.can) {
+        pveTeamInstances = teamInstIds.map(id => playerRepository.getCharacterInstance(id));
+        charInstance = pveTeamInstances[0];
+        partyMembers = [playerId];
+      } else {
+        if (!player.equipped_instance_id) return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você não tem um personagem equipado!", false)], ephemeral: true });
+        charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
+
+        // Verificar se o jogador está em uma party
+        const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+        partyMembers = party ? party.members : [playerId];
+
+        // Validar se todos os membros têm personagens equipados e não estão em combate
+        for (const memberId of partyMembers) {
+          const memberPlayer = playerRepository.getPlayer(memberId);
+          if (!memberPlayer.equipped_instance_id) {
             const memberUser = await interaction.client.users.fetch(memberId);
-            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** não tem um personagem equipado!`, false)], ephemeral: true });
           }
-
-          // Verificar progresso do membro na história
-          const memberProgress = playerRepository.getStoryProgress(memberId);
-          const memberLastDefeated = memberProgress?.last_boss_defeated;
-          const memberLastIndex = memberLastDefeated ? allStoryBossesOrdered.findIndex(b => b.id === memberLastDefeated) : -1;
-
-          // Membro não chegou nessa parte ainda (não derrotou o boss anterior)
-          if (currentBossIndex > 0 && memberLastIndex < currentBossIndex - 1) {
-            const memberUser = await interaction.client.users.fetch(memberId);
-            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** ainda não chegou nessa parte da história!`, false)], ephemeral: true });
+          if (memberId !== playerId) {
+            const memberStatus = BattleEngine.canStartBattle(memberId);
+            if (!memberStatus.can) {
+              const memberUser = await interaction.client.users.fetch(memberId);
+              return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
+            }
+            const memberProgress = playerRepository.getStoryProgress(memberId);
+            const memberLastDefeated = memberProgress?.last_boss_defeated;
+            const memberLastIndex = memberLastDefeated ? allStoryBossesOrdered.findIndex(b => b.id === memberLastDefeated) : -1;
+            if (currentBossIndex > 0 && memberLastIndex < currentBossIndex - 1) {
+              const memberUser = await interaction.client.users.fetch(memberId);
+              return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`**${memberUser.username}** ainda não chegou nessa parte da história!`, false)], ephemeral: true });
+            }
           }
         }
       }
@@ -1987,7 +2089,7 @@ module.exports = {
         ]
       });
 
-      const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id);
+      const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id, pveTeamInstances);
       
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
@@ -2355,6 +2457,56 @@ module.exports = {
         }
         return; // Na fila, aguardando oponente
       }
+    }
+
+    // 1.06b — Salvar time 3v3 via !equip
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("equip_team_select_")) {
+      const ownerId = interaction.customId.replace("equip_team_select_", "");
+      if (interaction.user.id !== ownerId) return interaction.reply({ content: "Apenas o dono pode usar isso!", ephemeral: true });
+      const selected = interaction.values;
+      if (selected.length !== 3) return interaction.reply({ content: "❌ Selecione exatamente 3 personagens.", ephemeral: true });
+
+      const teamInfo = selected.map((instId, i) => {
+        const inst = playerRepository.getCharacterInstance(instId);
+        const c = CharacterManager.getCharacter(inst.character_id, inst);
+        return `${i + 1}. **${c.name}** [Lv${inst.level}]`;
+      }).join("\n");
+
+      const confirmEmbed = new EmbedBuilder()
+        .setTitle("👥 Confirmar Time 3v3")
+        .setDescription(`**Time selecionado:**\n\n${teamInfo}\n\nConfirme para salvar.`)
+        .setColor("#1a1a2e")
+        .setFooter({ text: "Este time será usado no PVP ranqueado e no mundo JJK+." });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`equip_team_save_${ownerId}_${selected.join(",")}`).setLabel("✅ Salvar Time").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`equip_choice_team_${ownerId}`).setLabel("🔄 Mudar").setStyle(ButtonStyle.Secondary)
+      );
+      return interaction.update({ embeds: [confirmEmbed], components: [row] });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("equip_team_save_")) {
+      const rest = interaction.customId.replace("equip_team_save_", "");
+      const sepIdx = rest.indexOf("_");
+      const ownerId = rest.substring(0, sepIdx);
+      const instIds = rest.substring(sepIdx + 1).split(",");
+      if (interaction.user.id !== ownerId) return interaction.reply({ content: "Apenas o dono pode usar isso!", ephemeral: true });
+
+      BattleEngine.setRankedTeam(ownerId, instIds);
+
+      const teamInfo = instIds.map((instId, i) => {
+        const inst = playerRepository.getCharacterInstance(instId);
+        const c = CharacterManager.getCharacter(inst.character_id, inst);
+        return `${i + 1}. **${c.name}** [Lv${inst.level}]`;
+      }).join("\n");
+
+      const doneEmbed = new EmbedBuilder()
+        .setTitle("✅ Time 3v3 Salvo!")
+        .setDescription(`Seu time foi configurado:\n\n${teamInfo}\n\nEle será usado no **PVP Ranqueado** e no **Modo História a partir do mundo JJK**.`)
+        .setColor("#2d6a4f")
+        .setFooter({ text: "Use !equip → Time 3v3 para alterar quando quiser." });
+
+      return interaction.update({ embeds: [doneEmbed], components: [] });
     }
 
     // 1.07 — Troca de personagem em 3v3

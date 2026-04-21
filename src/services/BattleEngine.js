@@ -117,7 +117,7 @@ class BattleEngine {
     return battle;
   }
 
-  startBattle(player1Id, player2Id, p1Instance, p2Instance, isPve = false, partyMembers = null, isRanked = false, channelId = null) {
+  startBattle(player1Id, player2Id, p1Instance, p2Instance, isPve = false, partyMembers = null, isRanked = false, channelId = null, pveTeamInstances = null) {
     const battleId = Math.random().toString(36).substring(2, 9);
     const character1 = CharacterManager.getCharacter(p1Instance.character_id, p1Instance);
     const character2 = CharacterManager.getCharacter(p2Instance.character_id, p2Instance);
@@ -202,6 +202,19 @@ class BattleEngine {
           if (s.damage) s.damage = Math.floor(s.damage * damageMultiplier);
         });
       }
+    }
+
+    // PVE Team Mode (3v3 contra boss — JJK+ mundos)
+    if (pveTeamInstances && pveTeamInstances.length > 1) {
+      const teamChars = pveTeamInstances.map(inst => {
+        const c = CharacterManager.getCharacter(inst.character_id, inst);
+        c.ownerId = player1Id;
+        return c;
+      });
+      battle.p1Team = teamChars;
+      battle.p1ActiveIdx = 0;
+      battle.isPveTeam = true;
+      battle.character1 = teamChars[0];
     }
 
     battle.startedAt = Date.now();
@@ -1113,7 +1126,25 @@ class BattleEngine {
       } else {
         // Se um jogador da party morreu no PVE
         battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado e está fora de combate!`;
-        
+
+        // isPveTeam: auto-swap antes de verificar todos mortos
+        if (battle.isPveTeam && battle.p1Team) {
+          const nextIdx = battle.p1Team.findIndex((c, i) => i !== battle.p1ActiveIdx && c.isAlive());
+          if (nextIdx >= 0) {
+            battle.p1ActiveIdx = nextIdx;
+            battle.character1 = battle.p1Team[nextIdx];
+            battle.lastActionMessage += `\n⚡ **${battle.p1Team[nextIdx].name}** entra em campo!`;
+            this.endTurnUpdate(battle);
+            return battle;
+          } else {
+            battle.state = "finished";
+            battle.winnerId = battle.player2Id;
+            battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+            this.endTurnUpdate(battle);
+            return battle;
+          }
+        }
+
         // Verificar se todos os jogadores foram derrotados
         const allDead = battle.partyCharacters ? battle.partyCharacters.every(c => !c.isAlive()) : !battle.character1.isAlive();
         if (allDead) {
@@ -1388,6 +1419,18 @@ class BattleEngine {
         battle.winnerId = "players";
         battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
         this.handlePveRewards(battle);
+      } else if (battle.isPveTeam && battle.p1Team) {
+        // Modo história 3v3: auto-swap
+        const nextIdx = battle.p1Team.findIndex((c, i) => i !== battle.p1ActiveIdx && c.isAlive());
+        if (nextIdx >= 0) {
+          battle.p1ActiveIdx = nextIdx;
+          battle.character1 = battle.p1Team[nextIdx];
+          battle.lastActionMessage += `\n⚡ **${battle.p1Team[nextIdx].name}** entra em campo!`;
+        } else {
+          battle.state = "finished";
+          battle.winnerId = battle.player2Id;
+          battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+        }
       } else {
         const allDead = battle.partyCharacters
           ? battle.partyCharacters.every(c => !c.isAlive())
