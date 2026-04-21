@@ -36,6 +36,7 @@ const BANNER_CONFIG = {
     featuredId: "sung_jin_woo",
     featuredName: "Sung Jin-Woo",
     thumbnail: "https://i.ibb.co/XZgZVnm8/image.png",
+    bannerImage: "https://i.ibb.co/Z6KdsfyX/Chat-GPT-Image-21-de-abr-de-2026-17-11-32.png",
     alPool: ["itachi_uchiha", "denji", "levi", "shinji"],
     ecPool: ["goku", "naruto", "luffy", "tanjiro", "asta"],
     otherEm: ["satoru_gojo"],
@@ -49,6 +50,7 @@ const BANNER_CONFIG = {
     featuredId: "satoru_gojo",
     featuredName: "Satoru Gojo",
     thumbnail: "https://i.ibb.co/whYQRrDQ/image.png",
+    bannerImage: "https://i.ibb.co/Fj0j5HW/Chat-GPT-Image-21-de-abr-de-2026-16-52-20.png",
     alPool: ["frieren", "dio", "levi"],
     ecPool: ["itadori", "edward", "naruto", "goku", "tanjiro"],
     otherEm: ["sung_jin_woo"],
@@ -198,27 +200,14 @@ function createBannerEmbed(bannerId, userId) {
   const items  = playerRepository.getPlayerItems(userId);
   const pity   = items.find(i => i.item_id === `nexus_pity_${bannerId}`)?.quantity || 0;
 
-  const alLines = b.alPool.map(id => {
-    const c = CharacterManager.getCharacter(id, {});
-    return `✦ ${c?.name || id}`;
-  });
-  const ecNames = b.ecPool.map(id => {
-    const c = CharacterManager.getCharacter(id, {});
-    return c?.name || id;
-  });
-
   return new EmbedBuilder()
     .setTitle(`✦ Nexus Zenith — ${b.name}`)
     .setDescription(
-      `*${b.description}*\n\n` +
-      `**Em Destaque:**\n✦ **${b.featuredName}** — EM\n\n` +
-      `**Guerreiros AL:**\n${alLines.join("\n")}\n\n` +
-      `**Guerreiros EC:**\n${ecNames.join(", ")}\n\n` +
-      `> ${Emojis.ZENITH} **Zenith disponível:** \`${zenith}\``
+      `${Emojis.ZENITH} Você possui **${zenith}** Zenith\n` +
+      `🎯 Pity AL: **${pity}/${AL_PITY_LIMIT}** · ⏱️ Troca em **${minutesToNextBanner()}min**`
     )
     .setColor(b.color)
-    .setThumbnail(b.thumbnail)
-    .setFooter({ text: `Nexus Zenith · 1x ${COST_1} Z · 10x ${COST_10} Z · Troca em: ${minutesToNextBanner()}min · Pity AL: ${pity}/${AL_PITY_LIMIT}` });
+    .setImage(b.bannerImage);
 }
 
 function makeAnimEmbed(bannerId, frame) {
@@ -291,30 +280,34 @@ function createResultEmbed(bannerId, results, userId) {
 function createInfoEmbed(bannerId) {
   const b = BANNER_CONFIG[bannerId];
 
+  const ratePerAL = (RATE_AL / b.alPool.length).toFixed(2);
+  const ratePerEC = ((100 - RATE_EM_FEAT - RATE_EM_OTHER - RATE_AL) / b.ecPool.length).toFixed(2);
+  const ratePerOtherEM = b.otherEm.length ? (RATE_EM_OTHER / b.otherEm.length).toFixed(2) : "0.00";
+
+  const emFeatLine = `👁️ **${b.featuredName}** — \`${RATE_EM_FEAT.toFixed(2)}%\` ✦ *Destaque*`;
+  const emOtherLines = b.otherEm.map(id => {
+    const c = CharacterManager.getCharacter(id, {});
+    return `👁️ ${c?.name || id} — \`${ratePerOtherEM}%\``;
+  });
   const alLines = b.alPool.map(id => {
     const c = CharacterManager.getCharacter(id, {});
-    return `✦ **${c?.name || id}**`;
+    return `🌟 ${c?.name || id} — \`${ratePerAL}%\``;
   });
   const ecLines = b.ecPool.map(id => {
     const c = CharacterManager.getCharacter(id, {});
-    return `→ ${c?.name || id}`;
-  });
-  const otherEmLines = b.otherEm.map(id => {
-    const c = CharacterManager.getCharacter(id, {});
-    return `→ ${c?.name || id}`;
+    return `◆ ${c?.name || id} — \`${ratePerEC}%\``;
   });
 
   return new EmbedBuilder()
     .setTitle(`📖 Guerreiros do Nexus — ${b.name}`)
     .setDescription(
-      `**✦✦✦ Essência Mítica — Em Destaque**\n→ **${b.featuredName}**\n\n` +
-      `**✦✦✦ Essência Mítica — Surpresa**\n${otherEmLines.join("\n")}\n\n` +
-      `**✦ Aura Lendária**\n${alLines.join("\n")}\n\n` +
-      `**◆ Eco Comum**\n${ecLines.join("\n")}`
+      `**✦✦✦  Essência Mítica**\n${emFeatLine}\n${emOtherLines.join("\n")}\n\n` +
+      `**✦  Aura Lendária**\n${alLines.join("\n")}\n\n` +
+      `**◆  Eco Comum**\n${ecLines.join("\n")}\n\n` +
+      `> 🎯 Pity AL garantida a cada **${AL_PITY_LIMIT}** invocações sem AL/EM`
     )
     .setColor(b.color)
-    .setThumbnail(b.thumbnail)
-    .setFooter({ text: "Essência Mítica: sem pity · Aura Lendária: garantida a cada 30 invocações" });
+    .setThumbnail(b.thumbnail);
 }
 
 // ── Botões ────────────────────────────────────────────────────────────────────
