@@ -2336,11 +2336,12 @@ module.exports = {
             const embed = EmbedManager.createBattleEmbed(battle);
             const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
-            await channel.send({
+            const battleMsg = await channel.send({
               content: `⚔️ **3v3 RANQUEADO INICIADO!** ⚔️\n<@${ownerId}> vs <@${entry.playerId}>\n\nCada jogador tem 3 personagens. Quando um cair, o próximo entra automaticamente!`,
               embeds: [embed],
               components
             });
+            battle.lastMessageId = battleMsg.id;
 
             return interaction.followUp({ content: `🎮 Partida 3v3 encontrada! Canal: <#${channel.id}>`, ephemeral: true });
           }
@@ -2378,10 +2379,16 @@ module.exports = {
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith("team_doswap_")) {
       const battleId = interaction.customId.replace("team_doswap_", "");
       const newIdx = parseInt(interaction.values[0]);
-      const battle = BattleEngine.processTeamSwap(battleId, interaction.user.id, newIdx);
-      if (!battle) return interaction.reply({ content: "❌ Troca inválida.", ephemeral: true });
 
-      await interaction.update({ content: "✅ Personagem trocado!", components: [] });
+      await interaction.deferUpdate();
+
+      const battle = BattleEngine.processTeamSwap(battleId, interaction.user.id, newIdx);
+      if (!battle) {
+        await interaction.editReply({ content: "❌ Troca inválida.", components: [] });
+        return;
+      }
+
+      await interaction.editReply({ content: "✅ Personagem trocado!", components: [] });
 
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = battle.state === "finished" ? [] : ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
