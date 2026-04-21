@@ -1701,8 +1701,11 @@ module.exports = {
       const currentWorldIdx = storyConfig.worlds.findIndex(w => w.id === worldData?.id);
       const isTeamWorld = currentWorldIdx >= jjkWorldIdx;
 
+      const introParty = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+      const introIsMultiParty = introParty && introParty.members.length > 1;
+
       let playerChar;
-      if (isTeamWorld) {
+      if (isTeamWorld && !introIsMultiParty) {
         const teamInstIds = BattleEngine.getRankedTeam(playerId);
         if (!teamInstIds || teamInstIds.length < 3) {
           return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
@@ -1725,7 +1728,7 @@ module.exports = {
       }
 
       const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
-      if (isTeamWorld) {
+      if (isTeamWorld && !introIsMultiParty) {
         const teamInstIds = BattleEngine.getRankedTeam(playerId);
         const teamNames = teamInstIds.map(id => {
           const inst = playerRepository.getCharacterInstance(id);
@@ -1857,8 +1860,11 @@ module.exports = {
       const currentWorldIdx = storyConfig.worlds.findIndex(w => w.id === worldData?.id);
       const isTeamWorld = currentWorldIdx >= jjkWorldIdx;
 
+      const introParty = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+      const introIsMultiParty = introParty && introParty.members.length > 1;
+
       let playerChar;
-      if (isTeamWorld) {
+      if (isTeamWorld && !introIsMultiParty) {
         const teamInstIds = BattleEngine.getRankedTeam(playerId);
         if (!teamInstIds || teamInstIds.length < 3) {
           return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
@@ -1881,7 +1887,7 @@ module.exports = {
       }
 
       const introEmbed = EmbedManager.createStoryIntroEmbed(worldData, bossData, playerChar);
-      if (isTeamWorld) {
+      if (isTeamWorld && !introIsMultiParty) {
         const teamInstIds = BattleEngine.getRankedTeam(playerId);
         const teamNames = teamInstIds.map(id => {
           const inst = playerRepository.getCharacterInstance(id);
@@ -2036,7 +2042,10 @@ module.exports = {
 
       let charInstance, pveTeamInstances = null, partyMembers;
 
-      if (isTeamWorld) {
+      const partyForCheck = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+      const isMultiParty = partyForCheck && partyForCheck.members.length > 1;
+
+      if (isTeamWorld && !isMultiParty) {
         const teamInstIds = BattleEngine.getRankedTeam(playerId);
         if (!teamInstIds || teamInstIds.length < 3) {
           return interaction.reply({ content: "❌ A partir do **Universo Jujutsu Kaisen**, as batalhas usam seu **Time 3v3**. Configure em `!equip → Time 3v3`.", ephemeral: true });
@@ -2278,6 +2287,47 @@ module.exports = {
         }
       }
 
+      // Seletor de modo (1v1 ou 3v3 casual) — apenas p1 clica
+      if (action === "modesel") {
+        const submode = parts[2];
+        const selP1Id = parts[3];
+        const selP2Id = parts[4];
+        if (interaction.user.id !== selP1Id) return interaction.reply({ content: "Apenas quem fez o desafio pode escolher o modo!", ephemeral: true });
+
+        if (submode === "1v1") {
+          const embed = new EmbedBuilder()
+            .setTitle("⚔️ Desafio PVP Casual — 1v1")
+            .setDescription(`<@${selP1Id}> desafiou <@${selP2Id}> para um combate **1v1** casual!\n\n<@${selP2Id}>, você aceita?`)
+            .setColor("#0099ff");
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`pvp_accept_casual_${selP1Id}_${selP2Id}`).setLabel("Aceitar").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`pvp_refuse_${selP1Id}_${selP2Id}`).setLabel("Recusar").setStyle(ButtonStyle.Danger)
+          );
+          return interaction.update({ embeds: [embed], components: [row] });
+        }
+
+        if (submode === "3v3") {
+          const savedTeam = BattleEngine.getRankedTeam(selP1Id);
+          if (!savedTeam || savedTeam.length < 3) {
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("❌ Você não tem um Time 3v3 salvo! Use `!equip` → **Time 3v3** para configurar.", false)], ephemeral: true });
+          }
+          const teamInfo = savedTeam.map((instId, i) => {
+            const inst = playerRepository.getCharacterInstance(instId);
+            const charDef = CharacterManager.getCharacter(inst.character_id, inst);
+            return `${i + 1}. **${charDef.name}** [Lv${inst.level}]`;
+          }).join("\n");
+          const embed = new EmbedBuilder()
+            .setTitle("⚔️ Desafio PVP Casual — 3v3")
+            .setDescription(`<@${selP1Id}> desafiou <@${selP2Id}> para um combate **3v3** casual!\n\n**Time de <@${selP1Id}>:**\n${teamInfo}\n\n<@${selP2Id}>, você aceita?`)
+            .setColor("#00aa44");
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`pvp_accept_3v3casual_${selP1Id}_${selP2Id}`).setLabel("Aceitar").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`pvp_refuse_${selP1Id}_${selP2Id}`).setLabel("Recusar").setStyle(ButtonStyle.Danger)
+          );
+          return interaction.update({ embeds: [embed], components: [row] });
+        }
+      }
+
       // Lógica de Aceitar/Recusar (Para o desafiado)
       const p1IdChallenge = parts[parts.length - 2];
       const p2IdChallenge = parts[parts.length - 1];
@@ -2298,6 +2348,43 @@ module.exports = {
           return interaction.update({ embeds: [EmbedManager.createStatusEmbed(reason, false)], components: [] });
         }
 
+        // 3v3 Casual
+        if (mode === "3v3casual") {
+          const p1Team3v3 = BattleEngine.getRankedTeam(p1IdChallenge);
+          const p2Team3v3 = BattleEngine.getRankedTeam(p2IdChallenge);
+          if (!p1Team3v3 || p1Team3v3.length < 3) {
+            return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`❌ <@${p1IdChallenge}> não tem um Time 3v3 salvo!`, false)], components: [] });
+          }
+          if (!p2Team3v3 || p2Team3v3.length < 3) {
+            return interaction.update({ embeds: [EmbedManager.createStatusEmbed(`❌ Você não tem um Time 3v3 salvo! Use \`!equip\` → **Time 3v3** para configurar.`, false)], components: [] });
+          }
+
+          await interaction.deferUpdate();
+          const guild3v3 = interaction.guild;
+          const channel3v3 = await guild3v3.channels.create({
+            name: `pvp-3v3-${p1IdChallenge.slice(-4)}-vs-${p2IdChallenge.slice(-4)}`,
+            type: ChannelType.GuildText,
+            permissionOverwrites: [
+              { id: guild3v3.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+              { id: p1IdChallenge, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] },
+              { id: p2IdChallenge, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }
+            ]
+          });
+
+          const battle3v3 = BattleEngine.startTeamBattle(p1IdChallenge, p2IdChallenge, channel3v3.id, false);
+          const embed3v3 = EmbedManager.createBattleEmbed(battle3v3);
+          const components3v3 = ButtonManager.createActionComponents(battle3v3.id, battle3v3.getCurrentPlayer(), false, battle3v3);
+
+          await channel3v3.send({
+            content: `⚔️ **BATALHA 3v3 CASUAL INICIADA!** ⚔️\n<@${p1IdChallenge}> vs <@${p2IdChallenge}>`,
+            embeds: [embed3v3],
+            components: components3v3
+          });
+
+          return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Batalha 3v3 iniciada no canal <#${channel3v3.id}>!`, true)], components: [] });
+        }
+
+        // 1v1 Casual
         const p1 = playerRepository.getPlayer(p1IdChallenge);
         const p2 = playerRepository.getPlayer(p2IdChallenge);
         const inst1 = playerRepository.getCharacterInstance(p1.equipped_instance_id);

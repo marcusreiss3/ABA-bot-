@@ -539,10 +539,9 @@ class EmbedManager {
       } else {
         const lines = ownedFrags.map(f => {
           const filled = Math.min(f.qty, FRAGMENTS_NEEDED);
-          const pct    = Math.floor((filled / FRAGMENTS_NEEDED) * 10);
-          const bar    = "█".repeat(pct) + "░".repeat(10 - pct);
-          const ready  = f.qty >= FRAGMENTS_NEEDED ? " ✅" : "";
-          return `${f.emoji} **${f.name}**${ready}\n \`${bar}\` \`${filled}/${FRAGMENTS_NEEDED}\``;
+          const pct = Math.floor((filled / FRAGMENTS_NEEDED) * 100);
+          const status = f.qty >= FRAGMENTS_NEEDED ? "✅" : `${pct}%`;
+          return `${f.emoji} **${f.name}** — \`${filled}/${FRAGMENTS_NEEDED}\` ${status}`;
         });
 
         const slotLine = canUnlockFrag

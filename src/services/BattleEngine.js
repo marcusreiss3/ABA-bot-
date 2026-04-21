@@ -38,7 +38,7 @@ class BattleEngine {
     return !!this.rankedTeamQueue.find(e => e.playerId === playerId);
   }
 
-  startTeamBattle(p1Id, p2Id, channelId) {
+  startTeamBattle(p1Id, p2Id, channelId, isRanked = true) {
     const battleId = Math.random().toString(36).substring(2, 9);
     const p1InstIds = this.rankedTeams.get(p1Id);
     const p2InstIds = this.rankedTeams.get(p2Id);
@@ -70,11 +70,11 @@ class BattleEngine {
       turnOrder,
       currentPlayerTurnId: turnOrder[0],
       state: "choosing_action",
-      lastActionMessage: "⚔️ **3v3 Ranqueado iniciado!** O destino decidirá quem ataca primeiro."
+      lastActionMessage: `⚔️ **3v3 ${isRanked ? "Ranqueado" : "Casual"} iniciado!** O destino decidirá quem ataca primeiro.`
     });
 
     battle.isTeamPvp = true;
-    battle.isRanked = true;
+    battle.isRanked = isRanked;
     battle.isPve = false;
     battle.type = "pvp";
     battle.channelId = channelId;

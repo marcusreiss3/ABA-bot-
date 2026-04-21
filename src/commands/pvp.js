@@ -72,18 +72,24 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle("⚔️ Desafio de PVP Casual")
-      .setDescription(`<@${player1Id}> desafiou <@${player2User.id}> para um combate casual!\n\n<@${player2User.id}>, você aceita?`)
-      .setColor("#0099ff");
+      .setDescription(`<@${player1Id}> quer desafiar <@${player2User.id}> para um combate casual!\n\nEscolha o modo de batalha:`)
+      .setColor("#0099ff")
+      .addFields(
+        { name: "🥊 1v1", value: "Batalha individual com o personagem equipado.", inline: true },
+        { name: "⚔️ 3v3", value: "Batalha em equipe com seu Time 3v3 salvo.", inline: true }
+      );
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`pvp_accept_casual_${player1Id}_${player2User.id}`)
-        .setLabel("Aceitar")
-        .setStyle(ButtonStyle.Success),
+        .setCustomId(`pvp_modesel_1v1_${player1Id}_${player2User.id}`)
+        .setLabel("1v1")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🥊"),
       new ButtonBuilder()
-        .setCustomId(`pvp_refuse_${player1Id}_${player2User.id}`)
-        .setLabel("Recusar")
-        .setStyle(ButtonStyle.Danger)
+        .setCustomId(`pvp_modesel_3v3_${player1Id}_${player2User.id}`)
+        .setLabel("3v3")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("⚔️")
     );
 
     await message.channel.send({
