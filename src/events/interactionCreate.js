@@ -818,7 +818,14 @@ module.exports = {
       const allChars = playerRepository.getPlayerCharacters(userId);
       const toRemove = applyBulkFilter(allChars, player.equipped_instance_id, filterType);
 
-      for (const inst of toRemove) playerRepository.removeCharacterInstance(inst.id);
+      const XP_PER_RARITY = { EC: 3, AL: 15, EM: 50 };
+      let totalXpBulk = 0;
+      for (const inst of toRemove) {
+        const cDef = CharacterManager.getCharacter(inst.character_id, inst);
+        totalXpBulk += XP_PER_RARITY[cDef?.rarity] || 3;
+        playerRepository.removeCharacterInstance(inst.id);
+      }
+      if (totalXpBulk > 0) playerRepository.addPlayerXP(userId, totalXpBulk);
 
       const playerUpdated = playerRepository.getPlayer(userId);
       playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
@@ -828,7 +835,7 @@ module.exports = {
       const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "chars");
       const embed = invResult.embeds[0];
       const currentDesc = embed.data?.description || "";
-      embed.setDescription(`> 🗑️ **${toRemove.length} personagem(ns)** descartado(s)!\n\n` + currentDesc);
+      embed.setDescription(`> 🗑️ **${toRemove.length} personagem(ns)** descartado(s)! **(+${totalXpBulk} XP)**\n\n` + currentDesc);
 
       return interaction.update(invResult);
     }
@@ -953,6 +960,10 @@ module.exports = {
       const c = CharacterManager.getCharacter(instance.character_id, instance);
       playerRepository.removeCharacterInstance(instanceId);
 
+      const XP_BY_RARITY = { EC: 3, AL: 15, EM: 50 };
+      const xpGain = XP_BY_RARITY[c.rarity] || 3;
+      playerRepository.addPlayerXP(userId, xpGain);
+
       // Recarrega aba de personagens com mensagem de sucesso
       const playerUpdated = playerRepository.getPlayer(userId);
       playerUpdated.ownedChars = playerRepository.getPlayerCharacters(userId);
@@ -962,7 +973,7 @@ module.exports = {
       const invResult = EmbedManager.createInventoryEmbed(playerUpdated, interaction.user, "chars");
       const embed = invResult.embeds[0];
       const currentDesc = embed.data?.description || "";
-      embed.setDescription(`> 🗑️ **${c.name}** foi descartado.\n\n` + currentDesc);
+      embed.setDescription(`> 🗑️ **${c.name}** foi descartado. **(+${xpGain} XP)**\n\n` + currentDesc);
 
       return interaction.update(invResult);
     }
@@ -1210,8 +1221,15 @@ module.exports = {
       const allEquippedIds = new Set(
         player.ownedChars.flatMap(c => [c.equipped_artifact_1, c.equipped_artifact_2, c.equipped_artifact_3].filter(Boolean))
       );
+      // Tipos de relíquias já equipadas neste personagem específico (impede duplicatas)
+      const charEquippedTypes = new Set(
+        [selectedCharInstance.equipped_artifact_1, selectedCharInstance.equipped_artifact_2, selectedCharInstance.equipped_artifact_3]
+          .filter(Boolean)
+          .map(slotId => playerRepository.getArtifactInstance(slotId)?.artifact_id)
+          .filter(Boolean)
+      );
       const availableArtifacts = player.artifacts
-        .filter(pa => !allEquippedIds.has(pa.id))
+        .filter(pa => !allEquippedIds.has(pa.id) && !charEquippedTypes.has(pa.artifact_id))
         .map(pa => {
           const artifactData = ArtifactManager.getArtifact(pa.artifact_id, pa);
           if (!artifactData) return null; // artifact_id desconhecido (item removido do jogo)
@@ -2294,10 +2312,14 @@ module.exports = {
         const selP2Id = parts[4];
         if (interaction.user.id !== selP1Id) return interaction.reply({ content: "Apenas quem fez o desafio pode escolher o modo!", ephemeral: true });
 
+        const p1Name = interaction.member?.displayName || interaction.user.username;
+        const p2Member = interaction.guild?.members?.cache?.get(selP2Id) || await interaction.guild?.members?.fetch(selP2Id).catch(() => null);
+        const p2Name = p2Member?.displayName || "Oponente";
+
         if (submode === "1v1") {
           const embed = new EmbedBuilder()
             .setTitle("⚔️ Desafio PVP Casual — 1v1")
-            .setDescription(`<@${selP1Id}> desafiou <@${selP2Id}> para um combate **1v1** casual!\n\n<@${selP2Id}>, você aceita?`)
+            .setDescription(`**${p1Name}** desafiou **${p2Name}** para um combate **1v1** casual!\n\n${p2Name}, você aceita?`)
             .setColor("#0099ff");
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`pvp_accept_casual_${selP1Id}_${selP2Id}`).setLabel("Aceitar").setStyle(ButtonStyle.Success),
@@ -2318,7 +2340,7 @@ module.exports = {
           }).join("\n");
           const embed = new EmbedBuilder()
             .setTitle("⚔️ Desafio PVP Casual — 3v3")
-            .setDescription(`<@${selP1Id}> desafiou <@${selP2Id}> para um combate **3v3** casual!\n\n**Time de <@${selP1Id}>:**\n${teamInfo}\n\n<@${selP2Id}>, você aceita?`)
+            .setDescription(`**${p1Name}** desafiou **${p2Name}** para um combate **3v3** casual!\n\n**Time de ${p1Name}:**\n${teamInfo}\n\n${p2Name}, você aceita?`)
             .setColor("#00aa44");
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`pvp_accept_3v3casual_${selP1Id}_${selP2Id}`).setLabel("Aceitar").setStyle(ButtonStyle.Success),
@@ -2699,12 +2721,11 @@ module.exports = {
       const bossId = parts[2];
 
       if (action === "refuse") {
-        if (interaction.user.id !== bossId) {
-          // Qualquer um do time pode recusar? Vamos assumir que sim ou apenas o boss pode cancelar o proprio desafio.
-          // Mas se o desafiado recusar, cancela.
-          return interaction.update({ content: `❌ O desafio de Boss Rush foi cancelado por <@${interaction.user.id}>.`, components: [] });
-        }
-        return interaction.update({ content: `❌ <@${bossId}> cancelou o desafio de Boss Rush.`, components: [] });
+        const refuseName = interaction.member?.displayName || interaction.user.username;
+        return interaction.update({
+          embeds: [EmbedManager.createStatusEmbed(`**${refuseName}** recusou o desafio de Boss Rush.`, false)],
+          components: []
+        });
       }
 
       if (action === "accept") {
@@ -2739,13 +2760,9 @@ module.exports = {
         const embed = EmbedManager.createBattleEmbed(battle);
         const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
-        await channel.send({
-          content: `🔥 **BOSS RUSH INICIADO!** 🔥\nO Boss <@${bossId}> vs o Trio desafiante!\n\nEste canal será apagado ao fim da luta.`,
-          embeds: [embed],
-          components: components
-        });
+        await channel.send({ embeds: [embed], components: components });
 
-        return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Boss Rush iniciado no canal <#${channel.id}>!`, true)], components: [] });
+        return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`🔥 Boss Rush iniciado! Vá para <#${channel.id}>.`, true)], components: [] });
       }
     }
 

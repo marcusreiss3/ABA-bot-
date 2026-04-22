@@ -717,6 +717,27 @@ class BattleEngine {
               battle.winnerId = battle.player2Id;
               battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
             }
+          } else if (battle.type === "boss-rush") {
+            if (defender.ownerId === battle.player1Id) {
+              // Boss morreu por ignore_reaction
+              battle.state = "finished";
+              battle.winnerId = "team";
+              battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado! O trio venceu!`;
+              battle.team2.forEach(id => missionRepository.addProgress(id, "play_boss_rush"));
+            } else {
+              // Membro do time morreu por ignore_reaction
+              battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado e está fora de combate!`;
+              const allDead = battle.partyCharacters.every(c => !c.isAlive());
+              if (allDead) {
+                battle.state = "finished";
+                battle.winnerId = battle.player1Id;
+                battle.lastActionMessage += `\n\n💀 Todos os desafiantes foram derrotados! O Boss venceu!`;
+                missionRepository.addProgress(battle.player1Id, "play_boss_rush");
+                missionRepository.addProgress(battle.player1Id, "win_boss_rush_as_boss");
+                const titleRepository = require("../database/repositories/titleRepository");
+                titleRepository.addProgress(battle.player1Id, "boss_rush_emperor");
+              }
+            }
           } else if (!battle.isPve) {
             battle.state = "finished";
             battle.winnerId = attacker.ownerId;
@@ -927,6 +948,12 @@ class BattleEngine {
       }
     });
 
+    // Tank shadow: 15% reduction on physical (non-elemental) attacks
+    if (defender.id === "sung_jin_woo" && defender.passives?.physicalReduction && !skillUsed.elementType) {
+      damageToApply = Math.floor(damageToApply * (1 - defender.passives.physicalReduction));
+      battle.lastActionMessage += `\n🛡️ **Armadura do Tank:** ${Math.round(defender.passives.physicalReduction * 100)}% de redução física aplicada!`;
+    }
+
     const finalDamage = defender.takeDamage(damageToApply);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
 
@@ -944,7 +971,8 @@ class BattleEngine {
 
     // --- Sung Jin-Woo: mecânicas de defesa (Tank) ao ser atacado ---
     if (defender.id === "sung_jin_woo" && finalDamage > 0) {
-      if (defender.activeShadow === "tank") {
+      // Instinto de Tank só dispara quando Sung absorve o golpe diretamente (sem reação ativa)
+      if (defender.activeShadow === "tank" && skillId === "skip") {
         const passiveCounter = Math.floor(defender.maxHealth * 0.04);
         attacker.health = Math.max(0, attacker.health - passiveCounter);
         battle.lastActionMessage += `\n🛡️ **Instinto de Tank:** **${attacker.name}** sofreu **${passiveCounter}** de contra-ataque!`;

@@ -58,10 +58,10 @@ const BANNER_CONFIG = {
 };
 
 // ── Taxas ─────────────────────────────────────────────────────────────────────
-// EM destaque: 0.7% | EM outros: 0.3% | AL total: 5% | EC: 94%
-const RATE_EM_FEAT  = 0.70;
-const RATE_EM_OTHER = 0.30;
-const RATE_AL       = 5.00;
+// EM destaque: 0.65% | EM outros: 0.25% | AL total: 5.25% | EC: 93.85%
+const RATE_EM_FEAT  = 0.65;
+const RATE_EM_OTHER = 0.25;
+const RATE_AL       = 5.25;
 
 // ── Lógica de Pull ────────────────────────────────────────────────────────────
 function randFrom(arr) {
