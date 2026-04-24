@@ -177,7 +177,7 @@ function buildEquipPrompt(userId) {
     `**[Gojo]** — Só vou precisar de um aperitivo pra esquentar.\n\n` +
     `**[Okabe]** — Gojo foi adicionado **temporariamente** ao seu inventário apenas para este treinamento. ` +
     `**Agora use \`!equip\` neste canal para equipá-lo como seu guerreiro ativo.**\n\n` +
-    `> 💡 Digite \`!equip\` → clique em **Equipar Personagem** → selecione **Satoru Gojo**\n\n` +
+    `> 💡 Digite \`!equip\` → clique em **Combatente Solo** → selecione **Satoru Gojo**\n\n` +
     `> ⚠️ **Atenção:** Não use Pedras da Alma no Gojo — ele será removido ao fim do tutorial. Guarde suas pedras para seus guerreiros definitivos!\n\n` +
     `*O canal detectará automaticamente quando você equipar e avançará o tutorial.*`,
     OKABE_COLOR, "Tutorial • Use !equip"
@@ -290,6 +290,31 @@ function buildZenith(userId) {
     `**[Okabe]** — Artefatos são o que separa um invocador mediano de um estrategista dimensional de verdade. ` +
     `*Não os ignore.*`,
     OKABE_COLOR, "Tutorial • Etapa 6"
+  );
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(nextBtn(userId, "🎮 Modos de Jogo →"))] };
+}
+
+function buildElements(userId) {
+  const E = Emojis;
+  const embed = okabeEmbed(
+    "⚗️ Sistema de Elementos",
+    `**[Okabe]** — Um detalhe que separa estrategistas medianos dos verdadeiros:\n\n` +
+    `Cada guerreiro possui um **elemento natural**, e suas habilidades de ataque também carregam um elemento. ` +
+    `Usar o elemento certo contra o inimigo certo concede **vantagem elemental** — um bônus de dano significativo.\n\n` +
+    `**⚡ Como funciona:**\n` +
+    `> • Golpe elemental efetivo → **+25% de dano**\n` +
+    `> • Golpe elemental do **mesmo elemento do guerreiro** → **+50% de dano** *(Super Efetivo!)*\n\n` +
+    `**🔄 Ciclo de Vantagens:**\n` +
+    `${E.ELEMENTO_FOGO} **Fogo** vence ${E.ELEMENTO_VENTO} Vento\n` +
+    `${E.ELEMENTO_VENTO} **Vento** vence ${E.ELEMENTO_TERRA} Terra\n` +
+    `${E.ELEMENTO_TERRA} **Terra** vence ${E.ELEMENTO_AGUA} Água\n` +
+    `${E.ELEMENTO_AGUA} **Água** vence ${E.ELEMENTO_GELO} Gelo\n` +
+    `${E.ELEMENTO_GELO} **Gelo** vence ${E.ELEMENTO_RAIO} Raio\n` +
+    `${E.ELEMENTO_RAIO} **Raio** vence ${E.ELEMENTO_LUZ} Luz\n` +
+    `${E.ELEMENTO_LUZ} **Luz** vence ${E.ELEMENTO_ESCURIDAO} Escuridão\n` +
+    `${E.ELEMENTO_ESCURIDAO} **Escuridão** vence ${E.ELEMENTO_FOGO} Fogo\n\n` +
+    `**[Okabe]** — *Memorize esse ciclo. Um Invocador que ignora elementos está descartando dano de graça.*`,
+    OKABE_COLOR, "Tutorial • Sistema de Elementos"
   );
   return { embeds: [embed], components: [new ActionRowBuilder().addComponents(nextBtn(userId, "🎮 Modos de Jogo →"))] };
 }
@@ -725,7 +750,8 @@ const NEXT_STEP = {
   nexus_done:          "soul_stone",
   soul_stone:          "missions",
   missions:            "zenith",
-  zenith:              "game_modes",
+  zenith:              "elements",
+  elements:            "game_modes",
   game_modes:          "end",
   game_modes_answered: "end",
 };
@@ -740,6 +766,7 @@ function buildStep(step, userId) {
     case "soul_stone":   return buildSoulStone(userId);
     case "missions":     return buildMissions(userId);
     case "zenith":       return buildZenith(userId);
+    case "elements":     return buildElements(userId);
     case "game_modes":   return buildGameModes(userId);
     case "modo_dica":    return buildModoDica(userId);
     case "end":          return buildEnd(userId);

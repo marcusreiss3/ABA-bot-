@@ -640,7 +640,16 @@ class BattleEngine {
     const damage = this.calculateDamage(attacker, defender, skill, battle);
     battle.lastPendingDamage = damage;
     battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}** contra **${defender.name}**!\nDano previsto: **${damage}** HP.`;
-    
+
+    // Vantagem elemental — mensagem após o assignment para não ser sobrescrita
+    if (skill.elementType && defender.element && BattleEngine.ELEMENT_STRONG[skill.elementType] === defender.element) {
+      if (attacker.element === skill.elementType) {
+        battle.lastActionMessage += `\n🔥 **Super Efetivo!** O elemento do atacante potencializa o golpe!`;
+      } else {
+        battle.lastActionMessage += `\n✨ **Golpe Efetivo!** Vantagem elemental!`;
+      }
+    }
+
     // ✅ CORREÇÃO: Feedback visual do Fury Mode no BattleEngine
     if (attacker.id === "levi" && attacker.furyModeAtivoNesteAtaque) {
         battle.lastActionMessage += `\n⚡ **FURY MODE CONSUMIDO!** Dano aumentado em 150%.`;
@@ -805,7 +814,7 @@ class BattleEngine {
     const shadowDesc = {
       igris: "Precisão e Execução — acumule **Marcas de Sangue**!",
       beru: "Agressão e Sustain — **roubo de vida** e golpe duplo!",
-      tank: "Defesa e Controle — **15% redução física** + **regeneração de 4% HP** por turno!",
+      tank: "Defesa e Controle — **15% redução física** + **regeneração de 3% HP** por turno!",
     };
 
     battle.lastActionMessage = `**${attacker.name}** invoca a sombra **${shadowEmojis[shadowId]} ${shadowNames[shadowId]}**!\n${shadowDesc[shadowId]}\nEscolha sua habilidade.`;
@@ -987,7 +996,7 @@ class BattleEngine {
 
     // --- Sung Jin-Woo: Beru lifesteal ---
     if (attacker.id === "sung_jin_woo" && attacker.activeShadow === "beru" && finalDamage > 0) {
-      const lifesteal = Math.floor(finalDamage * 0.05);
+      const lifesteal = Math.floor(finalDamage * 0.07);
       if (lifesteal > 0) {
         attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
         battle.lastActionMessage += `\n🩸 **Roubo de Vida:** Sung Jin-Woo recuperou **${lifesteal}** HP!`;
@@ -1633,9 +1642,9 @@ class BattleEngine {
     if (nextPlayer.id === "sung_jin_woo") {
       battle.sjwShadowChosen = false;
 
-      // Tank: regeneração passiva de 4% do HP máximo no início de cada turno
+      // Tank: regeneração passiva de 3% do HP máximo no início de cada turno
       if (nextPlayer.activeShadow === "tank" && nextPlayer.isAlive()) {
-        const regen = Math.floor(nextPlayer.maxHealth * 0.05);
+        const regen = Math.floor(nextPlayer.maxHealth * 0.03);
         nextPlayer.health = Math.min(nextPlayer.maxHealth, nextPlayer.health + regen);
         battle.lastActionMessage += `\n🛡️ **Regeneração de Sombra:** Sung Jin-Woo recuperou **${regen}** HP (Tank passivo).`;
       }
@@ -1772,11 +1781,6 @@ class BattleEngine {
       const sameElement = attacker.element === attackEl;
       const bonus = sameElement ? 1.5 : 1.25;
       damage *= bonus;
-      if (sameElement) {
-        battle.lastActionMessage += `\n🔥 **Super Efetivo!** O elemento do atacante potencializa o golpe!`;
-      } else {
-        battle.lastActionMessage += `\n✨ **Golpe Efetivo!** Vantagem elemental!`;
-      }
     }
 
     return Math.floor(damage);

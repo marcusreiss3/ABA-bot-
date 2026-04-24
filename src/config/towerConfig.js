@@ -16,7 +16,7 @@ module.exports = {
           { id: "self_destruct", name: "Auto-Destruição", description: "Explosão massiva.", type: "attack", cost: 50, damage: 160, elementType: 'escuridao', cooldown: 10 }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 5 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 4 }
     },
     {
       floor: 2,
@@ -33,7 +33,7 @@ module.exports = {
           { id: "muggy_ball", name: "Muggy Ball", description: "Bala explosiva.", type: "attack", cost: 30, damage: 80, elementType: 'vento', cooldown: 2 }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 7 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
     },
     {
       floor: 3,
@@ -50,7 +50,7 @@ module.exports = {
           { id: "fury_swipes", name: "Golpes de Fúria", description: "Sequência de arranhões.", type: "attack", cost: 25, damage: 70, elementType: 'escuridao' }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 8 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 6 }
     },
     {
       floor: 4,
@@ -67,7 +67,7 @@ module.exports = {
           { id: "hidden_mist", name: "Névoa Oculta", description: "-80% dano recebido.", type: "reaction", cost: 20, effect: { type: "damage_reduction", value: 0.2 } }
         ]
       },
-      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 10 }
+      reward: { zenith: 5, stoneId: "soul_stone_1", stoneQty: 7 }
     },
     {
       floor: 5,
@@ -102,7 +102,7 @@ module.exports = {
           { id: "hisoka_trick", name: "Ilusão Fatal", description: "ATORDOA 1t.", type: "attack", cost: 45, damage: 90, elementType: 'escuridao', cooldown: 3, effect: { type: "stun", duration: 1 } }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 4 }
     },
     {
       floor: 7,
@@ -120,7 +120,7 @@ module.exports = {
           { id: "ulquiorra_regen", name: "Hierro", description: "-85% dano recebido.", type: "reaction", cost: 35, effect: { type: "damage_reduction", value: 0.15 }, cooldown: 2 }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 8 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
     },
     {
       floor: 8,
@@ -138,7 +138,7 @@ module.exports = {
           { id: "garou_awakening", name: "Despertar do Monstro", description: "ATORDOA 1t.", type: "attack", cost: 60, damage: 280, elementType: 'terra', cooldown: 4, effect: { type: "stun", duration: 1 } }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 8 }
+      reward: { zenith: 10, stoneId: "soul_stone_2", stoneQty: 6 }
     },
     {
       floor: 9,
@@ -172,7 +172,7 @@ module.exports = {
           { id: "photon_flash", name: "Photon Flash", description: "Rajada de energia.", type: "attack", cost: 50, damage: 600, elementType: 'raio' }
         ]
       },
-      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 6 }
+      reward: { zenith: 10, stoneId: "soul_stone_3", stoneQty: 4 }
     }
   ]
 };
