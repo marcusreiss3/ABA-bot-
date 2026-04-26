@@ -2139,25 +2139,25 @@ module.exports = {
       const floorData = towerConfig.floors.find(f => f.floor === floorNum);
       if (!floorData) return interaction.reply({ content: "Andar não encontrado!", ephemeral: true });
 
-        // Verificar se o líder está em party (Busca consistente com o comando !torre)
-      const party = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
-      const partyMembers = party ? party.members : [playerId];
+      // Verificar cooldown e combate ativo
+      const towerCooldown = playerRepository.getTowerCooldown(playerId);
+      if (towerCooldown.available_at > Date.now()) {
+        const remainingMin = Math.ceil((towerCooldown.available_at - Date.now()) / (1000 * 60));
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`Você ainda está em cooldown da torre! Restam **${remainingMin} minutos**.`, false)], ephemeral: true });
+      }
+      const towerBattleStatus = BattleEngine.canStartBattle(playerId);
+      if (!towerBattleStatus.can) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você já está em um combate ativo!", false)], ephemeral: true });
+      }
 
-      // Verificar cooldown, personagens e combate ativo de todos
-      for (const mId of partyMembers) {
-        const cooldown = playerRepository.getTowerCooldown(mId);
-        if (cooldown.available_at > Date.now()) {
-          const remainingMin = Math.ceil((cooldown.available_at - Date.now()) / (1000 * 60));
-          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> ainda está em cooldown da torre! Restam **${remainingMin} minutos**.`, false)], ephemeral: true });
-        }
-        const mPlayer = playerRepository.getPlayer(mId);
-        if (!mPlayer.equipped_instance_id) {
-          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> não tem personagem equipado!`, false)], ephemeral: true });
-        }
-        const mStatus = BattleEngine.canStartBattle(mId);
-        if (!mStatus.can) {
-          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`<@${mId}> já está em um combate ativo ou na fila ranqueada!`, false)], ephemeral: true });
-        }
+      // Carregar time 3v3 do jogador
+      const towerTeamIds = BattleEngine.getRankedTeam(playerId);
+      if (!towerTeamIds || towerTeamIds.length < 3) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("A Torre Infinita exige um **Time de 3 personagens**. Configure em `!equip → Time 3v3`.", false)], ephemeral: true });
+      }
+      const towerTeamInsts = towerTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean);
+      if (towerTeamInsts.length < 3) {
+        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Um ou mais personagens do seu time não foram encontrados. Reconfigure em `!equip → Time 3v3`.", false)], ephemeral: true });
       }
 
       // Criar canal temporário
@@ -2168,24 +2168,22 @@ module.exports = {
         type: ChannelType.GuildText,
         permissionOverwrites: [
           { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-          ...partyMembers.map(mId => ({ id: mId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }))
+          { id: playerId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }
         ]
       });
 
-      const leaderPlayer = playerRepository.getPlayer(playerId);
-      const leaderInstance = playerRepository.getCharacterInstance(leaderPlayer.equipped_instance_id);
       const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
 
-      const battle = BattleEngine.startBattle(playerId, floorData.boss.id, leaderInstance, bossInstance, true, partyMembers, false, channel.id);
+      const battle = BattleEngine.startBattle(playerId, floorData.boss.id, towerTeamInsts[0], bossInstance, true, [playerId], false, channel.id, towerTeamInsts);
       battle.type = "tower";
       battle.currentFloor = floorNum;
-      battle.partyMembers = partyMembers; // GARANTIR que os membros da party sejam passados para a batalha inicial
+      battle.partyMembers = [playerId];
 
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
       await channel.send({
-        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n${partyMembers.map(id => `<@${id}>`).join(" ")}\nPreparem-se para o combate contra **${floorData.boss.name}**!`,
+        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n<@${playerId}>\nPrepare-se para o combate contra **${floorData.boss.name}**!`,
         embeds: [embed],
         components: components
       });
@@ -2208,27 +2206,35 @@ module.exports = {
       // Remover a batalha antiga do mapa de batalhas ativas antes de criar a nova
       BattleEngine.activeBattles.delete(battleId);
 
-      // Criar nova batalha mantendo a vida dos jogadores
-      const partyMembers = oldBattle.partyMembers;
-      const partyCharacters = oldBattle.partyCharacters;
-      
       // Criar boss do novo andar
       const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
 
-      // Recuperar instância real do líder para o startBattle não quebrar
-      const leaderPlayer = playerRepository.getPlayer(playerId);
-      const leaderInstance = playerRepository.getCharacterInstance(leaderPlayer.equipped_instance_id);
+      // Carregar time fresco para inicializar isPveTeam corretamente
+      const nextFloorTeamIds = BattleEngine.getRankedTeam(playerId);
+      const nextFloorTeamInsts = nextFloorTeamIds
+        ? nextFloorTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean)
+        : [];
 
       // Iniciar nova batalha no mesmo canal
-      const newBattle = BattleEngine.startBattle(playerId, floorData.boss.id, leaderInstance, bossInstance, true, partyMembers, false, oldBattle.channelId);
+      const newBattle = BattleEngine.startBattle(
+        playerId, floorData.boss.id,
+        nextFloorTeamInsts[0] || playerRepository.getCharacterInstance(playerRepository.getPlayer(playerId).equipped_instance_id),
+        bossInstance, true, [playerId], false, oldBattle.channelId,
+        nextFloorTeamInsts.length >= 3 ? nextFloorTeamInsts : null
+      );
       newBattle.type = "tower";
       newBattle.currentFloor = floorNum;
-      newBattle.partyMembers = partyMembers; // GARANTIR que os membros da party sejam passados para a nova batalha
-      
-      // SOBRESCREVER os personagens da party pelos que vieram da luta anterior (com HP atual)
-      newBattle.partyCharacters = partyCharacters;
-      // Garantir que o character1 seja o líder da partyCharacters (que tem o HP atualizado)
-      newBattle.character1 = partyCharacters.find(c => c.ownerId === playerId) || partyCharacters[0];
+      newBattle.partyMembers = [playerId];
+
+      // SOBRESCREVER o time pelo da luta anterior (com HP atual preservado)
+      if (oldBattle.p1Team) {
+        newBattle.p1Team = oldBattle.p1Team;
+        newBattle.isPveTeam = true;
+        const aliveIdx = oldBattle.p1Team.findIndex(c => c.isAlive());
+        newBattle.p1ActiveIdx = aliveIdx >= 0 ? aliveIdx : 0;
+        newBattle.character1 = newBattle.p1Team[newBattle.p1ActiveIdx];
+        newBattle.partyCharacters = null;
+      }
       newBattle.player1Id = playerId;
 
       const embed = EmbedManager.createBattleEmbed(newBattle);
