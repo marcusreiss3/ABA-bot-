@@ -1611,6 +1611,7 @@ module.exports = {
       });
 
       const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id);
+      battle.p1DisplayName = interaction.member?.displayName || interaction.user.username;
       battle.challengeDifficulty = diffKey;
       
       const embed = EmbedManager.createBattleEmbed(battle);
@@ -1774,10 +1775,12 @@ module.exports = {
       let instance = instances.find(i => i.id === player.equipped_instance_id && i.character_id === id2);
       if (!instance) instance = instances.find(i => i.character_id === id2);
       if (!instance) return interaction.reply({ content: "Você não possui este personagem!", ephemeral: true });
-      if (interaction.user.id === selection.p1Id) selection.p1 = instance;
-      else if (interaction.user.id === selection.p2Id) selection.p2 = instance;
+      if (interaction.user.id === selection.p1Id) { selection.p1 = instance; selection.p1Username = interaction.member?.displayName || interaction.user.username; }
+      else if (interaction.user.id === selection.p2Id) { selection.p2 = instance; selection.p2Username = interaction.member?.displayName || interaction.user.username; }
       if (selection.p1 && selection.p2) {
         const battle = BattleEngine.startBattle(selection.p1Id, selection.p2Id, selection.p1, selection.p2);
+        if (selection.p1Username) battle.p1DisplayName = selection.p1Username;
+        if (selection.p2Username) battle.p2DisplayName = selection.p2Username;
         const embed = EmbedManager.createBattleEmbed(battle);
         const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
         await interaction.update({ embeds: [embed], components: components });
@@ -2117,7 +2120,8 @@ module.exports = {
       });
 
       const battle = BattleEngine.startBattle(playerId, `boss_${bossId}`, charInstance, bossInstance, true, partyMembers, false, channel.id, pveTeamInstances);
-      
+      battle.p1DisplayName = interaction.member?.displayName || interaction.user.username;
+
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
       
@@ -2178,6 +2182,7 @@ module.exports = {
       battle.type = "tower";
       battle.currentFloor = floorNum;
       battle.partyMembers = [playerId];
+      battle.p1DisplayName = interaction.member?.displayName || interaction.user.username;
 
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
@@ -2236,6 +2241,7 @@ module.exports = {
         newBattle.partyCharacters = null;
       }
       newBattle.player1Id = playerId;
+      newBattle.p1DisplayName = oldBattle.p1DisplayName || interaction.member?.displayName || interaction.user.username;
 
       const embed = EmbedManager.createBattleEmbed(newBattle);
       const components = ButtonManager.createActionComponents(newBattle.id, newBattle.getCurrentPlayer(), false, newBattle);
@@ -2400,6 +2406,8 @@ module.exports = {
           });
 
           const battle3v3 = BattleEngine.startTeamBattle(p1IdChallenge, p2IdChallenge, channel3v3.id, false);
+          battle3v3.p2DisplayName = interaction.member?.displayName || interaction.user.username;
+          try { const _m1 = await guild3v3.members.fetch(p1IdChallenge); battle3v3.p1DisplayName = _m1.displayName; } catch (_) {}
           const embed3v3 = EmbedManager.createBattleEmbed(battle3v3);
           const components3v3 = ButtonManager.createActionComponents(battle3v3.id, battle3v3.getCurrentPlayer(), false, battle3v3);
 
@@ -2432,6 +2440,8 @@ module.exports = {
         });
 
         const battle = BattleEngine.startBattle(p1IdChallenge, p2IdChallenge, inst1, inst2, false, null, false, channel.id);
+        battle.p2DisplayName = interaction.member?.displayName || interaction.user.username;
+        try { const _m1 = await guild.members.fetch(p1IdChallenge); battle.p1DisplayName = _m1.displayName; } catch (_) {}
         const embed = EmbedManager.createBattleEmbed(battle);
         const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 

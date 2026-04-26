@@ -73,10 +73,10 @@ class EmbedManager {
       });
     } else {
       const p1Label = battle.isTeamPvp
-        ? `🥋 ${elementIcon(char1.element)} ${char1.name} (${battle.p1DisplayName || battle.player1Id}) [Lvl ${char1.level}]`
+        ? `🥋 ${elementIcon(char1.element)} ${char1.name} (${battle.p1DisplayName || "Jogador 1"}) [Lvl ${char1.level}]`
         : `🥋 ${elementIcon(char1.element)} ${char1.name} (P1) [Lvl ${char1.level}]`;
       const p2Label = battle.isTeamPvp
-        ? `🥋 ${elementIcon(char2.element)} ${char2.name} (${battle.p2DisplayName || battle.player2Id}) [Lvl ${char2.level}]`
+        ? `🥋 ${elementIcon(char2.element)} ${char2.name} (${battle.p2DisplayName || "Jogador 2"}) [Lvl ${char2.level}]`
         : `🥋 ${elementIcon(char2.element)} ${char2.name} (P2) [Lvl ${char2.level}]`;
       embed.addFields(
         { name: p1Label, value: this.formatCharStats(char1), inline: true },
@@ -98,12 +98,33 @@ class EmbedManager {
     }
 
     const bugNote = "⚠️ Se a batalha travar, aguarde 2-3 min — uma mensagem para retomar aparecerá automaticamente.";
+    const getUsername = (playerId) => {
+      if (playerId === battle.player1Id) return battle.p1DisplayName || null;
+      if (playerId === battle.player2Id) return battle.p2DisplayName || null;
+      return null;
+    };
     if (battle.state === "choosing_action") {
-        const turnText = (battle.isPve && battle.currentPlayerTurnId === battle.player2Id) ? `Turno de: ${currentPlayer.name} (Boss pensando...)` : `Turno de: ${currentPlayer.name} | Escolha uma habilidade!`;
-        embed.setFooter({ text: `${turnText}\n${bugNote}` });
+      const isBossTurn = battle.isPve && battle.currentPlayerTurnId === battle.player2Id;
+      let turnText;
+      if (isBossTurn) {
+        turnText = `Turno de: ${currentPlayer.name} (Boss pensando...)`;
+      } else {
+        const username = getUsername(battle.currentPlayerTurnId);
+        const display = username ? `${username} (${currentPlayer.name})` : currentPlayer.name;
+        turnText = `Turno de: ${display} | Escolha uma habilidade!`;
+      }
+      embed.setFooter({ text: `${turnText}\n${bugNote}` });
     } else if (battle.state === "choosing_reaction") {
       const damage = battle.lastPendingDamage || 0;
-      const turnText = (battle.isPve && battle.getOpponentId() === battle.player2Id) ? `Turno de: ${opponentPlayer.name} (Boss reagindo...)` : `Turno de: ${opponentPlayer.name} | Dano Previsto: ${damage} HP | Reaja ou Pule!`;
+      const isBossReaction = battle.isPve && battle.getOpponentId() === battle.player2Id;
+      let turnText;
+      if (isBossReaction) {
+        turnText = `Turno de: ${opponentPlayer.name} (Boss reagindo...)`;
+      } else {
+        const username = getUsername(battle.getOpponentId());
+        const display = username ? `${username} (${opponentPlayer.name})` : opponentPlayer.name;
+        turnText = `Turno de: ${display} | Dano Previsto: ${damage} HP | Reaja ou Pule!`;
+      }
       embed.setFooter({ text: `${turnText}\n${bugNote}` });
     }
 

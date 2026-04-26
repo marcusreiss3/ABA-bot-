@@ -109,8 +109,8 @@ class ButtonManager {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(isDisabled);
 
-    // Botão de troca de personagem no 3v3
-    if (battle && battle.isTeamPvp && !isDisabled) {
+    // Botão de troca de personagem no 3v3 e torre/história isPveTeam
+    if (battle && (battle.isTeamPvp || battle.isPveTeam) && !isDisabled) {
       const isP1Turn = battle.currentPlayerTurnId === battle.player1Id;
       const team = isP1Turn ? battle.p1Team : battle.p2Team;
       const activeIdx = isP1Turn ? battle.p1ActiveIdx : battle.p2ActiveIdx;
