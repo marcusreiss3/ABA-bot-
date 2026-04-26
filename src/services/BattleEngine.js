@@ -134,24 +134,6 @@ class BattleEngine {
         character1.ownerId = player1Id;
       }
 
-      // Aplicar Buff ao Boss baseado no tamanho da party
-      const partySize = partyMembers ? partyMembers.length : 1;
-      if (partySize > 1) {
-        const extraMembers = partySize - 1;
-        const healthMultiplier = 1 + extraMembers * 0.5; // 50% a mais de vida por pessoa extra
-        const damageMultiplier = 1 + extraMembers * 0.7; // 70% a mais de dano por pessoa extra
-        const energyMultiplier = 1 + extraMembers * 0.3; // 30% a mais de energia por pessoa extra
-
-        character2.maxHealth = Math.floor(character2.maxHealth * healthMultiplier);
-        character2.health = character2.maxHealth;
-        
-        character2.maxEnergy = Math.floor(character2.maxEnergy * energyMultiplier);
-        character2.energy = character2.maxEnergy;
-
-        character2.skills.forEach(s => {
-          if (s.damage) s.damage = Math.floor(s.damage * damageMultiplier);
-        });
-      }
     } else {
       turnOrder = Math.random() < 0.5 ? [player1Id, player2Id] : [player2Id, player1Id];
       character1.ownerId = player1Id;
@@ -924,6 +906,22 @@ class BattleEngine {
           attacker.health = Math.max(0, attacker.health - counterDmg);
           battle.lastActionMessage += `\n⚡ **${defender.name}** contra-atacou! **${attacker.name}** sofreu **${counterDmg}** de dano!`;
           if (reaction.counterGifUrl) battle.lastReactionGifOverride = reaction.counterGifUrl;
+          if (!attacker.isAlive()) {
+            battle.lastActionMessage += `\n💀 **${attacker.name}** foi derrotado pelo contra-ataque!`;
+            battle.switchTurn();
+            const missionRepository = require("../database/repositories/missionRepository");
+            if (battle.isPve && attacker.id === battle.character2.id) {
+              battle.state = "finished"; battle.winnerId = "players";
+              battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+              this.handlePveRewards(battle);
+            } else if (!battle.isPve && !battle.isPveTeam) {
+              battle.state = "finished"; battle.winnerId = defender.ownerId;
+              battle.lastActionMessage += `\n🏆 **${defender.name}** venceu!`;
+              missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+            }
+            this.endTurnUpdate(battle);
+            return battle;
+          }
         }
       }
     } else {
@@ -985,6 +983,26 @@ class BattleEngine {
         const passiveCounter = Math.floor(defender.maxHealth * 0.04);
         attacker.health = Math.max(0, attacker.health - passiveCounter);
         battle.lastActionMessage += `\n🛡️ **Instinto de Tank:** **${attacker.name}** sofreu **${passiveCounter}** de contra-ataque!`;
+        if (!attacker.isAlive()) {
+          battle.lastActionMessage += `\n💀 **${attacker.name}** foi derrotado pelo Instinto de Tank!`;
+          battle.switchTurn();
+          const missionRepository = require("../database/repositories/missionRepository");
+          if (battle.isPve && attacker.id === battle.character2.id) {
+            battle.state = "finished"; battle.winnerId = "players";
+            battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+            this.handlePveRewards(battle);
+          } else if (battle.type === "boss-rush" && attacker.ownerId === battle.player1Id) {
+            battle.state = "finished"; battle.winnerId = "team";
+            battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado! O trio venceu!`;
+            battle.team2.forEach(id => missionRepository.addProgress(id, "play_boss_rush"));
+          } else if (!battle.isPve) {
+            battle.state = "finished"; battle.winnerId = defender.ownerId;
+            battle.lastActionMessage += `\n🏆 **${defender.name}** venceu!`;
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
+          this.endTurnUpdate(battle);
+          return battle;
+        }
       }
       const counterBuff = defender.buffs.find(b => b.id === "sjw_contra_ataque_brutal");
       if (counterBuff) {
@@ -1608,6 +1626,22 @@ class BattleEngine {
 
     // Se o jogador estiver morto em qualquer modo (PVE, Boss Rush, etc), pula o turno
     if (!nextPlayer || !nextPlayer.isAlive()) {
+      // isPveTeam: auto-swap para o próximo personagem vivo ao invés de pular
+      if (battle.isPveTeam && battle.p1Team && battle.currentPlayerTurnId === battle.player1Id) {
+        const nextIdx = battle.p1Team.findIndex((c, i) => i !== battle.p1ActiveIdx && c.isAlive());
+        if (nextIdx >= 0) {
+          battle.p1ActiveIdx = nextIdx;
+          battle.character1 = battle.p1Team[nextIdx];
+          battle.lastActionMessage += `\n⚡ **${battle.p1Team[nextIdx].name}** entra automaticamente em campo!`;
+          return this.endTurnUpdate(battle, _depth + 1);
+        } else {
+          battle.state = "finished";
+          battle.winnerId = battle.player2Id;
+          battle.lastActionMessage += `\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+          this.activeBattles.delete(battle.id);
+          return;
+        }
+      }
       battle.lastActionMessage += nextPlayer ? `\n💀 **${nextPlayer.name}** está derrotado, pulando turno...` : `\n💀 Jogador não encontrado, pulando turno...`;
       battle.switchTurn();
       return this.endTurnUpdate(battle, _depth + 1);
