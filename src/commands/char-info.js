@@ -42,6 +42,7 @@ const CHARS = {
     { id: "denji",         name: "Denji" },
     { id: "frieren",       name: "Frieren" },
     { id: "itachi_uchiha", name: "Itachi Uchiha" },
+    { id: "yuta_okkotsu",  name: "Yuta Okkotsu" },
   ],
   EM: [
     { id: "satoru_gojo",  name: "Satoru Gojo" },

@@ -418,6 +418,32 @@ class CharacterManager {
       char.activeShadow = null;
     }
 
+    if (characterId === "yuta_okkotsu") {
+      char = new Character({
+        id: "yuta_okkotsu",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Yuta Okkotsu",
+        anime: "jujutsukaisen",
+        element: "escuridao",
+        health: 168,
+        maxHealth: 168,
+        energy: 140,
+        maxEnergy: 140,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/XZgZVnm8/image.png",
+        skills: [
+          new Skill({ id: "yuta_corte_espada", name: "Corte com a Espada", description: "Corte rápido com a espada.", type: "attack", cost: 12, damage: 24, elementType: 'escuridao', gifUrl: "https://i.ibb.co/mCwbnF43/theater-sword-fight-yuta-sword-fighting.gif" }),
+          new Skill({ id: "yuta_copia", name: "Cópia", description: "Devolve o último ataque +30% dano e efeitos.", type: "attack", cost: 30, damage: 0, elementType: 'escuridao', cooldown: 5, gifUrl: "" }),
+          new Skill({ id: "yuta_rika", name: "Rika", description: "Invoca Rika (1x). Dano passivo ao inimigo por turno.", type: "buff", cost: 40, cooldown: 999, gifUrl: "https://i.ibb.co/ZzkHb23j/yuta-okkotsu-yuta.gif" }),
+          new Skill({ id: "yuta_energia_reversa", name: "Energia Reversa", description: "Cura 30% HP.", type: "heal", healPercent: 30, cost: 35, cooldown: 3, gifUrl: "" }),
+          new Skill({ id: "yuta_amor_puro", name: "Amor Puro", description: "QUEIMADURA 7% × 2t.", type: "attack", cost: 60, damage: 80, elementType: 'escuridao', cooldown: 4, effect: { type: "burn", duration: 2, value: 0.07 }, gifUrl: "https://i.ibb.co/BH1cD8Lf/yuta-yuta-okkotsu.gif" }),
+          new Skill({ id: "yuta_bloqueio_espada", name: "Bloqueio com Espada", description: "-60% dano recebido.", type: "reaction", cost: 25, cooldown: 2, effect: { type: "damage_reduction", value: 0.40 }, gifUrl: "https://i.ibb.co/xtBXBLS5/yuji-yuji-itadori.gif" })
+        ]
+      });
+    }
+
     // --- Carregamento Dinâmico de Bosses do Modo História ---
     // --- Bosses do Modo Desafio ---
     if (!char) {
@@ -564,6 +590,10 @@ class CharacterManager {
       saibaman: 'escuridao', buggytower: 'vento', team_rocket: 'escuridao', zabuza: 'agua',
       stain: 'escuridao', hisoka: 'escuridao', ulquiorra: 'escuridao', garou: 'terra',
       doflamingo: 'vento', android17: 'raio',
+      npc_shigaraki: 'escuridao', npc_alucard: 'escuridao', npc_kaido: 'fogo',
+      npc_kaguya: 'gelo', npc_akaza: 'fogo',
+      // Gen2 AL
+      yuta_okkotsu: 'escuridao',
     };
     return map[bossId] || null;
   }

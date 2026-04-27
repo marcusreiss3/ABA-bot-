@@ -30,7 +30,8 @@ class Character {
     this.passives = data.passives || {};
     this.rarity = data.rarity || "EC";
     this.level = data.level || 1;
-    
+    this.generation = data.generation || 1;
+
     // Aplicar escalonamento de atributos
     this.applyLevelScaling();
 
@@ -95,7 +96,10 @@ class Character {
     let hpPerLevel = 20;
     let atkPerLevel = 5;
 
-    if (this.rarity === "AL") {
+    if (this.rarity === "AL" && this.generation === 2) {
+      hpPerLevel = 26;
+      atkPerLevel = 9;
+    } else if (this.rarity === "AL") {
       hpPerLevel = 24;
       atkPerLevel = 8;
     } else if (this.rarity === "EM") {

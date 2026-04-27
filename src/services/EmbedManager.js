@@ -84,6 +84,16 @@ class EmbedManager {
       );
     }
 
+    // Rika HP indicator
+    if (battle.rikaActive && battle.rikaHealth > 0) {
+      const rikaBar = Math.round((battle.rikaHealth / battle.rikaMaxHealth) * 10);
+      embed.addFields({
+        name: `👁️ Rika`,
+        value: `${"█".repeat(rikaBar)}${"░".repeat(10 - rikaBar)} ${battle.rikaHealth}/${battle.rikaMaxHealth} HP`,
+        inline: false
+      });
+    }
+
     if (battle.state === "choosing_reaction" && battle.lastPendingSkill && battle.lastPendingSkill.gifUrl) {
       embed.setImage(battle.lastPendingSkill.gifUrl);
     } else if (battle.state === "finished") {

@@ -123,6 +123,9 @@ try { db.prepare("ALTER TABLE players ADD COLUMN artifact_slots INTEGER DEFAULT 
 try { db.prepare("ALTER TABLE players ADD COLUMN fragment_slots INTEGER DEFAULT 10").run(); } catch (_) {}
 try { db.prepare("ALTER TABLE player_characters ADD COLUMN protected INTEGER DEFAULT 0").run(); } catch (_) {}
 try { db.prepare("ALTER TABLE players ADD COLUMN equipped_title TEXT DEFAULT NULL").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE tower_records ADD COLUMN team_char_1 INTEGER DEFAULT NULL").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE tower_records ADD COLUMN team_char_2 INTEGER DEFAULT NULL").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE tower_records ADD COLUMN team_char_3 INTEGER DEFAULT NULL").run(); } catch (_) {}
 
 // Tabela de progresso de títulos (conquistas permanentes)
 db.prepare(`

@@ -404,7 +404,12 @@ class BattleEngine {
 
     attacker.consumeEnergy(finalSkillCost);
     skill.startCooldown();
-    
+
+    // Foco do Capitão remove efeitos negativos ANTES do tick de status
+    if (attacker.id === "levi" && skill.id === "foco_do_capitao") {
+      attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
+    }
+
     this.applyStatusTick(attacker, battle);
     if (!attacker.isAlive()) {
       this._handleDoTDeath(attacker, battle);
@@ -504,8 +509,6 @@ class BattleEngine {
       } else if (skill.id === "foco_do_capitao") {
         attacker.addStack("marks", 3);
         attacker.addStack("marks", 3);
-        // Remove bleed and burn effects from attacker (self-cleanse)
-        attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
       }
       
       // ✅ CORREÇÃO: Fury Mode só é ativado se já tiver 3 marcas ANTES do cálculo de dano
@@ -528,6 +531,92 @@ class BattleEngine {
       }
     }
 
+
+    // --- Yuta Okkotsu: Cópia ---
+    if (skill.id === "yuta_copia") {
+      const lastAtk = battle.lastYutaReceivedAttack;
+      if (!lastAtk || lastAtk.finalDamage <= 0) {
+        battle.lastActionMessage = `**${attacker.name}** tentou usar **Cópia**, mas não tem nenhum ataque para devolver!`;
+        attacker.skills.find(s => s.id === "yuta_copia").currentCooldown = 0;
+        attacker.recoverEnergy(skill.cost);
+        skill.currentCooldown = 0;
+        battle.state = "choosing_action";
+        return battle;
+      }
+      const defender = battle.getOpponentPlayer();
+      const copyDamage = Math.floor(lastAtk.finalDamage * 1.30 + attacker.bonusDamage);
+      const copied = lastAtk.skill;
+      defender.takeDamage(copyDamage);
+      battle.lastActionMessage = `**${attacker.name}** usou **Cópia**! Devolveu o ataque **${copied.name}** com **${copyDamage}** de dano!`;
+      if (copied.effect && !['ignore_reaction','damage_reduction'].includes(copied.effect.type)) {
+        defender.addStatusEffect({ ...copied.effect, value: copied.effect.value });
+        battle.lastActionMessage += `\n📋 Efeito copiado: ${copied.description}`;
+      }
+      if (!defender.isAlive()) {
+        battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado!`;
+        const missionRepository = require("../database/repositories/missionRepository");
+        if (battle.isPve && defender.id === battle.character2.id) {
+          battle.state = "finished"; battle.winnerId = "players";
+          battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+          this.handlePveRewards(battle);
+          const partyMembers = battle.partyMembers || [battle.player1Id];
+          partyMembers.forEach(id => {
+            if (battle.challengeDifficulty) {
+              missionRepository.addProgress(id, "win_challenge");
+              if (battle.challengeDifficulty === "medio") missionRepository.addProgress(id, "win_challenge_medium");
+            }
+          });
+        } else if (!battle.isPve) {
+          battle.state = "finished"; battle.winnerId = attacker.ownerId;
+          battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu!`;
+          missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+        }
+      }
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Yuta Okkotsu: Rika ---
+    if (skill.id === "yuta_rika") {
+      if (battle.rikaActive) {
+        battle.lastActionMessage = `**${attacker.name}** já invocou a **Rika** nesta batalha!`;
+        attacker.recoverEnergy(skill.cost);
+        battle.state = "choosing_action";
+        return battle;
+      }
+      const rikaMaxHp = Math.floor(attacker.maxHealth * 0.55);
+      battle.rikaActive = true;
+      battle.rikaHealth = rikaMaxHp;
+      battle.rikaMaxHealth = rikaMaxHp;
+      battle.rikaDamage = Math.floor(40 + attacker.bonusDamage * 0.4);
+      battle.lastActionMessage = `**${attacker.name}** invocou **👁️ Rika**! Ela tem **${rikaMaxHp}** HP e causará **${battle.rikaDamage}** de dano por turno ao inimigo.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Yuta Okkotsu: Atacar Rika (ação especial do oponente) ---
+    if (skill.id === "atacar_rika") {
+      const yuta = [battle.character1, battle.character2].find(c => c.id === "yuta_okkotsu");
+      if (!yuta || !battle.rikaActive) {
+        battle.state = "choosing_action";
+        return battle;
+      }
+      const rikaDmg = attacker.bonusDamage + 60;
+      battle.rikaHealth = Math.max(0, battle.rikaHealth - rikaDmg);
+      battle.lastActionMessage = `**${attacker.name}** focou a **👁️ Rika** e causou **${rikaDmg}** de dano! (Rika: ${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
+      if (battle.rikaHealth <= 0) {
+        battle.rikaActive = false;
+        battle.lastActionMessage += `\n💀 **Rika** foi derrotada! O dano passivo cessa.`;
+      }
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
 
     if (skill.id === "total_concentration") {
       attacker.recoverEnergy(50);
@@ -964,6 +1053,11 @@ class BattleEngine {
     const finalDamage = defender.takeDamage(damageToApply);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
 
+    // Yuta: registra último ataque recebido para a habilidade Cópia
+    if (defender.id === "yuta_okkotsu" && finalDamage > 0) {
+      battle.lastYutaReceivedAttack = { finalDamage, skill: skillUsed };
+    }
+
     // ── Stacks pós-ataque ─────────────────────────────────────────────────
     if (finalDamage > 0) {
       // Hogyoku: +1 stack por ataque bem-sucedido (máx 6)
@@ -1123,7 +1217,7 @@ class BattleEngine {
             missionRepository.addProgress(id, "win_3_tower_floors");
           } else if (battle.challengeDifficulty) {
             missionRepository.addProgress(id, "win_challenge");
-            if (battle.challengeDifficulty === "medium") {
+            if (battle.challengeDifficulty === "medio") {
               missionRepository.addProgress(id, "win_challenge_medium");
             }
           }
@@ -1264,7 +1358,8 @@ class BattleEngine {
           zenith_fragments: (player.zenith_fragments || 0) + fragmentsZenith
         });
         playerRepository.addItem(memberId, rewards.stoneId, rewards.stoneQty);
-        playerRepository.updateTowerRecord(memberId, floorNum);
+        const teamInstIds = (battle.p1Team || []).map(c => c.instanceId).filter(Boolean);
+        playerRepository.updateTowerRecord(memberId, floorNum, teamInstIds);
         // Título: Exterminador de Titãs (boss derrotado na torre)
         titleRepository.addProgress(memberId, "npc_slayer");
 
@@ -1619,6 +1714,10 @@ class BattleEngine {
       return;
     }
 
+    if (battle.state === "waiting_next_floor") {
+      return; // Mantém na activeBattles para o botão de próximo andar
+    }
+
     // Limpa alvo do boss ao encerrar turno
     if (battle.bossCurrentTarget) battle.bossCurrentTarget = null;
 
@@ -1638,6 +1737,12 @@ class BattleEngine {
           battle.state = "finished";
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+          if (battle.type === "tower") {
+            const cooldownTime = 35 * 60 * 1000;
+            const availableAt = Date.now() + cooldownTime;
+            (battle.partyMembers || [battle.player1Id]).forEach(mId => playerRepository.updateTowerCooldown(mId, availableAt));
+            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Você está em cooldown de 35 minutos para entrar na Torre novamente.`;
+          }
           this.activeBattles.delete(battle.id);
           return;
         }
@@ -1649,6 +1754,30 @@ class BattleEngine {
 
     nextPlayer.updateCooldowns();
     nextPlayer.updateBuffsAndStatus();
+
+    // --- Rika: dano passivo ao início do turno do oponente de Yuta ---
+    if (battle.rikaActive && battle.rikaHealth > 0) {
+      const yutaChar = [battle.character1, battle.character2].find(c => c.id === "yuta_okkotsu");
+      if (yutaChar && nextPlayer !== yutaChar) {
+        nextPlayer.health = Math.max(0, nextPlayer.health - battle.rikaDamage);
+        battle.lastActionMessage += `\n👁️ **Rika** causou **${battle.rikaDamage}** de dano a **${nextPlayer.name}**!`;
+        if (!nextPlayer.isAlive()) {
+          battle.lastActionMessage += `\n💀 **${nextPlayer.name}** foi derrotado por Rika!`;
+          const missionRepository = require("../database/repositories/missionRepository");
+          if (battle.isPve && nextPlayer === battle.character2) {
+            battle.state = "finished"; battle.winnerId = "players";
+            battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+            this.handlePveRewards(battle);
+          } else if (!battle.isPve) {
+            battle.state = "finished"; battle.winnerId = yutaChar.ownerId;
+            battle.lastActionMessage += `\n🏆 **${yutaChar.name}** venceu!`;
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
+          this.activeBattles.delete(battle.id);
+          return;
+        }
+      }
+    }
 
     // Lógica para pular o turno de reação se a habilidade "Imaginário: Roxo" foi usada
     if (battle.lastPendingSkill && battle.lastPendingSkill.effect && battle.lastPendingSkill.effect.type === "ignore_reaction") {

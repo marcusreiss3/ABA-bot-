@@ -355,18 +355,19 @@ module.exports = {
   },
 
   // --- Ranking da Torre ---
-  updateTowerRecord: (playerId, floor) => {
+  updateTowerRecord: (playerId, floor, teamInstanceIds = []) => {
     const existing = db.prepare("SELECT max_floor FROM tower_records WHERE player_id = ?").get(playerId);
+    const [c1, c2, c3] = teamInstanceIds;
     if (!existing) {
-      return db.prepare("INSERT INTO tower_records (player_id, max_floor) VALUES (?, ?)").run(playerId, floor);
+      return db.prepare("INSERT INTO tower_records (player_id, max_floor, team_char_1, team_char_2, team_char_3) VALUES (?, ?, ?, ?, ?)").run(playerId, floor, c1 ?? null, c2 ?? null, c3 ?? null);
     } else if (floor > existing.max_floor) {
-      return db.prepare("UPDATE tower_records SET max_floor = ?, updated_at = CURRENT_TIMESTAMP WHERE player_id = ?").run(floor, playerId);
+      return db.prepare("UPDATE tower_records SET max_floor = ?, team_char_1 = ?, team_char_2 = ?, team_char_3 = ?, updated_at = CURRENT_TIMESTAMP WHERE player_id = ?").run(floor, c1 ?? null, c2 ?? null, c3 ?? null, playerId);
     }
   },
 
   getTowerRanking: (limit = 10) => {
     return db.prepare(`
-      SELECT tr.player_id, tr.max_floor, p.equipped_instance_id 
+      SELECT tr.player_id, tr.max_floor, tr.team_char_1, tr.team_char_2, tr.team_char_3, p.equipped_instance_id
       FROM tower_records tr
       JOIN players p ON tr.player_id = p.id
       ORDER BY tr.max_floor DESC, tr.updated_at ASC
