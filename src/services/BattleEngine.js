@@ -417,6 +417,23 @@ class BattleEngine {
       return battle;
     }
 
+    // Rika focus: jogador escolheu focar a Rika antes de selecionar a habilidade
+    if (battle.focusingRika && battle.rikaActive && battle.rikaHealth > 0 && skill.type === "attack") {
+      battle.focusingRika = false;
+      const rikaDmg = Math.floor((skill.damage || 20) + attacker.bonusDamage);
+      battle.rikaHealth = Math.max(0, battle.rikaHealth - rikaDmg);
+      battle.lastActionMessage = `**${attacker.name}** atacou **👁️ Rika** com **${skill.name}** e causou **${rikaDmg}** de dano! (${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
+      if (battle.rikaHealth <= 0) {
+        battle.rikaActive = false;
+        battle.lastActionMessage += `\n💀 **Rika** foi derrotada! O dano passivo cessa.`;
+      }
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+    battle.focusingRika = false; // limpa flag se a skill escolhida não era ataque
+
     battle.lastPendingSkill = skill;
 
     // Habilidades utilitárias (Heal, Buffs, etc) processam direto
@@ -586,7 +603,7 @@ class BattleEngine {
         battle.state = "choosing_action";
         return battle;
       }
-      const rikaMaxHp = Math.floor(attacker.maxHealth * 0.55);
+      const rikaMaxHp = Math.floor(attacker.maxHealth * 0.41);
       battle.rikaActive = true;
       battle.rikaHealth = rikaMaxHp;
       battle.rikaMaxHealth = rikaMaxHp;
@@ -599,25 +616,6 @@ class BattleEngine {
     }
 
     // --- Yuta Okkotsu: Atacar Rika (ação especial do oponente) ---
-    if (skill.id === "atacar_rika") {
-      const yuta = [battle.character1, battle.character2].find(c => c.id === "yuta_okkotsu");
-      if (!yuta || !battle.rikaActive) {
-        battle.state = "choosing_action";
-        return battle;
-      }
-      const rikaDmg = attacker.bonusDamage + 60;
-      battle.rikaHealth = Math.max(0, battle.rikaHealth - rikaDmg);
-      battle.lastActionMessage = `**${attacker.name}** focou a **👁️ Rika** e causou **${rikaDmg}** de dano! (Rika: ${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
-      if (battle.rikaHealth <= 0) {
-        battle.rikaActive = false;
-        battle.lastActionMessage += `\n💀 **Rika** foi derrotada! O dano passivo cessa.`;
-      }
-      battle.switchTurn();
-      this.endTurnUpdate(battle);
-      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
-      return battle;
-    }
-
     if (skill.id === "total_concentration") {
       attacker.recoverEnergy(50);
       battle.lastActionMessage = `**${attacker.name}** ativou **Concentração Total** e recuperou 50 de energia!`;

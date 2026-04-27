@@ -87,23 +87,17 @@ class ButtonManager {
       };
     });
 
-    // Rika: inimigo de Yuta pode escolher atacar Rika em PVP
-    if (battle && battle.rikaActive && battle.rikaHealth > 0 && !isDisabled) {
-      const yutaIsOpponent = (battle.character1.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player1Id) ||
-                             (battle.character2.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player2Id);
-      if (yutaIsOpponent && !battle.isPve) {
-        attackOptions.push({
-          label: `👁️ Atacar Rika (${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`,
-          description: "Foca a Rika ao invés de Yuta. Gasta o turno.",
-          value: "atacar_rika",
-          emoji: "👁️"
-        });
-      }
-    }
+    const rikaFocusActive = battle && battle.rikaActive && battle.rikaHealth > 0 && !isDisabled && !battle.isPve &&
+      ((battle.character1.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player1Id) ||
+       (battle.character2.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player2Id));
+
+    const menuPlaceholder = battle?.focusingRika
+      ? `👁️ FOCANDO RIKA — escolha um ataque!`
+      : 'Selecione uma habilidade para usar!';
 
     const menu = new StringSelectMenuBuilder()
       .setCustomId(`menu_${battleId}_attack`)
-      .setPlaceholder('Selecione uma habilidade para usar!')
+      .setPlaceholder(menuPlaceholder)
       .addOptions(attackOptions)
       .setDisabled(isDisabled);
 
@@ -138,6 +132,18 @@ class ButtonManager {
         rows.push(swapRow);
         return rows;
       }
+    }
+
+    if (rikaFocusActive) {
+      const rikaLabel = battle.focusingRika
+        ? `👁️ Cancelar Foco na Rika`
+        : `👁️ Focar Rika (${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
+      const focusRikaButton = new ButtonBuilder()
+        .setCustomId(`focus_rika_${battleId}`)
+        .setLabel(rikaLabel)
+        .setStyle(battle.focusingRika ? ButtonStyle.Secondary : ButtonStyle.Danger);
+      rows.push(new ActionRowBuilder().addComponents(recoverButton, focusRikaButton, abandonButton));
+      return rows;
     }
 
     const buttonRow = new ActionRowBuilder().addComponents(recoverButton, abandonButton);

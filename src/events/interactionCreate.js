@@ -2635,6 +2635,20 @@ module.exports = {
     }
 
     // 1.07 — Troca de personagem em 3v3
+    if (interaction.isButton() && interaction.customId.startsWith("focus_rika_")) {
+      const battleId = interaction.customId.replace("focus_rika_", "");
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle || battle.state !== "choosing_action") return interaction.reply({ content: "❌ Não é possível agora.", ephemeral: true });
+      if (battle.currentPlayerTurnId !== interaction.user.id) return interaction.reply({ content: "❌ Não é seu turno!", ephemeral: true });
+
+      battle.focusingRika = !battle.focusingRika;
+
+      const currentChar = battle.getCurrentPlayer();
+      const components = ButtonManager.createActionComponents(battle.id, currentChar, false, battle);
+      const embed = EmbedManager.createBattleEmbed(battle);
+      return interaction.update({ embeds: [embed], components });
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith("team_swap_")) {
       const battleId = interaction.customId.replace("team_swap_", "");
       const battle = BattleEngine.getBattle(battleId);
