@@ -87,9 +87,9 @@ class ButtonManager {
       };
     });
 
-    const rikaFocusActive = battle && battle.rikaActive && battle.rikaHealth > 0 && !isDisabled && !battle.isPve &&
-      ((battle.character1.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player1Id) ||
-       (battle.character2.id === "yuta_okkotsu" && battle.currentPlayerTurnId !== battle.player2Id));
+    const _rikaOpId = battle && (battle.currentPlayerTurnId === battle.player1Id ? battle.player2Id : battle.player1Id);
+    const _opponentRika = battle && battle.rika && battle.rika[_rikaOpId];
+    const rikaFocusActive = _opponentRika && _opponentRika.active && _opponentRika.health > 0 && !isDisabled && !battle.isPve;
 
     const menuPlaceholder = battle?.focusingRika
       ? `👁️ FOCANDO RIKA — escolha um ataque!`
@@ -137,7 +137,7 @@ class ButtonManager {
     if (rikaFocusActive) {
       const rikaLabel = battle.focusingRika
         ? `👁️ Cancelar Foco na Rika`
-        : `👁️ Focar Rika (${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
+        : `👁️ Focar Rika (${_opponentRika.health}/${_opponentRika.maxHealth} HP)`;
       const focusRikaButton = new ButtonBuilder()
         .setCustomId(`focus_rika_${battleId}`)
         .setLabel(rikaLabel)

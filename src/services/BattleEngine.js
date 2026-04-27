@@ -418,13 +418,15 @@ class BattleEngine {
     }
 
     // Rika focus: jogador escolheu focar a Rika antes de selecionar a habilidade
-    if (battle.focusingRika && battle.rikaActive && battle.rikaHealth > 0 && skill.type === "attack") {
+    const _rikaOpponentId = battle.currentPlayerTurnId === battle.player1Id ? battle.player2Id : battle.player1Id;
+    const _opponentRika = battle.rika && battle.rika[_rikaOpponentId];
+    if (battle.focusingRika && _opponentRika && _opponentRika.active && _opponentRika.health > 0 && skill.type === "attack") {
       battle.focusingRika = false;
       const rikaDmg = Math.floor((skill.damage || 20) + attacker.bonusDamage);
-      battle.rikaHealth = Math.max(0, battle.rikaHealth - rikaDmg);
-      battle.lastActionMessage = `**${attacker.name}** atacou **👁️ Rika** com **${skill.name}** e causou **${rikaDmg}** de dano! (${battle.rikaHealth}/${battle.rikaMaxHealth} HP)`;
-      if (battle.rikaHealth <= 0) {
-        battle.rikaActive = false;
+      _opponentRika.health = Math.max(0, _opponentRika.health - rikaDmg);
+      battle.lastActionMessage = `**${attacker.name}** atacou **👁️ Rika** com **${skill.name}** e causou **${rikaDmg}** de dano! (${_opponentRika.health}/${_opponentRika.maxHealth} HP)`;
+      if (_opponentRika.health <= 0) {
+        _opponentRika.active = false;
         battle.lastActionMessage += `\n💀 **Rika** foi derrotada! O dano passivo cessa.`;
       }
       battle.switchTurn();
@@ -597,18 +599,18 @@ class BattleEngine {
 
     // --- Yuta Okkotsu: Rika ---
     if (skill.id === "yuta_rika") {
-      if (battle.rikaActive) {
+      if (!battle.rika) battle.rika = {};
+      const existingRika = battle.rika[battle.currentPlayerTurnId];
+      if (existingRika && existingRika.active) {
         battle.lastActionMessage = `**${attacker.name}** já invocou a **Rika** nesta batalha!`;
         attacker.recoverEnergy(skill.cost);
         battle.state = "choosing_action";
         return battle;
       }
       const rikaMaxHp = Math.floor(attacker.maxHealth * 0.41);
-      battle.rikaActive = true;
-      battle.rikaHealth = rikaMaxHp;
-      battle.rikaMaxHealth = rikaMaxHp;
-      battle.rikaDamage = Math.floor(40 + attacker.bonusDamage * 0.4);
-      battle.lastActionMessage = `**${attacker.name}** invocou **👁️ Rika**! Ela tem **${rikaMaxHp}** HP e causará **${battle.rikaDamage}** de dano por turno ao inimigo.`;
+      const rikaDmg = Math.floor(40 + attacker.bonusDamage * 0.4);
+      battle.rika[battle.currentPlayerTurnId] = { active: true, health: rikaMaxHp, maxHealth: rikaMaxHp, damage: rikaDmg };
+      battle.lastActionMessage = `**${attacker.name}** invocou **👁️ Rika**! Ela tem **${rikaMaxHp}** HP e causará **${rikaDmg}** de dano por turno ao inimigo.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
       battle.state = "choosing_action";
@@ -770,6 +772,10 @@ class BattleEngine {
         if (skill.effect.bleed) {
           defender.addStatusEffect({ type: "bleed", duration: skill.effect.bleed.duration, value: skill.effect.bleed.value });
           battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skill.effect.bleed.duration} turno(s)!`;
+        }
+        if (skill.effect.burn) {
+          defender.addStatusEffect({ type: "burn", duration: skill.effect.burn.duration, value: skill.effect.burn.value });
+          battle.lastActionMessage += `\n🔥 **${defender.name}** está sofrendo de **Queimadura** por ${skill.effect.burn.duration} turno(s)!`;
         }
         battle.lastPendingSkill = null;
 
@@ -1525,6 +1531,24 @@ class BattleEngine {
 
     const attacker = battle.getCurrentPlayer();
 
+    // 25% de chance do boss atacar Rika do jogador
+    if (battle.rika) {
+      const playerRika = battle.rika[battle.player1Id];
+      if (playerRika && playerRika.active && playerRika.health > 0 && Math.random() < 0.25) {
+        const rikaHitDmg = Math.floor(playerRika.maxHealth * 0.18);
+        playerRika.health = Math.max(0, playerRika.health - rikaHitDmg);
+        battle.lastActionMessage = `⚔️ **${attacker.name}** atacou **👁️ Rika** causando **${rikaHitDmg}** de dano! (${playerRika.health}/${playerRika.maxHealth} HP)`;
+        if (playerRika.health <= 0) {
+          playerRika.active = false;
+          battle.lastActionMessage += `\n💀 **Rika** foi derrotada pelo Boss!`;
+        }
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+        return battle;
+      }
+    }
+
     const allAttacks = attacker.skills.filter(s => s.type === "attack");
     const affordableAttacks = allAttacks.filter(s => attacker.energy >= s.cost && !s.isOnCooldown());
     const healSkills = attacker.skills.filter(s => s.type === "heal" && attacker.energy >= s.cost && !s.isOnCooldown());
@@ -1754,21 +1778,24 @@ class BattleEngine {
     nextPlayer.updateBuffsAndStatus();
 
     // --- Rika: dano passivo ao início do turno do oponente de Yuta ---
-    if (battle.rikaActive && battle.rikaHealth > 0) {
-      const yutaChar = [battle.character1, battle.character2].find(c => c.id === "yuta_okkotsu");
-      if (yutaChar && nextPlayer !== yutaChar) {
-        nextPlayer.health = Math.max(0, nextPlayer.health - battle.rikaDamage);
-        battle.lastActionMessage += `\n👁️ **Rika** causou **${battle.rikaDamage}** de dano a **${nextPlayer.name}**!`;
+    if (battle.rika) {
+      for (const [rikaOwnerId, rikaState] of Object.entries(battle.rika)) {
+        if (!rikaState.active || rikaState.health <= 0) continue;
+        // Só dispara quando é o turno do OPONENTE de Yuta, não o turno do próprio Yuta
+        if (battle.currentPlayerTurnId === rikaOwnerId) continue;
+        nextPlayer.health = Math.max(0, nextPlayer.health - rikaState.damage);
+        battle.lastActionMessage += `\n👁️ **Rika** causou **${rikaState.damage}** de dano a **${nextPlayer.name}**!`;
         if (!nextPlayer.isAlive()) {
           battle.lastActionMessage += `\n💀 **${nextPlayer.name}** foi derrotado por Rika!`;
           const missionRepository = require("../database/repositories/missionRepository");
+          const yutaChar = [battle.character1, battle.character2].find(c => c.ownerId === rikaOwnerId || c.id === "yuta_okkotsu");
           if (battle.isPve && nextPlayer === battle.character2) {
             battle.state = "finished"; battle.winnerId = "players";
             battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
             this.handlePveRewards(battle);
           } else if (!battle.isPve) {
-            battle.state = "finished"; battle.winnerId = yutaChar.ownerId;
-            battle.lastActionMessage += `\n🏆 **${yutaChar.name}** venceu!`;
+            battle.state = "finished"; battle.winnerId = rikaOwnerId;
+            battle.lastActionMessage += `\n🏆 **${yutaChar ? yutaChar.name : "Yuta"}** venceu!`;
             missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
           }
           this.activeBattles.delete(battle.id);
@@ -1779,7 +1806,7 @@ class BattleEngine {
 
     // Lógica para pular o turno de reação se a habilidade "Imaginário: Roxo" foi usada
     if (battle.lastPendingSkill && battle.lastPendingSkill.effect && battle.lastPendingSkill.effect.type === "ignore_reaction") {
-      battle.lastActionMessage += `\n🚫 O turno de reação de **${nextPlayer.name}** foi ignorado devido ao **Imaginário: Roxo**!`;
+      battle.lastActionMessage += `\n🚫 O turno de reação de **${nextPlayer.name}** foi ignorado por **${battle.lastPendingSkill.name}**!`;
       battle.lastPendingSkill = null;
       battle.switchTurn();
       this.endTurnUpdate(battle, _depth + 1);
