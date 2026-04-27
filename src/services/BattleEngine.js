@@ -568,8 +568,14 @@ class BattleEngine {
       defender.takeDamage(copyDamage);
       battle.lastActionMessage = `**${attacker.name}** usou **Cópia**! Devolveu o ataque **${copied.name}** com **${copyDamage}** de dano!`;
       if (copied.effect && !['ignore_reaction','damage_reduction'].includes(copied.effect.type)) {
-        defender.addStatusEffect({ ...copied.effect, value: copied.effect.value });
-        battle.lastActionMessage += `\n📋 Efeito copiado: ${copied.description}`;
+        if (copied.effect.type === "stun") {
+          defender.isStunned = true;
+          defender.stunDuration = copied.effect.duration || 1;
+          battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO** por ${defender.stunDuration} turno(s)! (Cópia)`;
+        } else {
+          defender.addStatusEffect({ ...copied.effect, value: copied.effect.value });
+          battle.lastActionMessage += `\n📋 Efeito copiado: ${copied.description}`;
+        }
       }
       if (!defender.isAlive()) {
         battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado!`;
@@ -585,10 +591,44 @@ class BattleEngine {
               if (battle.challengeDifficulty === "medio") missionRepository.addProgress(id, "win_challenge_medium");
             }
           });
+        } else if (battle.isTeamPvp) {
+          const defIsP1 = defender === battle.character1;
+          const team = defIsP1 ? battle.p1Team : battle.p2Team;
+          const activeIdx = defIsP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+          const nextIdx = team.findIndex((c, i) => i !== activeIdx && c.isAlive());
+          if (nextIdx >= 0) {
+            if (defIsP1) { battle.p1ActiveIdx = nextIdx; battle.character1 = team[nextIdx]; }
+            else { battle.p2ActiveIdx = nextIdx; battle.character2 = team[nextIdx]; }
+            battle.lastActionMessage += `\n⚡ **${team[nextIdx].name}** entra em campo!`;
+          } else {
+            battle.state = "finished"; battle.winnerId = attacker.ownerId;
+            battle.lastActionMessage += `\n🏆 Todos os personagens do oponente foram derrotados!`;
+            if (battle.isRanked) {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+              missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+              titleRepository.addProgress(battle.winnerId, "pvp_champion");
+              const RankManager = require("./RankManager");
+              const loserId = defIsP1 ? battle.player1Id : battle.player2Id;
+              const winnerResult = RankManager.updatePA(battle.winnerId, true);
+              const loserResult = RankManager.updatePA(loserId, false);
+              battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+              battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            }
+          }
         } else if (!battle.isPve) {
           battle.state = "finished"; battle.winnerId = attacker.ownerId;
           battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu!`;
-          missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          if (battle.isRanked) {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+            const RankManager = require("./RankManager");
+            const loserId = battle.winnerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+            const winnerResult = RankManager.updatePA(battle.winnerId, true);
+            const loserResult = RankManager.updatePA(loserId, false);
+            battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+            battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+          } else {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
         }
       }
       battle.switchTurn();
@@ -822,10 +862,45 @@ class BattleEngine {
                 titleRepository.addProgress(battle.player1Id, "boss_rush_emperor");
               }
             }
+          } else if (battle.isTeamPvp) {
+            const defIsP1 = defender === battle.character1;
+            const team = defIsP1 ? battle.p1Team : battle.p2Team;
+            const activeIdx = defIsP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+            const nextIdx = team.findIndex((c, i) => i !== activeIdx && c.isAlive());
+            if (nextIdx >= 0) {
+              if (defIsP1) { battle.p1ActiveIdx = nextIdx; battle.character1 = team[nextIdx]; }
+              else { battle.p2ActiveIdx = nextIdx; battle.character2 = team[nextIdx]; }
+              battle.lastActionMessage += `\n⚡ **${team[nextIdx].name}** entra em campo!`;
+            } else {
+              battle.state = "finished"; battle.winnerId = attacker.ownerId;
+              battle.lastActionMessage += `\n🏆 Todos os personagens do oponente foram derrotados!`;
+              if (battle.isRanked) {
+                missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+                missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+                titleRepository.addProgress(battle.winnerId, "pvp_champion");
+                const RankManager = require("./RankManager");
+                const loserId = defIsP1 ? battle.player1Id : battle.player2Id;
+                const winnerResult = RankManager.updatePA(battle.winnerId, true);
+                const loserResult = RankManager.updatePA(loserId, false);
+                battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+                battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+              }
+            }
           } else if (!battle.isPve) {
             battle.state = "finished";
             battle.winnerId = attacker.ownerId;
             battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu o combate!`;
+            if (battle.isRanked) {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+              const RankManager = require("./RankManager");
+              const loserId = battle.winnerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+              const winnerResult = RankManager.updatePA(battle.winnerId, true);
+              const loserResult = RankManager.updatePA(loserId, false);
+              battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+              battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            } else {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+            }
           }
           this.endTurnUpdate(battle);
           return battle;
@@ -1789,14 +1864,48 @@ class BattleEngine {
           battle.lastActionMessage += `\n💀 **${nextPlayer.name}** foi derrotado por Rika!`;
           const missionRepository = require("../database/repositories/missionRepository");
           const yutaChar = [battle.character1, battle.character2].find(c => c.ownerId === rikaOwnerId || c.id === "yuta_okkotsu");
-          if (battle.isPve && nextPlayer === battle.character2) {
+          if (battle.isTeamPvp) {
+            const playerIsP1 = nextPlayer === battle.character1;
+            const team = playerIsP1 ? battle.p1Team : battle.p2Team;
+            const activeIdx = playerIsP1 ? battle.p1ActiveIdx : battle.p2ActiveIdx;
+            const nextIdx = team.findIndex((c, i) => i !== activeIdx && c.isAlive());
+            if (nextIdx >= 0) {
+              if (playerIsP1) { battle.p1ActiveIdx = nextIdx; battle.character1 = team[nextIdx]; }
+              else { battle.p2ActiveIdx = nextIdx; battle.character2 = team[nextIdx]; }
+              battle.lastActionMessage += `\n⚡ **${team[nextIdx].name}** entra em campo!`;
+              return; // equipe ainda viva, continua batalha
+            }
+            battle.state = "finished"; battle.winnerId = rikaOwnerId;
+            battle.lastActionMessage += `\n🏆 Todos os personagens do oponente foram derrotados!`;
+            if (battle.isRanked) {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+              missionRepository.addProgress(battle.winnerId, "win_3_pvp_ranked");
+              titleRepository.addProgress(battle.winnerId, "pvp_champion");
+              const RankManager = require("./RankManager");
+              const loserId = playerIsP1 ? battle.player1Id : battle.player2Id;
+              const winnerResult = RankManager.updatePA(battle.winnerId, true);
+              const loserResult = RankManager.updatePA(loserId, false);
+              battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+              battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            }
+          } else if (battle.isPve && nextPlayer === battle.character2) {
             battle.state = "finished"; battle.winnerId = "players";
             battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
             this.handlePveRewards(battle);
           } else if (!battle.isPve) {
             battle.state = "finished"; battle.winnerId = rikaOwnerId;
             battle.lastActionMessage += `\n🏆 **${yutaChar ? yutaChar.name : "Yuta"}** venceu!`;
-            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+            if (battle.isRanked) {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+              const RankManager = require("./RankManager");
+              const loserId = rikaOwnerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+              const winnerResult = RankManager.updatePA(battle.winnerId, true);
+              const loserResult = RankManager.updatePA(loserId, false);
+              battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+              battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+            } else {
+              missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+            }
           }
           this.activeBattles.delete(battle.id);
           return;
