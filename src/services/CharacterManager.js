@@ -432,7 +432,7 @@ class CharacterManager {
         maxEnergy: 140,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/XZgZVnm8/image.png",
+        imageUrl: "https://i.ibb.co/1fXYR7ts/yuta.png",
         skills: [
           new Skill({ id: "yuta_corte_espada", name: "Corte com a Espada", description: "Corte rápido com a espada.", type: "attack", cost: 12, damage: 24, elementType: 'escuridao', gifUrl: "https://i.ibb.co/mCwbnF43/theater-sword-fight-yuta-sword-fighting.gif" }),
           new Skill({ id: "yuta_copia", name: "Cópia", description: "Devolve o último ataque +30% dano e efeitos.", type: "attack", cost: 30, damage: 0, elementType: 'escuridao', cooldown: 5, gifUrl: "" }),
