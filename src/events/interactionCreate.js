@@ -2649,6 +2649,20 @@ module.exports = {
       return interaction.update({ embeds: [embed], components });
     }
 
+    if (interaction.isButton() && interaction.customId.startsWith("focus_vimana_")) {
+      const battleId = interaction.customId.replace("focus_vimana_", "");
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle || battle.state !== "choosing_action") return interaction.reply({ content: "❌ Não é possível agora.", ephemeral: true });
+      if (battle.currentPlayerTurnId !== interaction.user.id) return interaction.reply({ content: "❌ Não é seu turno!", ephemeral: true });
+
+      battle.focusingVimana = !battle.focusingVimana;
+
+      const currentChar = battle.getCurrentPlayer();
+      const components = ButtonManager.createActionComponents(battle.id, currentChar, false, battle);
+      const embed = EmbedManager.createBattleEmbed(battle);
+      return interaction.update({ embeds: [embed], components });
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith("team_swap_")) {
       const battleId = interaction.customId.replace("team_swap_", "");
       const battle = BattleEngine.getBattle(battleId);

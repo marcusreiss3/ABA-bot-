@@ -376,6 +376,52 @@ class BattleEngine {
 
     const attacker = battle.getCurrentPlayer();
     const defender = battle.getOpponentPlayer();
+
+    let zenitsuSleepOverride = false;
+
+    // --- Vimana Phase: Gilgamesh usa habilidades da nave ---
+    if (battle.vimanaPhase && attacker.id === "gilgamesh" && attacker.vimanaSkills) {
+      const vimanaSkill = attacker.vimanaSkills.find(s => s.id === skillId);
+      if (!vimanaSkill || attacker.energy < vimanaSkill.cost || vimanaSkill.isOnCooldown()) return null;
+      attacker.consumeEnergy(vimanaSkill.cost);
+      vimanaSkill.startCooldown();
+      battle.vimanaPhase = false;
+
+      if (vimanaSkill.id === "vimana_shields") {
+        attacker.addBuff({ id: "vimana_shields", duration: 2, value: 0.30 });
+        battle.lastActionMessage = `**🚀 Vimana** ativou **${vimanaSkill.name}**! **${attacker.name}** recebe **-30% de dano** por 2 turnos!`;
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        battle.state = "choosing_action";
+        return battle;
+      }
+
+      // vimana_explosive_shots: ataque que vai para choosing_reaction
+      const damage = this.calculateDamage(attacker, defender, vimanaSkill, battle);
+      battle.lastPendingDamage = damage;
+      battle.lastPendingSkill = vimanaSkill;
+      battle.lastActionMessage = `**🚀 Vimana** disparou **${vimanaSkill.name}** contra **${defender.name}**!\nDano previsto: **${damage}** HP.`;
+      battle.state = "choosing_reaction";
+      return battle;
+    }
+
+    // --- Zenitsu Dormindo: Piloto Automático ---
+    if (attacker.id === "zenitsu" && attacker.buffs.some(b => b.id === "zenitsu_sleep")) {
+      const available = attacker.activeSkills.filter(s => !s.isOnCooldown() && attacker.energy >= s.cost && s.id !== "zenitsu_dormir");
+      if (available.length > 0) {
+        const rand = available[Math.floor(Math.random() * available.length)];
+        skillId = rand.id;
+        zenitsuSleepOverride = true;
+      } else {
+        attacker.recoverEnergy(25);
+        battle.lastActionMessage = `😴 **Zenitsu** está dormindo e sem energia! Recuperou **25⚡** automaticamente.`;
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        battle.state = "choosing_action";
+        return battle;
+      }
+    }
+
     const skill = attacker.skills.find(s => s.id === skillId);
 
     if (!skill) return null;
@@ -417,6 +463,25 @@ class BattleEngine {
       return battle;
     }
 
+    // Vimana focus: jogador escolheu focar a Vimana antes de selecionar a habilidade
+    const _vimanaOpponentId = battle.currentPlayerTurnId === battle.player1Id ? battle.player2Id : battle.player1Id;
+    const _opponentVimana = battle.vimana && battle.vimana[_vimanaOpponentId];
+    if (battle.focusingVimana && _opponentVimana && _opponentVimana.active && _opponentVimana.health > 0 && skill.type === "attack") {
+      battle.focusingVimana = false;
+      const vimanaDmg = Math.floor((skill.damage || 20) + attacker.bonusDamage);
+      _opponentVimana.health = Math.max(0, _opponentVimana.health - vimanaDmg);
+      battle.lastActionMessage = `**${attacker.name}** atacou **🚀 Vimana** com **${skill.name}** e causou **${vimanaDmg}** de dano! (${_opponentVimana.health}/${_opponentVimana.maxHealth} HP)`;
+      if (_opponentVimana.health <= 0) {
+        _opponentVimana.active = false;
+        battle.lastActionMessage += `\n💀 **Vimana** foi destruída! O ataque duplo cessa.`;
+      }
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+    battle.focusingVimana = false;
+
     // Rika focus: jogador escolheu focar a Rika antes de selecionar a habilidade
     const _rikaOpponentId = battle.currentPlayerTurnId === battle.player1Id ? battle.player2Id : battle.player1Id;
     const _opponentRika = battle.rika && battle.rika[_rikaOpponentId];
@@ -446,7 +511,7 @@ class BattleEngine {
       attacker.addBuff({ id: "kaioken", multiplier: 1.5, duration: 2 });
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action"; 
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -455,7 +520,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}** e recuperou **${amount}** de HP!`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -465,7 +530,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**! Clones: **${stacks}/3**.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -474,7 +539,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** ativou **Campo AT**! Proximo ataque causa **+30% de dano**.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -483,7 +548,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**! O próximo ataque terá **+50% de dano**.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -511,7 +576,7 @@ class BattleEngine {
       }
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -545,7 +610,7 @@ class BattleEngine {
         }
         battle.switchTurn();
         this.endTurnUpdate(battle);
-        battle.state = "choosing_action";
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
         return battle;
       }
     }
@@ -653,7 +718,58 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** invocou **👁️ Rika**! Ela tem **${rikaMaxHp}** HP e causará **${rikaDmg}** de dano por turno ao inimigo.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Gilgamesh: Sword Of Rupture: Ea ---
+    if (skill.id === "gilgamesh_ea") {
+      attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
+      const enumaElish = attacker.skills.find(s => s.id === "gilgamesh_enuma_elish");
+      if (enumaElish) enumaElish.currentCooldown = 0;
+      battle.lastActionMessage = `**${attacker.name}** empunhou a **⚔️ Sword Of Rupture: Ea**! Condições negativas removidas. **Enuma Elish** está disponível!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Gilgamesh: Vimana ---
+    if (skill.id === "gilgamesh_vimana") {
+      if (!battle.vimana) battle.vimana = {};
+      const existingVimana = battle.vimana[battle.currentPlayerTurnId];
+      if (existingVimana && existingVimana.active) {
+        battle.lastActionMessage = `**${attacker.name}** já invocou a **Vimana** nesta batalha!`;
+        attacker.recoverEnergy(skill.cost);
+        battle.state = "choosing_action";
+        return battle;
+      }
+      const vimanaMaxHp = Math.floor(attacker.maxHealth * 0.52);
+      battle.vimana[battle.currentPlayerTurnId] = { active: true, health: vimanaMaxHp, maxHealth: vimanaMaxHp };
+      battle.lastActionMessage = `**${attacker.name}** invocou a **🚀 Vimana**! A nave possui **${vimanaMaxHp}** HP. Gilgamesh poderá atacar **duas vezes por turno**!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Enel: Mantra (Observação Divina) ---
+    if (skill.id === "enel_mantra") {
+      attacker.addBuff({ id: "enel_mantra", duration: 2 });
+      battle.lastActionMessage = `⚡ **${attacker.name}** ativou **Mantra (Observação Divina)**! Dano recebido reduzido em **30%** por 2 turnos.`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Zenitsu: Dormir ---
+    if (skill.id === "zenitsu_dormir") {
+      attacker.addBuff({ id: "zenitsu_sleep", duration: 4 });
+      battle.lastActionMessage = `😴 **${attacker.name}** adormeceu! Por **3 turnos** seus ataques causarão **80% mais dano**, mas ele lutará no **piloto automático**!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -663,7 +779,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** ativou **Concentração Total** e recuperou 50 de energia!`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -678,7 +794,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** deixou Pochita tomar o controle, o verdadeiro **CHAINSAW MAN**! 🪚\n🔥 Dano aumentado massivamente, mas sofrerá dano por turno!`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -725,7 +841,7 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** assumiu a **Postura Inabalável**! Dano recebido reduzido em **30%** por 2 turnos.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
@@ -735,22 +851,24 @@ class BattleEngine {
       battle.lastActionMessage = `**${attacker.name}** ativou o **Contra-Ataque Brutal**! Qualquer atacante sofrerá **${Math.floor(attacker.maxHealth * 0.10)}** de dano no próximo turno.`;
       battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
 
     if (skill.type === "buff") {
       attacker.addBuff({ ...skill.effect, id: skill.id });
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**!`;
-      battle.switchTurn();if (skill.type === "buff")
+      battle.switchTurn();
       this.endTurnUpdate(battle);
-      battle.state = "choosing_action";
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     } 
     
     const damage = this.calculateDamage(attacker, defender, skill, battle);
     battle.lastPendingDamage = damage;
-    battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}** contra **${defender.name}**!\nDano previsto: **${damage}** HP.`;
+    battle.lastActionMessage = zenitsuSleepOverride
+      ? `😴 **Zenitsu está dormindo!** Atacou com **${skill.name}** aleatoriamente contra **${defender.name}**!\nDano previsto: **${damage}** HP.`
+      : `**${attacker.name}** usou **${skill.name}** contra **${defender.name}**!\nDano previsto: **${damage}** HP.`;
 
     // Vantagem elemental — mensagem após o assignment para não ser sobrescrita
     if (skill.elementType && defender.element && BattleEngine.ELEMENT_STRONG[skill.elementType] === defender.element) {
@@ -765,6 +883,12 @@ class BattleEngine {
     if (attacker.id === "levi" && attacker.furyModeAtivoNesteAtaque) {
         battle.lastActionMessage += `\n⚡ **FURY MODE CONSUMIDO!** Dano aumentado em 150%.`;
         attacker.furyModeAtivoNesteAtaque = false;
+    }
+
+    // Feedback de Zenitsu: Deus do Trovão golpe duplo
+    if (attacker.id === "zenitsu" && attacker.zenitsuDoubleHit) {
+      battle.lastActionMessage += `\n⚡ **DEUS DO TROVÃO!** Zenitsu desfere um segundo golpe!`;
+      attacker.zenitsuDoubleHit = false;
     }
 
     // Feedback visual das Marcas de Sangue de Sung Jin-Woo (Igris)
@@ -908,7 +1032,7 @@ class BattleEngine {
 
         battle.switchTurn();
         this.endTurnUpdate(battle);
-        battle.state = "choosing_action";
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
     } else {
       battle.state = "choosing_reaction";
     }
@@ -933,7 +1057,7 @@ class BattleEngine {
 
     battle.switchTurn();
     this.endTurnUpdate(battle);
-    battle.state = "choosing_action";
+    if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
     return battle;
   }
 
@@ -1012,7 +1136,7 @@ class BattleEngine {
         battle.lastActionMessage += "\n⏩ O Boss não conseguiu reagir.";
         battle.switchTurn();
         this.endTurnUpdate(battle);
-        battle.state = "choosing_action";
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
         battle.lastActivityAt = Date.now();
         return battle;
       }
@@ -1091,6 +1215,13 @@ class BattleEngine {
             return battle;
           }
         }
+
+        // Enkidu: 40% de chance de atordoar o atacante
+        if (reaction.id === "gilgamesh_enkidu" && Math.random() < 0.40) {
+          attacker.isStunned = true;
+          attacker.stunDuration = 1;
+          battle.lastActionMessage += `\n⛓️ **Enkidu** capturou o atacante! **${attacker.name}** ficou **ATORDOADO** por 1 turno!`;
+        }
       }
     } else {
       battle.lastActionMessage += `\n⏩ **${defender.name}** não reagiu.`;
@@ -1105,10 +1236,12 @@ class BattleEngine {
     }
 
     // ── Artefatos de redução de dano passiva do defensor ─────────────────
+    const _armorPierce = skillUsed && skillUsed.piercesArmor ? skillUsed.piercesArmor : 0;
     defender.equippedArtifacts.forEach(artifact => {
       // Controle do Infinito: -15% dano recebido
       if (artifact.effectType === "damageReduction") {
-        damageToApply = Math.floor(damageToApply * (1 - artifact.effectValue));
+        const effectiveReduction = artifact.effectValue * (1 - _armorPierce);
+        damageToApply = Math.floor(damageToApply * (1 - effectiveReduction));
       }
       // Roda do Mahoraga: stacks acumulados de defesa
       if (artifact.effectType === "stacking_defense") {
@@ -1127,6 +1260,24 @@ class BattleEngine {
     if (defender.id === "sung_jin_woo" && defender.passives?.physicalReduction && !skillUsed.elementType) {
       damageToApply = Math.floor(damageToApply * (1 - defender.passives.physicalReduction));
       battle.lastActionMessage += `\n🛡️ **Armadura do Tank:** ${Math.round(defender.passives.physicalReduction * 100)}% de redução física aplicada!`;
+    }
+
+    // Mantra de Enel: -30% dano passivo
+    if (defender.id === "enel") {
+      const mantraBuff = defender.buffs.find(b => b.id === "enel_mantra");
+      if (mantraBuff) {
+        damageToApply = Math.floor(damageToApply * 0.70);
+        battle.lastActionMessage += `\n⚡ **Mantra:** ${defender.name} reduziu **30%** do dano!`;
+      }
+    }
+
+    // Vimana Shields: -30% dano passivo para Gilgamesh
+    if (defender.id === "gilgamesh") {
+      const vimanaBuff = defender.buffs.find(b => b.id === "vimana_shields");
+      if (vimanaBuff) {
+        damageToApply = Math.floor(damageToApply * 0.70);
+        battle.lastActionMessage += `\n🚀 **Vimana Shields:** Dano reduzido em 30%!`;
+      }
     }
 
     const finalDamage = defender.takeDamage(damageToApply);
@@ -1215,12 +1366,17 @@ class BattleEngine {
           battle.bossStunCharges--;
           battle.lastActionMessage += `\n🛡️ **${defender.name}** absorveu o atordoamento! (Cargas restantes: ${battle.bossStunCharges})`;
         } else {
-          defender.isStunned = true;
-          defender.stunDuration = skillUsed.effect.duration || 1;
-          battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO** por ${defender.stunDuration} turno(s)!`;
-          if (skillUsed.effect.bleed) {
-            defender.addStatusEffect({ type: "bleed", duration: skillUsed.effect.bleed.duration, value: skillUsed.effect.bleed.value });
-            battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skillUsed.effect.bleed.duration} turno(s)!`;
+          const _stunChance = skillUsed.effect.chance !== undefined ? skillUsed.effect.chance : 1.0;
+          if (Math.random() < _stunChance) {
+            defender.isStunned = true;
+            defender.stunDuration = skillUsed.effect.duration || 1;
+            battle.lastActionMessage += `\n💥 **${defender.name}** ficou **ATORDOADO** por ${defender.stunDuration} turno(s)!`;
+            if (skillUsed.effect.bleed) {
+              defender.addStatusEffect({ type: "bleed", duration: skillUsed.effect.bleed.duration, value: skillUsed.effect.bleed.value });
+              battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skillUsed.effect.bleed.duration} turno(s)!`;
+            }
+          } else if (_stunChance < 1) {
+            battle.lastActionMessage += `\n⚡ O atordoamento não conectou!`;
           }
         }
       } else if (skillUsed.effect.type === "burn" || skillUsed.effect.type === "bleed") {
@@ -1409,6 +1565,18 @@ class BattleEngine {
     }
 
     if (battle.state !== "waiting_next_floor") {
+      // --- Vimana: Segundo ataque de Gilgamesh ---
+      const gilgameshOwnerId = attacker.ownerId;
+      const gilgameshVimana = gilgameshOwnerId && battle.vimana && battle.vimana[gilgameshOwnerId];
+      if (battle.state !== "finished" && gilgameshVimana && gilgameshVimana.active && gilgameshVimana.health > 0 && !battle.vimanaAttackDone && attacker.id === "gilgamesh") {
+        battle.vimanaAttackDone = true;
+        battle.switchTurn(); // De volta a Gilgamesh
+        battle.vimanaPhase = true;
+        battle.lastActionMessage += `\n🚀 **Vimana** prepara um segundo ataque! **${attacker.name}** pode atacar novamente!`;
+        battle.lastActivityAt = Date.now();
+        battle.state = "choosing_action";
+        return battle;
+      }
       this.endTurnUpdate(battle);
     }
     return battle;
@@ -1605,6 +1773,24 @@ class BattleEngine {
     }
 
     const attacker = battle.getCurrentPlayer();
+
+    // 25% de chance do boss atacar a Vimana do jogador
+    if (battle.vimana) {
+      const playerVimana = battle.vimana[battle.player1Id];
+      if (playerVimana && playerVimana.active && playerVimana.health > 0 && Math.random() < 0.25) {
+        const vimanaHitDmg = Math.floor(playerVimana.maxHealth * 0.18);
+        playerVimana.health = Math.max(0, playerVimana.health - vimanaHitDmg);
+        battle.lastActionMessage = `⚔️ **${attacker.name}** atacou **🚀 Vimana** causando **${vimanaHitDmg}** de dano! (${playerVimana.health}/${playerVimana.maxHealth} HP)`;
+        if (playerVimana.health <= 0) {
+          playerVimana.active = false;
+          battle.lastActionMessage += `\n💀 **Vimana** foi destruída pelo Boss!`;
+        }
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+        return battle;
+      }
+    }
 
     // 25% de chance do boss atacar Rika do jogador
     if (battle.rika) {
@@ -1935,6 +2121,12 @@ class BattleEngine {
       return;
     }
 
+    // Reset do ataque duplo da Vimana a cada novo turno de Gilgamesh
+    if (nextPlayer.id === "gilgamesh") {
+      battle.vimanaAttackDone = false;
+      if (battle.vimanaPhase) battle.vimanaPhase = false; // Segurança
+    }
+
     // Reset da seleção de sombra de Sung Jin-Woo a cada novo turno
     if (nextPlayer.id === "sung_jin_woo") {
       battle.sjwShadowChosen = false;
@@ -2038,6 +2230,17 @@ class BattleEngine {
       const lifesteal = Math.floor(damage * 0.15); // Cura 15% do dano causado
       attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
       battle.lastActionMessage += `\n🩸 **Brutalidade:** Denji se cura em **${lifesteal}** HP ao atacar um alvo sangrando!`;
+    }
+
+    // Zenitsu: bônus de dano dormindo (+80%)
+    if (attacker.id === "zenitsu" && attacker.buffs.some(b => b.id === "zenitsu_sleep")) {
+      damage *= 1.8;
+    }
+
+    // Zenitsu: Deus do Trovão — 30% chance de golpe duplo
+    if (attacker.id === "zenitsu" && skill.id === "zenitsu_deus_trovao" && Math.random() < 0.30) {
+      damage *= 2;
+      attacker.zenitsuDoubleHit = true;
     }
 
     // --- Sung Jin-Woo: mecânicas de dano por sombra ---

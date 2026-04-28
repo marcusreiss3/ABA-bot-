@@ -69,6 +69,33 @@ class ButtonManager {
       rows.push(new ActionRowBuilder().addComponents(targetMenu));
     }
 
+    // Vimana Phase: mostrar habilidades da nave
+    if (battle && battle.vimanaPhase && character.id === "gilgamesh" && character.vimanaSkills) {
+      const vimanaOptions = character.vimanaSkills.map(skill => {
+        let label = `${skill.name} (${skill.cost}⚡)`;
+        if (skill.isOnCooldown()) label = `${skill.name} (⏳ ${skill.currentCooldown} turno(s))`;
+        return {
+          label,
+          description: skill.description || "Habilidade da Vimana.",
+          value: skill.id,
+          emoji: "🚀"
+        };
+      });
+      const vimanaMenu = new StringSelectMenuBuilder()
+        .setCustomId(`menu_${battleId}_attack`)
+        .setPlaceholder("🚀 VIMANA — Escolha o ataque da nave!")
+        .addOptions(vimanaOptions)
+        .setDisabled(isDisabled);
+      const abandonButton = new ButtonBuilder()
+        .setCustomId(`battle_${battleId}_abandon`)
+        .setLabel("Abandonar Combate")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(isDisabled);
+      rows.push(new ActionRowBuilder().addComponents(vimanaMenu));
+      rows.push(new ActionRowBuilder().addComponents(abandonButton));
+      return rows;
+    }
+
     // StringSelectMenu para ataques, buffs e curas
     const attackOptions = character.activeSkills.map(skill => {
       let label = `${skill.name} (${skill.cost}⚡)`;
@@ -134,6 +161,19 @@ class ButtonManager {
       }
     }
 
+    const _vimanaOpId = battle && (battle.currentPlayerTurnId === battle.player1Id ? battle.player2Id : battle.player1Id);
+    const _opponentVimana = battle && battle.vimana && battle.vimana[_vimanaOpId];
+    const vimanaFocusActive = _opponentVimana && _opponentVimana.active && _opponentVimana.health > 0 && !isDisabled && !battle.isPve;
+
+    if (rikaFocusActive && vimanaFocusActive) {
+      const rikaLabel = battle.focusingRika ? `👁️ Cancelar Rika` : `👁️ Focar Rika (${_opponentRika.health}/${_opponentRika.maxHealth} HP)`;
+      const vimanaLabel = battle.focusingVimana ? `🚀 Cancelar Vimana` : `🚀 Focar Vimana (${_opponentVimana.health}/${_opponentVimana.maxHealth} HP)`;
+      const focusRikaBtn = new ButtonBuilder().setCustomId(`focus_rika_${battleId}`).setLabel(rikaLabel).setStyle(battle.focusingRika ? ButtonStyle.Secondary : ButtonStyle.Danger);
+      const focusVimanaBtn = new ButtonBuilder().setCustomId(`focus_vimana_${battleId}`).setLabel(vimanaLabel).setStyle(battle.focusingVimana ? ButtonStyle.Secondary : ButtonStyle.Danger);
+      rows.push(new ActionRowBuilder().addComponents(recoverButton, focusRikaBtn, focusVimanaBtn, abandonButton));
+      return rows;
+    }
+
     if (rikaFocusActive) {
       const rikaLabel = battle.focusingRika
         ? `👁️ Cancelar Foco na Rika`
@@ -143,6 +183,18 @@ class ButtonManager {
         .setLabel(rikaLabel)
         .setStyle(battle.focusingRika ? ButtonStyle.Secondary : ButtonStyle.Danger);
       rows.push(new ActionRowBuilder().addComponents(recoverButton, focusRikaButton, abandonButton));
+      return rows;
+    }
+
+    if (vimanaFocusActive) {
+      const vimanaLabel = battle.focusingVimana
+        ? `🚀 Cancelar Foco na Vimana`
+        : `🚀 Focar Vimana (${_opponentVimana.health}/${_opponentVimana.maxHealth} HP)`;
+      const focusVimanaButton = new ButtonBuilder()
+        .setCustomId(`focus_vimana_${battleId}`)
+        .setLabel(vimanaLabel)
+        .setStyle(battle.focusingVimana ? ButtonStyle.Secondary : ButtonStyle.Danger);
+      rows.push(new ActionRowBuilder().addComponents(recoverButton, focusVimanaButton, abandonButton));
       return rows;
     }
 

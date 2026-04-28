@@ -98,6 +98,20 @@ class EmbedManager {
       }
     }
 
+    // Vimana HP indicator
+    if (battle.vimana) {
+      for (const vimanaState of Object.values(battle.vimana)) {
+        if (vimanaState.active && vimanaState.health > 0) {
+          const vimanaBar = Math.round((vimanaState.health / vimanaState.maxHealth) * 10);
+          embed.addFields({
+            name: `🚀 Vimana`,
+            value: `${"█".repeat(vimanaBar)}${"░".repeat(10 - vimanaBar)} ${vimanaState.health}/${vimanaState.maxHealth} HP`,
+            inline: false
+          });
+        }
+      }
+    }
+
     if (battle.state === "choosing_reaction" && battle.lastPendingSkill && battle.lastPendingSkill.gifUrl) {
       embed.setImage(battle.lastPendingSkill.gifUrl);
     } else if (battle.state === "finished") {

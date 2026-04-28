@@ -27,6 +27,7 @@ class Skill {
     this.effect = data.effect || null;
     this.healPercent = data.healPercent || 0;
     this.gifUrl = data.gifUrl || "";
+    this.piercesArmor = data.piercesArmor || 0;
   }
 
   isOnCooldown() {

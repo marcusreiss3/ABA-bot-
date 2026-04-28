@@ -444,6 +444,115 @@ class CharacterManager {
       });
     }
 
+    if (characterId === "gilgamesh") {
+      const vimanaSkills = [
+        new Skill({ id: "vimana_explosive_shots", name: "Vimana: Tiros Explosivos", description: "Dano médio. ATORDOA 1t.", type: "attack", cost: 20, damage: 45, elementType: 'luz', effect: { type: "stun", duration: 1 } }),
+        new Skill({ id: "vimana_shields", name: "Vimana: Escudos", description: "-30% dano recebido por 2t.", type: "buff", cost: 15, cooldown: 3 })
+      ];
+
+      char = new Character({
+        id: "gilgamesh",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Gilgamesh",
+        anime: "fate",
+        element: "luz",
+        health: 195,
+        maxHealth: 195,
+        energy: 160,
+        maxEnergy: 160,
+        rarity: "EM",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/gilgamesh.png",
+        skills: [
+          new Skill({ id: "gilgamesh_lightwork_beams", name: "Lightwork Beams", description: "Feixe de raio básico.", type: "attack", cost: 12, damage: 22, elementType: 'raio' }),
+          new Skill({ id: "gilgamesh_open_gates", name: "Open Gates", description: "SANGRAMENTO 6% × 2t.", type: "attack", cost: 22, damage: 38, elementType: 'luz', effect: { type: "bleed", duration: 2, value: 0.06 } }),
+          new Skill({ id: "gilgamesh_explosive_dome", name: "Explosive Dome", description: "Dano médio.", type: "attack", cost: 40, damage: 58, elementType: 'luz', cooldown: 3 }),
+          new Skill({ id: "gilgamesh_ea", name: "Sword Of Rupture: Ea", description: "Remove condições negativas e libera Enuma Elish.", type: "buff", cost: 35, cooldown: 5 }),
+          new Skill({ id: "gilgamesh_enuma_elish", name: "Enuma Elish", description: "Dano massivo. QUEIMADURA 8% × 2t. (1× por luta, requer Ea)", type: "attack", cost: 0, damage: 120, elementType: 'luz', cooldown: 999, initialCooldown: 999, effect: { type: "burn", duration: 2, value: 0.08 } }),
+          new Skill({ id: "gilgamesh_vimana", name: "Vimana", description: "Invoca a nave (1×). Dois ataques por turno enquanto ativa.", type: "buff", cost: 50, cooldown: 999 }),
+          new Skill({ id: "gilgamesh_enkidu", name: "Enkidu", description: "-70% dano recebido. 40% de chance de ATORDOAR.", type: "reaction", cost: 30, cooldown: 1, effect: { type: "damage_reduction", value: 0.3 } })
+        ]
+      });
+
+      char.vimanaSkills = vimanaSkills;
+    }
+
+    if (characterId === "bakugou") {
+      char = new Character({
+        id: "bakugou",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Bakugou Katsuki",
+        anime: "mha",
+        element: "fogo",
+        health: 165,
+        maxHealth: 165,
+        energy: 145,
+        maxEnergy: 145,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/bakugou.png",
+        skills: [
+          new Skill({ id: "bakugou_arremesso_explosivo", name: "Arremesso Explosivo", description: "Dano baixo. QUEIMADURA 5% × 2t.", type: "attack", cost: 15, damage: 22, elementType: 'fogo', effect: { type: "burn", duration: 2, value: 0.05 } }),
+          new Skill({ id: "bakugou_granada_atordoante", name: "Granada Atordoante", description: "Dano baixo. ATORDOA 1t.", type: "attack", cost: 28, damage: 18, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 } }),
+          new Skill({ id: "bakugou_manopla_explosiva", name: "Manopla Explosiva", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 32, damage: 38, elementType: 'fogo', cooldown: 2, effect: { type: "burn", duration: 2, value: 0.05 } }),
+          new Skill({ id: "bakugou_impacto_explosivo", name: "Impacto Explosivo", description: "Dano alto. QUEIMADURA 8% × 2t.", type: "attack", cost: 55, damage: 65, elementType: 'fogo', cooldown: 4, effect: { type: "burn", duration: 2, value: 0.08 } }),
+          new Skill({ id: "bakugou_devastacao_explosiva", name: "Devastação Explosiva", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } })
+        ]
+      });
+    }
+
+    if (characterId === "enel") {
+      char = new Character({
+        id: "enel",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Enel",
+        anime: "onepiece",
+        element: "raio",
+        health: 168,
+        maxHealth: 168,
+        energy: 145,
+        maxEnergy: 145,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/enel.png",
+        skills: [
+          new Skill({ id: "enel_golpe_eletrico", name: "Golpe Elétrico", description: "Dano baixo. 30% chance de ATORDOAR.", type: "attack", cost: 12, damage: 20, elementType: 'raio', effect: { type: "stun", duration: 1, chance: 0.30 } }),
+          new Skill({ id: "enel_el_thor", name: "El Thor", description: "Dano alto. Ignora 50% da defesa de artefatos.", type: "attack", cost: 35, damage: 58, elementType: 'raio', cooldown: 2, piercesArmor: 0.5 }),
+          new Skill({ id: "enel_raigo", name: "Raigo", description: "Dano muito alto. QUEIMADURA 5% × 3t.", type: "attack", cost: 65, damage: 75, elementType: 'raio', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.05 } }),
+          new Skill({ id: "enel_mantra", name: "Mantra (Observação Divina)", description: "-30% dano recebido por 2t.", type: "buff", cost: 25, cooldown: 3 }),
+          new Skill({ id: "enel_corpo_raio", name: "Corpo de Raio", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.30 } })
+        ]
+      });
+    }
+
+    if (characterId === "zenitsu") {
+      char = new Character({
+        id: "zenitsu",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Agatsuma Zenitsu",
+        anime: "demonslayer",
+        element: "raio",
+        health: 165,
+        maxHealth: 165,
+        energy: 140,
+        maxEnergy: 140,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/zenitsu.png",
+        skills: [
+          new Skill({ id: "zenitsu_corte", name: "Corte", description: "Corte rápido.", type: "attack", cost: 12, damage: 22, elementType: 'raio' }),
+          new Skill({ id: "zenitsu_respiracao_trovao", name: "Respiração do Trovão", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 25, damage: 38, elementType: 'raio', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.05 } }),
+          new Skill({ id: "zenitsu_deus_trovao", name: "Deus do Trovão", description: "Dano alto. 30% chance de atacar 2×.", type: "attack", cost: 50, damage: 55, elementType: 'raio', cooldown: 2 }),
+          new Skill({ id: "zenitsu_dormir", name: "Dormir", description: "Zenitsu dorme 3 turnos: +80% dano, mas ataca aleatoriamente.", type: "buff", cost: 30, cooldown: 6 }),
+          new Skill({ id: "zenitsu_instinto_sobrevivencia", name: "Instinto de Sobrevivência", description: "-60% dano recebido.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.40 } })
+        ]
+      });
+    }
+
     // --- Carregamento Dinâmico de Bosses do Modo História ---
     // --- Bosses do Modo Desafio ---
     if (!char) {
@@ -530,6 +639,13 @@ class CharacterManager {
           if (skill.damage) skill.damage = Math.floor(skill.damage * levelMult);
         });
 
+        // Escalonar habilidades da Vimana de Gilgamesh
+        if (char.id === "gilgamesh" && char.vimanaSkills) {
+          char.vimanaSkills.forEach(skill => {
+            if (skill.damage) skill.damage = Math.floor(skill.damage * levelMult);
+          });
+        }
+
         // Escalonar habilidades das sombras de Sung Jin-Woo (beru e tank — igris já é char.skills)
         if (char.id === "sung_jin_woo" && char.shadowSkillSets) {
           ["beru", "tank"].forEach(shadow => {
@@ -571,6 +687,14 @@ class CharacterManager {
             });
           });
         }
+
+        if (char.id === "gilgamesh" && char.vimanaSkills) {
+          char.vimanaSkills.forEach(skill => {
+            if (skill.type === "attack" && skill.damage > 0) {
+              skill.damage += char.bonusDamage;
+            }
+          });
+        }
       }
     }
 
@@ -594,6 +718,11 @@ class CharacterManager {
       npc_kaguya: 'gelo', npc_akaza: 'fogo',
       // Gen2 AL
       yuta_okkotsu: 'escuridao',
+      bakugou: 'fogo',
+      enel: 'raio',
+      zenitsu: 'raio',
+      // Gen2 EM
+      gilgamesh: 'luz',
     };
     return map[bossId] || null;
   }

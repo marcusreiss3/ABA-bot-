@@ -96,7 +96,10 @@ class Character {
     let hpPerLevel = 20;
     let atkPerLevel = 5;
 
-    if (this.rarity === "AL" && this.generation === 2) {
+    if (this.rarity === "EM" && this.generation === 2) {
+      hpPerLevel = 30;
+      atkPerLevel = 12;
+    } else if (this.rarity === "AL" && this.generation === 2) {
       hpPerLevel = 26;
       atkPerLevel = 9;
     } else if (this.rarity === "AL") {
