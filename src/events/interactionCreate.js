@@ -1596,6 +1596,12 @@ module.exports = {
         }
       }
 
+      if (!playerRepository.isPlayerChallengeCooledDown(playerId, diffKey)) {
+        const msLeft = playerRepository.getPlayerChallengeCooldownMs(playerId, diffKey);
+        const minLeft = Math.ceil(msLeft / 60000);
+        return interaction.reply({ content: `Você ainda está em cooldown nesta dificuldade! Disponível em ~${minLeft} minutos.`, ephemeral: true });
+      }
+
       const charInstance = playerRepository.getCharacterInstance(player.equipped_instance_id);
       const bossInstance = { character_id: bossId, level: 1 };
 

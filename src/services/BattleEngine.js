@@ -1539,6 +1539,12 @@ class BattleEngine {
             battle.state = "finished";
             battle.winnerId = battle.player2Id;
             battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+            if (battle.type === "tower") {
+              const cooldownTime = 35 * 60 * 1000;
+              const availableAt = Date.now() + cooldownTime;
+              (battle.partyMembers || [battle.player1Id]).forEach(mId => playerRepository.updateTowerCooldown(mId, availableAt));
+              battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Você está em cooldown de 35 minutos para entrar na Torre novamente.`;
+            }
             this.endTurnUpdate(battle);
             return battle;
           }
@@ -1878,6 +1884,12 @@ class BattleEngine {
           battle.state = "finished";
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n\n💀 Todos os seus personagens foram derrotados! O Boss venceu.`;
+          if (battle.type === "tower") {
+            const cooldownTime = 35 * 60 * 1000;
+            const availableAt = Date.now() + cooldownTime;
+            (battle.partyMembers || [battle.player1Id]).forEach(mId => playerRepository.updateTowerCooldown(mId, availableAt));
+            battle.lastActionMessage += `\n\n⚠️ **COOLDOWN:** Você está em cooldown de 35 minutos para entrar na Torre novamente.`;
+          }
         }
       } else {
         const allDead = battle.partyCharacters
