@@ -179,6 +179,78 @@ class CharacterManager {
       });
     }
 
+    if (characterId === "sasuke") {
+      char = new Character({
+        id: "sasuke",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Sasuke (Clássico)",
+        anime: "naruto",
+        element: "fogo",
+        health: 110,
+        maxHealth: 110,
+        energy: 100,
+        maxEnergy: 100,
+        rarity: "EC",
+        imageUrl: "https://i.ibb.co/placeholder/sasuke.png",
+        skills: [
+          new Skill({ id: "sasuke_hosenka", name: "Katon: Hōsenka no Jutsu", description: "Múltiplos projéteis de fogo.", type: "attack", cost: 10, damage: 13, elementType: 'fogo' }),
+          new Skill({ id: "sasuke_ryuka", name: "Katon: Ryūka no Jutsu", description: "QUEIMADURA 3% × 2t.", type: "attack", cost: 22, damage: 23, elementType: 'fogo', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.03 } }),
+          new Skill({ id: "sasuke_gokakyuu", name: "Katon: Gōkakyū no Jutsu", description: "Grande bola de fogo.", type: "attack", cost: 35, damage: 35, elementType: 'fogo', cooldown: 2 }),
+          new Skill({ id: "sasuke_chidori", name: "Chidori", description: "ATORDOA 1t.", type: "attack", cost: 45, damage: 42, elementType: 'raio', cooldown: 3, effect: { type: "stun", duration: 1 } }),
+          new Skill({ id: "sasuke_substituicao", name: "Substituição", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 } })
+        ]
+      });
+    }
+
+    if (characterId === "ichigo") {
+      char = new Character({
+        id: "ichigo",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Ichigo Kurosaki",
+        anime: "bleach",
+        element: "escuridao",
+        health: 110,
+        maxHealth: 110,
+        energy: 100,
+        maxEnergy: 100,
+        rarity: "EC",
+        imageUrl: "https://i.ibb.co/placeholder/ichigo.png",
+        skills: [
+          new Skill({ id: "ichigo_corte", name: "Corte do Zangetsu", description: "Corte com reiatsu.", type: "attack", cost: 10, damage: 13, elementType: 'escuridao' }),
+          new Skill({ id: "ichigo_reiatsu", name: "Pressão de Reiatsu", description: "SANGRAMENTO 5% × 2t.", type: "attack", cost: 22, damage: 23, elementType: 'escuridao', cooldown: 1, effect: { type: "bleed", duration: 2, value: 0.05 } }),
+          new Skill({ id: "ichigo_getsuga", name: "Getsuga Tenshō", description: "Onda de energia espiritual.", type: "attack", cost: 40, damage: 40, elementType: 'escuridao', cooldown: 2 }),
+          new Skill({ id: "ichigo_determinacao", name: "Determinação", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3 }),
+          new Skill({ id: "ichigo_guarda", name: "Guarda Zangetsu", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 } })
+        ]
+      });
+    }
+
+    if (characterId === "meliodas") {
+      char = new Character({
+        id: "meliodas",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Meliodas",
+        anime: "nanatsunotaizai",
+        element: "escuridao",
+        health: 112,
+        maxHealth: 112,
+        energy: 100,
+        maxEnergy: 100,
+        rarity: "EC",
+        imageUrl: "https://i.ibb.co/placeholder/meliodas.png",
+        skills: [
+          new Skill({ id: "meliodas_corte", name: "Corte do Dragão", description: "Corte com poder demoníaco.", type: "attack", cost: 10, damage: 13, elementType: 'escuridao' }),
+          new Skill({ id: "meliodas_hellblaze", name: "Hell Blaze", description: "Chamas negras demoníacas. QUEIMADURA 3% × 2t.", type: "attack", cost: 25, damage: 27, elementType: 'escuridao', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.03 } }),
+          new Skill({ id: "meliodas_taiho", name: "Taiho", description: "Expulsão de poder mágico. 25% chance de ATORDOAR.", type: "attack", cost: 40, damage: 40, elementType: 'escuridao', cooldown: 2, effect: { type: "stun", duration: 1, chance: 0.25 } }),
+          new Skill({ id: "meliodas_vitalidade", name: "Vitalidade Demoníaca", description: "Cura 20% HP.", type: "heal", cost: 30, healPercent: 20, cooldown: 3 }),
+          new Skill({ id: "meliodas_esquiva", name: "Esquiva Demoníaca", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.5 } })
+        ]
+      });
+    }
+
     if (characterId === "eva_01") {
       char = new Character({
         id: "eva_01",
@@ -628,6 +700,81 @@ class CharacterManager {
       });
     }
 
+    if (characterId === "naruto_sennin") {
+      char = new Character({
+        id: "naruto_sennin",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Naruto (Modo Sábio)",
+        anime: "naruto",
+        element: "vento",
+        health: 172,
+        maxHealth: 172,
+        energy: 148,
+        maxEnergy: 148,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/naruto_sennin.png",
+        skills: [
+          new Skill({ id: "naruto_sennin_rasengan", name: "Rasengan", description: "Golpe com Rasengan.", type: "attack", cost: 15, damage: 26, elementType: 'vento' }),
+          new Skill({ id: "naruto_sennin_rasenshuriken", name: "Rasenshuriken", description: "Dano alto. SANGRAMENTO 5% × 2t.", type: "attack", cost: 45, damage: 62, elementType: 'vento', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 } }),
+          new Skill({ id: "naruto_sennin_kata", name: "Kata do Sennin", description: "Dano alto. 35% chance de ATORDOAR.", type: "attack", cost: 50, damage: 65, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1, chance: 0.35 } }),
+          new Skill({ id: "naruto_sennin_invocacao", name: "Invocação: Gamabunta", description: "-35% dano recebido por 3t.", type: "buff", cost: 35, cooldown: 4, effect: { type: "damage_reduction_passive", value: 0.35, duration: 3 } }),
+          new Skill({ id: "naruto_sennin_absorcao", name: "Absorção Natural", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 } })
+        ]
+      });
+    }
+
+    if (characterId === "goku_ssj3") {
+      char = new Character({
+        id: "goku_ssj3",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Goku (SSJ3)",
+        anime: "dragonball",
+        element: "luz",
+        health: 175,
+        maxHealth: 175,
+        energy: 155,
+        maxEnergy: 155,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/goku_ssj3.png",
+        skills: [
+          new Skill({ id: "goku_ssj3_kamehameha", name: "Kamehameha", description: "Onda de Ki.", type: "attack", cost: 18, damage: 28, elementType: 'luz' }),
+          new Skill({ id: "goku_ssj3_super_kamehameha", name: "Super Kamehameha", description: "Dano alto.", type: "attack", cost: 40, damage: 68, elementType: 'luz', cooldown: 2 }),
+          new Skill({ id: "goku_ssj3_golpe", name: "Golpe Meteórico", description: "35% chance de ATORDOAR.", type: "attack", cost: 30, damage: 44, elementType: "fogo", cooldown: 1, effect: { type: "stun", duration: 1, chance: 0.35 } }),
+          new Skill({ id: "goku_ssj3_rugido", name: "Rugido de Ki", description: "+60% dano por 2t.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.6, duration: 2 } }),
+          new Skill({ id: "goku_ssj3_aura", name: "Aura de Ki", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 } })
+        ]
+      });
+    }
+
+    if (characterId === "killua") {
+      char = new Character({
+        id: "killua",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Killua Zoldyck",
+        anime: "hxh",
+        element: "raio",
+        health: 162,
+        maxHealth: 162,
+        energy: 140,
+        maxEnergy: 140,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/killua.png",
+        skills: [
+          new Skill({ id: "killua_garra_trovao", name: "Garra do Trovão", description: "Dano baixo. 35% chance de ATORDOAR. +1 Spark.", type: "attack", cost: 12, damage: 22, elementType: 'raio', effect: { type: "stun", duration: 1, chance: 0.35 } }),
+          new Skill({ id: "killua_narukami", name: "Narukami", description: "Dano médio. +2 Sparks.", type: "attack", cost: 32, damage: 48, elementType: 'raio', cooldown: 1 }),
+          new Skill({ id: "killua_kanmuru", name: "Kanmuru: Godspeed", description: "Consome todos os Sparks. Dano escala com Sparks. Com 5 Sparks: ignora reação.", type: "attack", cost: 55, damage: 55, elementType: 'raio', cooldown: 3 }),
+          new Skill({ id: "killua_assassinato", name: "Assassinato Furtivo", description: "Golpe preciso. +50% dano se inimigo < 50% HP. +1 Spark.", type: "attack", cost: 22, damage: 30 }),
+          new Skill({ id: "killua_reflexo", name: "Reflexo Assassino", description: "-45% dano recebido. +1 Spark.", type: "reaction", cost: 18, cooldown: 1, effect: { type: "damage_reduction", value: 0.45 } })
+        ]
+      });
+    }
+
     // --- Carregamento Dinâmico de Bosses do Modo História ---
     // --- Bosses do Modo Desafio ---
     if (!char) {
@@ -796,9 +943,16 @@ class CharacterManager {
       bakugou: 'fogo',
       enel: 'raio',
       zenitsu: 'raio',
+      naruto_sennin: 'vento',
+      goku_ssj3: 'luz',
+      killua: 'raio',
       naoya_zenin: 'vento',
       zoro: 'vento',
       emilia: 'gelo',
+      // EC
+      sasuke: 'fogo',
+      ichigo: 'escuridao',
+      meliodas: 'escuridao',
       // Gen2 EM
       gilgamesh: 'luz',
     };

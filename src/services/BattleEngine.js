@@ -882,6 +882,36 @@ class BattleEngine {
       return battle;
     }
 
+    // --- Killua: Kanmuru: Godspeed (5 Sparks — velocidade absoluta, sem reação) ---
+    if (skill.id === "killua_kanmuru") {
+      const sparks = (attacker.stacks && attacker.stacks["sparks"]) || 0;
+      if (sparks >= 5) {
+        attacker.stacks["sparks"] = 0;
+        const kDamage = this.calculateDamage(attacker, defender, skill, battle);
+        const finalKDmg = defender.takeDamage(kDamage);
+        battle.lastActionMessage = `⚡ **${attacker.name}** ativou **KANMURU: GODSPEED!** (${sparks}/5 Sparks)\nVelocidade relâmpago — **${finalKDmg}** de dano sem chance de reação!`;
+        if (!defender.isAlive()) {
+          battle.lastActionMessage += `\n💀 **${defender.name}** foi derrotado!`;
+          const missionRepository = require("../database/repositories/missionRepository");
+          if (battle.isPve && defender.id === battle.character2.id) {
+            battle.state = "finished"; battle.winnerId = "players";
+            battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+            this.handlePveRewards(battle);
+          } else if (!battle.isPve && !battle.isTeamPvp) {
+            battle.state = "finished"; battle.winnerId = attacker.ownerId;
+            battle.lastActionMessage += `\n🏆 **${attacker.name}** venceu!`;
+            if (battle.isRanked) { missionRepository.addProgress(battle.winnerId, "win_pvp_ranked"); }
+            else missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
+        }
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+        return battle;
+      }
+      // < 5 sparks: fall through to normal attack — calculateDamage reads sparks, then reset below
+    }
+
     if (skill.type === "buff") {
       attacker.addBuff({ ...skill.effect, id: skill.id });
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**!`;
@@ -890,7 +920,7 @@ class BattleEngine {
       if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
     }
-    
+
     const damage = this.calculateDamage(attacker, defender, skill, battle);
     battle.lastPendingDamage = damage;
     battle.lastActionMessage = zenitsuSleepOverride
@@ -933,6 +963,30 @@ class BattleEngine {
       } else {
         battle.lastActionMessage += `\n🔵 **Sincronização EVA-01: ${sync * 10}%**${sync >= 10 ? " (MÁXIMO!)" : ""}`;
       }
+    }
+
+    // --- Killua: Spark geração e feedback ---
+    if (attacker.id === "killua") {
+      if (!attacker.stacks) attacker.stacks = {};
+      if (skill.id === "killua_kanmuru") {
+        // < 5 sparks case: reset and show feedback
+        const usedSparks = attacker.stacks["sparks"] || 0;
+        attacker.stacks["sparks"] = 0;
+        if (usedSparks > 0) battle.lastActionMessage += `\n⚡ **${usedSparks} Spark(s)** consumidos! Bônus de dano ativado!`;
+      } else {
+        const sparkGain = { "killua_garra_trovao": 1, "killua_narukami": 2, "killua_assassinato": 1 };
+        const gain = sparkGain[skill.id] || 0;
+        if (gain > 0) {
+          attacker.stacks["sparks"] = Math.min(5, (attacker.stacks["sparks"] || 0) + gain);
+          battle.lastActionMessage += `\n⚡ **${attacker.stacks["sparks"]}/5 Sparks** carregados!`;
+        }
+      }
+    }
+
+    // --- Killua: Assassinato Furtivo — feedback de dano bônus (calculado no calculateDamage) ---
+    if (attacker.id === "killua" && skill.id === "killua_assassinato" && attacker._assassinatoBonus) {
+      battle.lastActionMessage += `\n🗡️ **Assassinato!** Inimigo abaixo de 50% HP — +50% dano!`;
+      attacker._assassinatoBonus = false;
     }
 
     if (skill.effect && skill.effect.type === "ignore_reaction") {
@@ -1243,6 +1297,13 @@ class BattleEngine {
           }
         }
 
+        // Killua: Reflexo Assassino gera 1 Spark
+        if (skillId === "killua_reflexo") {
+          if (!defender.stacks) defender.stacks = {};
+          defender.stacks["sparks"] = Math.min(5, (defender.stacks["sparks"] || 0) + 1);
+          battle.lastActionMessage += `\n⚡ **1 Spark** gerado! (${defender.stacks["sparks"]}/5)`;
+        }
+
         // Enkidu: 40% de chance de atordoar o atacante
         if (reaction.id === "gilgamesh_enkidu" && Math.random() < 0.40) {
           attacker.isStunned = true;
@@ -1287,6 +1348,15 @@ class BattleEngine {
     if (defender.id === "sung_jin_woo" && defender.passives?.physicalReduction && !skillUsed.elementType) {
       damageToApply = Math.floor(damageToApply * (1 - defender.passives.physicalReduction));
       battle.lastActionMessage += `\n🛡️ **Armadura do Tank:** ${Math.round(defender.passives.physicalReduction * 100)}% de redução física aplicada!`;
+    }
+
+    // Naruto Sennin: Invocação Gamabunta — -30% dano passivo
+    if (defender.id === "naruto_sennin") {
+      const gamabuntaBuff = defender.buffs.find(b => b.id === "naruto_sennin_invocacao");
+      if (gamabuntaBuff) {
+        damageToApply = Math.floor(damageToApply * 0.70);
+        battle.lastActionMessage += `\n🐸 **Gamabunta:** ${defender.name} reduziu **30%** do dano!`;
+      }
     }
 
     // Mantra de Enel: -30% dano passivo
@@ -2318,6 +2388,7 @@ class BattleEngine {
     
     attacker.buffs.forEach(buff => {
       if (buff.id === "kaioken") damage *= 1.5;
+      if (buff.id === "goku_ssj3_rugido") damage *= (buff.multiplier || 1.4);
       if (buff.type === "debuff_damage") damage *= (1 - buff.value);
     });
 
@@ -2383,6 +2454,20 @@ class BattleEngine {
       const lifesteal = Math.floor(damage * 0.15); // Cura 15% do dano causado
       attacker.health = Math.min(attacker.maxHealth, attacker.health + lifesteal);
       battle.lastActionMessage += `\n🩸 **Brutalidade:** Denji se cura em **${lifesteal}** HP ao atacar um alvo sangrando!`;
+    }
+
+    // Killua: Spark bonus no Kanmuru
+    if (attacker.id === "killua" && skill.id === "killua_kanmuru") {
+      const sparks = (attacker.stacks && attacker.stacks["sparks"]) || 0;
+      damage += sparks * 18;
+    }
+
+    // Killua: Assassinato Furtivo — +50% se inimigo < 50% HP
+    if (attacker.id === "killua" && skill.id === "killua_assassinato") {
+      if (defender.health < defender.maxHealth * 0.50) {
+        damage *= 1.5;
+        attacker._assassinatoBonus = true;
+      }
     }
 
     // Zenitsu: bônus de dano dormindo (+80%)
