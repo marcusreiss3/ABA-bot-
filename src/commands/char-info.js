@@ -42,7 +42,6 @@ const CHARS = {
     { id: "denji",         name: "Denji" },
     { id: "frieren",       name: "Frieren" },
     { id: "itachi_uchiha", name: "Itachi Uchiha" },
-    { id: "yuta_okkotsu",  name: "Yuta Okkotsu" },
   ],
   EM: [
     { id: "satoru_gojo",  name: "Satoru Gojo" },
@@ -75,6 +74,7 @@ function fxStr(effect) {
       break;
     }
     case "debuff_damage":    parts.push(`-${pct(effect.value)} dano inimigo × ${effect.duration}t`); break;
+    case "frozen":            parts.push(`Congela ${effect.duration}t (-30% dano)`); break;
     case "ignore_reaction":  parts.push("Ignora reações"); break;
     case "transform":        parts.push(`Transforma ${effect.duration}t`); break;
   }

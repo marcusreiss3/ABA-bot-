@@ -203,9 +203,10 @@ class EmbedManager {
 
     if (char.statusEffects.length > 0) {
       const statusStr = char.statusEffects.map(s => {
-        const name = s.type === "burn" ? "Queimadura" : "Sangramento";
-        const emoji = s.type === "burn" ? "🔥" : "🩸";
-        return `${emoji} ${name} (\`${s.duration} turno(s)\`)`;
+        if (s.type === "burn")   return `🔥 Queimadura (\`${s.duration} turno(s)\`)`;
+        if (s.type === "bleed")  return `🩸 Sangramento (\`${s.duration} turno(s)\`)`;
+        if (s.type === "frozen") return `❄️ Congelado (\`${s.duration} turno(s)\`) — -30% dano`;
+        return `${s.type} (\`${s.duration} turno(s)\`)`;
       }).join("\n");
       stats += `\n**Status:**\n${statusStr}`;
     }
@@ -225,6 +226,20 @@ class EmbedManager {
 
     if (char.buffs.some(b => b.id === "chainsaw_man")) {
       stats += `\n🪚 **MODO VERDADEIRO CHAINSAW MAN ATIVO!** (+80% Dano)`;
+    }
+
+    if (char.id === "naoya_zenin") {
+      const mirror = char.stacks["naoya_mirror"] || 0;
+      stats += `\n🪞 **Barra Espelho:** ${mirror > 0 ? "█".repeat(mirror) + "░".repeat(2 - mirror) : "░░"} \`${mirror}/2\``;
+      if ((char.naoya24FramesActive || 0) > 0) {
+        stats += `\n⚡ **24 Quadros:** \`${char.naoya24FramesActive}\` ataque(s) extra restante(s)`;
+      }
+      if (char.naoyaDomainActive) {
+        stats += `\n🌑 **Domínio Ativo** — espinhos em efeito`;
+      }
+      if (char.naoyaTransformed) {
+        stats += `\n💀 **TRANSFORMADO** — +80% de dano`;
+      }
     }
 
     if (char.isStunned) {

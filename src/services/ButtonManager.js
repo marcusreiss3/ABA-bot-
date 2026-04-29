@@ -86,13 +86,18 @@ class ButtonManager {
         .setPlaceholder("🚀 VIMANA — Escolha o ataque da nave!")
         .addOptions(vimanaOptions)
         .setDisabled(isDisabled);
+      const vimanaSkipButton = new ButtonBuilder()
+        .setCustomId(`vimana_skip_${battleId}`)
+        .setLabel("⏭️ Pular Turno da Vimana")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(isDisabled);
       const abandonButton = new ButtonBuilder()
         .setCustomId(`battle_${battleId}_abandon`)
         .setLabel("Abandonar Combate")
         .setStyle(ButtonStyle.Danger)
         .setDisabled(isDisabled);
       rows.push(new ActionRowBuilder().addComponents(vimanaMenu));
-      rows.push(new ActionRowBuilder().addComponents(abandonButton));
+      rows.push(new ActionRowBuilder().addComponents(vimanaSkipButton, abandonButton));
       return rows;
     }
 

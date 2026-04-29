@@ -444,9 +444,84 @@ class CharacterManager {
       });
     }
 
+    if (characterId === "naoya_zenin") {
+      char = new Character({
+        id: "naoya_zenin",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Naoya Zenin",
+        anime: "jjk",
+        element: "vento",
+        health: 160,
+        maxHealth: 160,
+        energy: 130,
+        maxEnergy: 130,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/naoya.png",
+        skills: [
+          new Skill({ id: "naoya_sequencia_socos", name: "Sequência de Socos", description: "Combo de socos rápidos.", type: "attack", cost: 10, damage: 18, elementType: 'vento', gifUrl: "https://i.ibb.co/SDvGrJzq/jjk-maki.gif" }),
+          new Skill({ id: "naoya_24_quadros", name: "24 Quadros", description: "Ataque duplo nos próximos 3 turnos.", type: "buff", cost: 20, cooldown: 4, gifUrl: "https://i.ibb.co/8gLkF4dy/flpy7wzyx9jg1.gif" }),
+          new Skill({ id: "naoya_frame_lock", name: "Frame Lock", description: "ATORDOA 1t.", type: "attack", cost: 25, damage: 30, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/F4Nmq54v/s0qgziazx9jg1.gif" }),
+          new Skill({ id: "naoya_expansao_dominio", name: "Expansão de Domínio", description: "Ativa técnica: atacantes sofrem dano e sangramento. (1× por luta)", type: "buff", cost: 50, cooldown: 999, gifUrl: "https://i.ibb.co/Pvv0xJ5C/imagem-2026-04-28-201234238.png" }),
+          new Skill({ id: "naoya_esquiva", name: "Esquiva Relâmpago", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 2, effect: { type: "damage_reduction", value: 0.50 }, gifUrl: "https://i.ibb.co/hJYYnThF/naoya-naoya-zenin.gif" })
+        ]
+      });
+    }
+
+    if (characterId === "zoro") {
+      char = new Character({
+        id: "zoro",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Roronoa Zoro",
+        anime: "onepiece",
+        element: "vento",
+        health: 175,
+        maxHealth: 175,
+        energy: 135,
+        maxEnergy: 135,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/zoro.png",
+        skills: [
+          new Skill({ id: "zoro_oni_giri", name: "Oni Giri", description: "Corte cruzado com três espadas.", type: "attack", cost: 12, damage: 22, elementType: 'vento', gifUrl: "https://i.ibb.co/zVdtdYWk/one-piece-zoro-vs-king.gif" }),
+          new Skill({ id: "zoro_tatsu_maki", name: "Tatsu Maki", description: "Tornado de lâminas. 25% chance de ATORDOAR.", type: "attack", cost: 28, damage: 38, elementType: 'vento', cooldown: 2, effect: { type: "stun", duration: 1, chance: 0.25 }, gifUrl: "https://i.ibb.co/k6MZmm8y/zoro-hatchan.gif" }),
+          new Skill({ id: "zoro_rengoku_oni_giri", name: "Rengoku Oni Giri", description: "Corte infernal. SANGRAMENTO 6% × 2t.", type: "attack", cost: 38, damage: 55, elementType: 'fogo', cooldown: 3, effect: { type: "bleed", duration: 2, value: 0.06 }, gifUrl: "https://i.ibb.co/27FgHkrY/zoro.gif" }),
+          new Skill({ id: "zoro_sanzen_sekai", name: "Santoryu Ogi: Sanzen Sekai", description: "Técnica suprema. ATORDOA 1t.", type: "attack", cost: 55, damage: 72, elementType: 'vento', cooldown: 5, effect: { type: "stun", duration: 1 }, gifUrl: "https://i.ibb.co/6JfbLgjf/sanzensekai.gif" }),
+          new Skill({ id: "zoro_parry", name: "Parry", description: "-65% dano recebido.", type: "reaction", cost: 22, cooldown: 2, effect: { type: "damage_reduction", value: 0.35 }, gifUrl: "https://i.ibb.co/PzhPSSvM/one-piece-roronoa-zoro.gif" })
+        ]
+      });
+    }
+
+    if (characterId === "emilia") {
+      char = new Character({
+        id: "emilia",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Emilia",
+        anime: "rezero",
+        element: "gelo",
+        health: 160,
+        maxHealth: 160,
+        energy: 145,
+        maxEnergy: 145,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/placeholder/emilia.png",
+        skills: [
+          new Skill({ id: "emilia_gelo_eterno", name: "Martelada de Gelo", description: "Golpe com martelo de gelo.", type: "attack", cost: 12, damage: 18, elementType: 'gelo', gifUrl: "https://i.ibb.co/R4sNDVK3/re-zero-subaru.gif" }),
+          new Skill({ id: "emilia_espinhos_gelo", name: "Espinhos de Gelo", description: "Múltiplos espinhos. CONGELADO 2t.", type: "attack", cost: 25, damage: 30, elementType: 'gelo', cooldown: 2, effect: { type: "frozen", duration: 2 }, gifUrl: "https://i.ibb.co/r2RFPmPy/132651.gif" }),
+          new Skill({ id: "emilia_tempestade_glacial", name: "Tempestade Glacial", description: "Nevasca intensa. CONGELADO 3t.", type: "attack", cost: 38, damage: 45, elementType: 'gelo', cooldown: 3, effect: { type: "frozen", duration: 3 }, gifUrl: "https://i.ibb.co/mCcc6BRW/emilia-rezero.gif" }),
+          new Skill({ id: "emilia_prisao_gelo", name: "Prisão de Gelo", description: "Encarcera no gelo. ATORDOA 1t + CONGELADO 2t.", type: "attack", cost: 50, damage: 20, elementType: 'gelo', cooldown: 4, effect: { type: "stun", duration: 1, frozen: { duration: 2 } }, gifUrl: "" }),
+          new Skill({ id: "emilia_barreira_gelo", name: "Esquiva Veloz", description: "-55% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.45 }, gifUrl: "https://i.ibb.co/C5p5psXz/emilia-re-zero.gif" })
+        ]
+      });
+    }
+
     if (characterId === "gilgamesh") {
       const vimanaSkills = [
-        new Skill({ id: "vimana_explosive_shots", name: "Vimana: Tiros Explosivos", description: "Dano médio. ATORDOA 1t.", type: "attack", cost: 20, damage: 45, elementType: 'luz', effect: { type: "stun", duration: 1 } }),
+        new Skill({ id: "vimana_explosive_shots", name: "Vimana: Tiros Explosivos", description: "Dano médio. ATORDOA 1t.", type: "attack", cost: 20, damage: 45, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 } }),
         new Skill({ id: "vimana_shields", name: "Vimana: Escudos", description: "-30% dano recebido por 2t.", type: "buff", cost: 15, cooldown: 3 })
       ];
 
@@ -463,15 +538,15 @@ class CharacterManager {
         maxEnergy: 160,
         rarity: "EM",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/gilgamesh.png",
+        imageUrl: "https://i.ibb.co/4RPZZtgj/gilgamesh.png",
         skills: [
-          new Skill({ id: "gilgamesh_lightwork_beams", name: "Lightwork Beams", description: "Feixe de raio básico.", type: "attack", cost: 12, damage: 22, elementType: 'raio' }),
-          new Skill({ id: "gilgamesh_open_gates", name: "Open Gates", description: "SANGRAMENTO 6% × 2t.", type: "attack", cost: 22, damage: 38, elementType: 'luz', effect: { type: "bleed", duration: 2, value: 0.06 } }),
-          new Skill({ id: "gilgamesh_explosive_dome", name: "Explosive Dome", description: "Dano médio.", type: "attack", cost: 40, damage: 58, elementType: 'luz', cooldown: 3 }),
-          new Skill({ id: "gilgamesh_ea", name: "Sword Of Rupture: Ea", description: "Remove condições negativas e libera Enuma Elish.", type: "buff", cost: 35, cooldown: 5 }),
-          new Skill({ id: "gilgamesh_enuma_elish", name: "Enuma Elish", description: "Dano massivo. QUEIMADURA 8% × 2t. (1× por luta, requer Ea)", type: "attack", cost: 0, damage: 120, elementType: 'luz', cooldown: 999, initialCooldown: 999, effect: { type: "burn", duration: 2, value: 0.08 } }),
-          new Skill({ id: "gilgamesh_vimana", name: "Vimana", description: "Invoca a nave (1×). Dois ataques por turno enquanto ativa.", type: "buff", cost: 50, cooldown: 999 }),
-          new Skill({ id: "gilgamesh_enkidu", name: "Enkidu", description: "-70% dano recebido. 40% de chance de ATORDOAR.", type: "reaction", cost: 30, cooldown: 1, effect: { type: "damage_reduction", value: 0.3 } })
+          new Skill({ id: "gilgamesh_lightwork_beams", name: "Lightwork Beams", description: "Feixe de raio básico.", type: "attack", cost: 12, damage: 22, elementType: 'raio', gifUrl: "https://imgur.com/umiCxCC.gif" }),
+          new Skill({ id: "gilgamesh_open_gates", name: "Open Gates", description: "SANGRAMENTO 6% × 2t.", type: "attack", cost: 22, damage: 38, elementType: 'luz', cooldown: 1, effect: { type: "bleed", duration: 2, value: 0.06 }, gifUrl: "https://imgur.com/Sv8Edbn.gif" }),
+          new Skill({ id: "gilgamesh_explosive_dome", name: "Explosive Dome", description: "Dano médio.", type: "attack", cost: 40, damage: 58, elementType: 'luz', cooldown: 3, gifUrl: "https://imgur.com/a/Xgtjf4s.gif" }),
+          new Skill({ id: "gilgamesh_ea", name: "Sword Of Rupture: Ea", description: "Remove condições negativas e libera Enuma Elish.", type: "buff", cost: 35, cooldown: 5, gifUrl: "https://imgur.com/a/jL06wUE.gif" }),
+          new Skill({ id: "gilgamesh_enuma_elish", name: "Enuma Elish", description: "Dano massivo. QUEIMADURA 8% × 3t. (1× por luta, requer Ea)", type: "attack", cost: 0, damage: 120, elementType: 'luz', cooldown: 999, initialCooldown: 999, effect: { type: "burn", duration: 3, value: 0.08 }, gifUrl: "https://imgur.com/a/24ELwkd.gif" }),
+          new Skill({ id: "gilgamesh_vimana", name: "Vimana", description: "Invoca a nave (1×). Dois ataques por turno enquanto ativa.", type: "buff", cost: 50, cooldown: 999, gifUrl: "https://imgur.com/a/CZ0NkEE#IjoUWgy.gif" }),
+          new Skill({ id: "gilgamesh_enkidu", name: "Enkidu", description: "-70% dano recebido. 40% de chance de ATORDOAR.", type: "reaction", cost: 30, cooldown: 1, effect: { type: "damage_reduction", value: 0.3 }, imageUrl: "https://imgur.com/a/kgtUqYU.gif" })
         ]
       });
 
@@ -492,13 +567,13 @@ class CharacterManager {
         maxEnergy: 145,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/bakugou.png",
+        imageUrl: "https://i.ibb.co/0y1gJvyT/bakugou.png",
         skills: [
-          new Skill({ id: "bakugou_arremesso_explosivo", name: "Arremesso Explosivo", description: "Dano baixo. QUEIMADURA 5% × 2t.", type: "attack", cost: 15, damage: 22, elementType: 'fogo', effect: { type: "burn", duration: 2, value: 0.05 } }),
-          new Skill({ id: "bakugou_granada_atordoante", name: "Granada Atordoante", description: "Dano baixo. ATORDOA 1t.", type: "attack", cost: 28, damage: 18, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 } }),
-          new Skill({ id: "bakugou_manopla_explosiva", name: "Manopla Explosiva", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 32, damage: 38, elementType: 'fogo', cooldown: 2, effect: { type: "burn", duration: 2, value: 0.05 } }),
-          new Skill({ id: "bakugou_impacto_explosivo", name: "Impacto Explosivo", description: "Dano alto. QUEIMADURA 8% × 2t.", type: "attack", cost: 55, damage: 65, elementType: 'fogo', cooldown: 4, effect: { type: "burn", duration: 2, value: 0.08 } }),
-          new Skill({ id: "bakugou_devastacao_explosiva", name: "Devastação Explosiva", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 } })
+          new Skill({ id: "bakugou_arremesso_explosivo", name: "Arremesso Explosivo", description: "Dano baixo. QUEIMADURA 5% × 2t.", type: "attack", cost: 15, damage: 22, elementType: 'fogo', effect: { type: "burn", duration: 2, value: 0.05 }, gifUrl: "https://imgur.com/a/6OIaIi2.gif" }),
+          new Skill({ id: "bakugou_granada_atordoante", name: "Granada Atordoante", description: "Dano baixo. ATORDOA 1t.", type: "attack", cost: 28, damage: 18, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://imgur.com/a/2UPqygQ.gif" }),
+          new Skill({ id: "bakugou_manopla_explosiva", name: "Manopla Explosiva", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 32, damage: 38, elementType: 'fogo', cooldown: 2, effect: { type: "burn", duration: 2, value: 0.05 }, gifUrl: "https://imgur.com/a/6i3we3R.gif" }),
+          new Skill({ id: "bakugou_impacto_explosivo", name: "Impacto Explosivo", description: "Dano alto. QUEIMADURA 8% × 2t.", type: "attack", cost: 55, damage: 65, elementType: 'fogo', cooldown: 4, effect: { type: "burn", duration: 2, value: 0.08 }, gifUrl: "https://imgur.com/a/9Zi7Y7Z.gif" }),
+          new Skill({ id: "bakugou_devastacao_explosiva", name: "Devastação Explosiva", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 2, effect: { type: "damage_reduction", value: 0.3 }, gifUrl: "https://imgur.com/a/9ZCJ1et.gif" })
         ]
       });
     }
@@ -517,13 +592,13 @@ class CharacterManager {
         maxEnergy: 145,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/enel.png",
+        imageUrl: "https://i.ibb.co/fzk4Kn17/enel.png",
         skills: [
-          new Skill({ id: "enel_golpe_eletrico", name: "Golpe Elétrico", description: "Dano baixo. 30% chance de ATORDOAR.", type: "attack", cost: 12, damage: 20, elementType: 'raio', effect: { type: "stun", duration: 1, chance: 0.30 } }),
-          new Skill({ id: "enel_el_thor", name: "El Thor", description: "Dano alto. Ignora 50% da defesa de artefatos.", type: "attack", cost: 35, damage: 58, elementType: 'raio', cooldown: 2, piercesArmor: 0.5 }),
-          new Skill({ id: "enel_raigo", name: "Raigo", description: "Dano muito alto. QUEIMADURA 5% × 3t.", type: "attack", cost: 65, damage: 75, elementType: 'raio', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.05 } }),
-          new Skill({ id: "enel_mantra", name: "Mantra (Observação Divina)", description: "-30% dano recebido por 2t.", type: "buff", cost: 25, cooldown: 3 }),
-          new Skill({ id: "enel_corpo_raio", name: "Corpo de Raio", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.30 } })
+          new Skill({ id: "enel_golpe_eletrico", name: "Golpe Elétrico", description: "Dano baixo. 30% chance de ATORDOAR.", type: "attack", cost: 12, damage: 20, elementType: 'raio', effect: { type: "stun", duration: 1, chance: 0.30 }, gifUrl: "https://i.ibb.co/tPc6xXY4/god-enel.gif"}),
+          new Skill({ id: "enel_el_thor", name: "El Thor", description: "Dano alto. Ignora 50% da defesa de artefatos.", type: "attack", cost: 35, damage: 58, elementType: 'raio', cooldown: 2, piercesArmor: 0.5, gifUrl: "https://i.ibb.co/LX65Dm9v/eneru-enel.gif" } ),
+        new Skill({ id: "enel_raigo", name: "Raigo", description: "Dano muito alto. QUEIMADURA 5% × 3t.", type: "attack", cost: 65, damage: 75, elementType: 'raio', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.05 }, gifUrl: "https://i.ibb.co/tPc6xXY4/god-enel.gifhttps://i.ibb.co/wZTSb1dG/enel-enru-raigo.gif" }),
+          new Skill({ id: "enel_mantra", name: "Mantra (Observação Divina)", description: "-50% dano recebido por 2t.", type: "buff", cost: 30, cooldown: 3, gifUrl: "https://i.ibb.co/W40LbtMs/enel-mantra.gif" }),
+          new Skill({ id: "enel_corpo_raio", name: "Corpo de Raio", description: "-70% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.30 }, gifUrl: "https://i.ibb.co/ZnjcZNG/qdmkg2buz8tc1.gif" })
         ]
       });
     }
@@ -721,6 +796,9 @@ class CharacterManager {
       bakugou: 'fogo',
       enel: 'raio',
       zenitsu: 'raio',
+      naoya_zenin: 'vento',
+      zoro: 'vento',
+      emilia: 'gelo',
       // Gen2 EM
       gilgamesh: 'luz',
     };

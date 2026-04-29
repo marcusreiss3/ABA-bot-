@@ -2669,6 +2669,28 @@ module.exports = {
       return interaction.update({ embeds: [embed], components });
     }
 
+    if (interaction.isButton() && interaction.customId.startsWith("vimana_skip_")) {
+      const battleId = interaction.customId.replace("vimana_skip_", "");
+      const battle = BattleEngine.getBattle(battleId);
+      if (!battle || !battle.vimanaPhase) return interaction.reply({ content: "❌ Não há fase de Vimana ativa.", ephemeral: true });
+      if (battle.currentPlayerTurnId !== interaction.user.id) return interaction.reply({ content: "❌ Não é seu turno!", ephemeral: true });
+
+      battle.vimanaPhase = false;
+      battle.lastActionMessage += `\n🚀 **Gilgamesh** pulou o ataque da Vimana.`;
+      battle.switchTurn();
+      BattleEngine.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+
+      const embed = EmbedManager.createBattleEmbed(battle);
+      if (battle.state === "finished") {
+        return interaction.update({ embeds: [embed], components: [] });
+      }
+      const currentChar = battle.getCurrentPlayer();
+      const isPveBossTurn = battle.isPve && battle.currentPlayerTurnId === battle.player2Id;
+      const components = ButtonManager.createActionComponents(battle.id, currentChar, isPveBossTurn, battle);
+      return interaction.update({ embeds: [embed], components });
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith("team_swap_")) {
       const battleId = interaction.customId.replace("team_swap_", "");
       const battle = BattleEngine.getBattle(battleId);

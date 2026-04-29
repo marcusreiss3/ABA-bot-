@@ -451,6 +451,9 @@ class BattleEngine {
     attacker.consumeEnergy(finalSkillCost);
     skill.startCooldown();
 
+    // Marca Enuma Elish como já utilizado (1× por luta)
+    if (skill.id === "gilgamesh_enuma_elish") attacker.enumaElishUsed = true;
+
     // Foco do Capitão remove efeitos negativos ANTES do tick de status
     if (attacker.id === "levi" && skill.id === "foco_do_capitao") {
       attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
@@ -725,9 +728,13 @@ class BattleEngine {
     // --- Gilgamesh: Sword Of Rupture: Ea ---
     if (skill.id === "gilgamesh_ea") {
       attacker.statusEffects = attacker.statusEffects.filter(e => e.type !== "bleed" && e.type !== "burn");
-      const enumaElish = attacker.skills.find(s => s.id === "gilgamesh_enuma_elish");
-      if (enumaElish) enumaElish.currentCooldown = 0;
-      battle.lastActionMessage = `**${attacker.name}** empunhou a **⚔️ Sword Of Rupture: Ea**! Condições negativas removidas. **Enuma Elish** está disponível!`;
+      if (!attacker.enumaElishUsed) {
+        const enumaElish = attacker.skills.find(s => s.id === "gilgamesh_enuma_elish");
+        if (enumaElish) enumaElish.currentCooldown = 0;
+        battle.lastActionMessage = `**${attacker.name}** empunhou a **⚔️ Sword Of Rupture: Ea**! Condições negativas removidas. **Enuma Elish** está disponível!`;
+      } else {
+        battle.lastActionMessage = `**${attacker.name}** empunhou a **⚔️ Sword Of Rupture: Ea**! Condições negativas removidas.`;
+      }
       battle.switchTurn();
       this.endTurnUpdate(battle);
       if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
@@ -855,6 +862,26 @@ class BattleEngine {
       return battle;
     }
 
+    // --- Naoya Zenin: 24 Quadros ---
+    if (skill.id === "naoya_24_quadros") {
+      attacker.naoya24FramesActive = 3;
+      battle.lastActionMessage = `⚡ **${attacker.name}** ativou **24 Quadros**! Poderá atacar novamente nos próximos **3 turnos**!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Naoya Zenin: Expansão de Domínio ---
+    if (skill.id === "naoya_expansao_dominio") {
+      attacker.naoyaDomainActive = true;
+      battle.lastActionMessage = `🌑 **${attacker.name}** expandiu o **Domínio**! Qualquer atacante sofrerá espinhos de maldição!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
     if (skill.type === "buff") {
       attacker.addBuff({ ...skill.effect, id: skill.id });
       battle.lastActionMessage = `**${attacker.name}** usou **${skill.name}**!`;
@@ -862,7 +889,7 @@ class BattleEngine {
       this.endTurnUpdate(battle);
       if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
       return battle;
-    } 
+    }
     
     const damage = this.calculateDamage(attacker, defender, skill, battle);
     battle.lastPendingDamage = damage;
@@ -1280,6 +1307,19 @@ class BattleEngine {
       }
     }
 
+    // Naoya: Barra Espelho — acumula stacks ao ser atacado; ao 2º hit, reflete e atordoa
+    let naoyaMirrorBurst = false;
+    if (defender.id === "naoya_zenin" && damageToApply > 0) {
+      if ((defender.stacks["naoya_mirror"] || 0) >= 2) {
+        naoyaMirrorBurst = true;
+        defender.stacks["naoya_mirror"] = 0;
+        battle.lastActionMessage += `\n🪞 **Barra Espelho CHEIA!** Naoya preparou um reflexo!`;
+      } else {
+        defender.addStack("naoya_mirror", 2);
+        battle.lastActionMessage += `\n🪞 **Barra Espelho:** \`${defender.stacks["naoya_mirror"]}/2\``;
+      }
+    }
+
     const finalDamage = defender.takeDamage(damageToApply);
     battle.lastActionMessage += `\n💥 **${defender.name}** recebeu **${finalDamage}** de dano.`;
 
@@ -1354,6 +1394,72 @@ class BattleEngine {
       }
     }
 
+    // --- Naoya Zenin: Espinhos do Domínio ---
+    if (defender.id === "naoya_zenin" && defender.naoyaDomainActive && finalDamage > 0) {
+      const thornDmg = Math.floor(defender.maxHealth * 0.08);
+      attacker.health = Math.max(0, attacker.health - thornDmg);
+      battle.lastActionMessage += `\n🌑 **Espinhos do Domínio:** **${attacker.name}** sofreu **${thornDmg}** de dano de maldição!`;
+      if (!attacker.isAlive()) {
+        battle.lastActionMessage += `\n💀 **${attacker.name}** foi derrotado pelos espinhos!`;
+        const missionRepository = require("../database/repositories/missionRepository");
+        if (battle.isPve && attacker.id === battle.character2.id) {
+          battle.state = "finished"; battle.winnerId = "players";
+          battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+          this.handlePveRewards(battle);
+        } else if (!battle.isPve && !battle.isTeamPvp) {
+          battle.state = "finished"; battle.winnerId = defender.ownerId;
+          battle.lastActionMessage += `\n🏆 **${defender.name}** venceu!`;
+          if (battle.isRanked) {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+            const RankManager = require("./RankManager");
+            const loserId = defender.ownerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+            const winnerResult = RankManager.updatePA(battle.winnerId, true);
+            const loserResult = RankManager.updatePA(loserId, false);
+            battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+            battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+          } else {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
+        }
+        this.endTurnUpdate(battle);
+        return battle;
+      }
+    }
+
+    // --- Naoya Zenin: Barra Espelho burst — reflexo ×2 + atordoa atacante ---
+    if (naoyaMirrorBurst && finalDamage > 0) {
+      const mirrorDmg = Math.floor(damageToApply * 2);
+      attacker.health = Math.max(0, attacker.health - mirrorDmg);
+      attacker.isStunned = true;
+      attacker.stunDuration = 1;
+      battle.lastActionMessage += `\n🪞 **Reflexo Espelho:** **${attacker.name}** sofreu **${mirrorDmg}** de dano e ficou **ATORDOADO**!`;
+      if (!attacker.isAlive()) {
+        battle.lastActionMessage += `\n💀 **${attacker.name}** foi derrotado pelo reflexo!`;
+        const missionRepository = require("../database/repositories/missionRepository");
+        if (battle.isPve && attacker.id === battle.character2.id) {
+          battle.state = "finished"; battle.winnerId = "players";
+          battle.lastActionMessage += `\n\n🏆 O Boss foi derrotado!`;
+          this.handlePveRewards(battle);
+        } else if (!battle.isPve && !battle.isTeamPvp) {
+          battle.state = "finished"; battle.winnerId = defender.ownerId;
+          battle.lastActionMessage += `\n🏆 **${defender.name}** venceu!`;
+          if (battle.isRanked) {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_ranked");
+            const RankManager = require("./RankManager");
+            const loserId = defender.ownerId === battle.player1Id ? battle.player2Id : battle.player1Id;
+            const winnerResult = RankManager.updatePA(battle.winnerId, true);
+            const loserResult = RankManager.updatePA(loserId, false);
+            battle.lastActionMessage += `\n📈 Ganhou 20 PA! (Novo Rank: ${winnerResult.rank})`;
+            battle.lastActionMessage += `\n📉 Oponente perdeu 15 PA! (Novo Rank: ${loserResult.rank})`;
+          } else {
+            missionRepository.addProgress(battle.winnerId, "win_pvp_casual");
+          }
+        }
+        this.endTurnUpdate(battle);
+        return battle;
+      }
+    }
+
     if (!avoidedEffect && skillUsed.effect) {
       if (skillUsed.effect.type === "stun") {
         // Boss no Boss Rush é imune a atordoamento
@@ -1375,14 +1481,19 @@ class BattleEngine {
               defender.addStatusEffect({ type: "bleed", duration: skillUsed.effect.bleed.duration, value: skillUsed.effect.bleed.value });
               battle.lastActionMessage += `\n🩸 **${defender.name}** está sofrendo de **Sangramento** por ${skillUsed.effect.bleed.duration} turno(s)!`;
             }
+            if (skillUsed.effect.frozen) {
+              defender.addStatusEffect({ type: "frozen", duration: skillUsed.effect.frozen.duration });
+              battle.lastActionMessage += `\n❄️ **${defender.name}** está **CONGELADO** por ${skillUsed.effect.frozen.duration} turno(s)! (-30% dano)`;
+            }
           } else if (_stunChance < 1) {
             battle.lastActionMessage += `\n⚡ O atordoamento não conectou!`;
           }
         }
-      } else if (skillUsed.effect.type === "burn" || skillUsed.effect.type === "bleed") {
+      } else if (skillUsed.effect.type === "burn" || skillUsed.effect.type === "bleed" || skillUsed.effect.type === "frozen") {
         defender.addStatusEffect({ ...skillUsed.effect });
-        const emoji = skillUsed.effect.type === "burn" ? "🔥" : "🩸";
-        battle.lastActionMessage += `\n${emoji} **${defender.name}** está sofrendo de **${skillUsed.effect.type === "burn" ? "Queimadura" : "Sangramento"}**!`;
+        const emoji = skillUsed.effect.type === "burn" ? "🔥" : skillUsed.effect.type === "bleed" ? "🩸" : "❄️";
+        const name  = skillUsed.effect.type === "burn" ? "Queimadura" : skillUsed.effect.type === "bleed" ? "Sangramento" : "Congelado";
+        battle.lastActionMessage += `\n${emoji} **${defender.name}** está sofrendo de **${name}**${skillUsed.effect.type === "frozen" ? " (-30% dano)" : ""}!`;
       } else if (skillUsed.effect.type === "debuff_damage") {
         defender.addBuff({ id: `debuff_damage_${skillUsed.id}`, type: "debuff_damage", value: skillUsed.effect.value, duration: skillUsed.effect.duration });
         battle.lastActionMessage += `\n📉 **${defender.name}** teve seu dano reduzido em ${skillUsed.effect.value * 100}% por ${skillUsed.effect.duration} turno(s)!`;
@@ -1583,6 +1694,18 @@ class BattleEngine {
         battle.state = "choosing_action";
         return battle;
       }
+
+      // --- Naoya Zenin: 24 Quadros — ataque extra ---
+      if (battle.state !== "finished" && attacker.id === "naoya_zenin" && (attacker.naoya24FramesActive || 0) > 0 && !battle.naoya24AttackDone) {
+        battle.naoya24AttackDone = true;
+        attacker.naoya24FramesActive--;
+        battle.switchTurn(); // De volta a Naoya
+        battle.lastActionMessage += `\n⚡ **24 Quadros:** **${attacker.name}** pode atacar novamente! (${attacker.naoya24FramesActive} carga(s) restante(s))`;
+        battle.lastActivityAt = Date.now();
+        battle.state = "choosing_action";
+        return battle;
+      }
+
       this.endTurnUpdate(battle);
     }
     return battle;
@@ -2139,6 +2262,15 @@ class BattleEngine {
       if (battle.vimanaPhase) battle.vimanaPhase = false; // Segurança
     }
 
+    // Naoya Zenin: reset de 24 Quadros + transformação ao chegar em HP baixo
+    if (nextPlayer.id === "naoya_zenin") {
+      battle.naoya24AttackDone = false;
+      if (!nextPlayer.naoyaTransformed && nextPlayer.health <= Math.floor(nextPlayer.maxHealth * 0.20)) {
+        nextPlayer.naoyaTransformed = true;
+        battle.lastActionMessage += `\n💀 **${nextPlayer.name}** entrou em modo de pura maldição! Dano aumentado em **80%**!`;
+      }
+    }
+
     // Reset da seleção de sombra de Sung Jin-Woo a cada novo turno
     if (nextPlayer.id === "sung_jin_woo") {
       battle.sjwShadowChosen = false;
@@ -2233,6 +2365,15 @@ class BattleEngine {
 
     if (attacker.buffs.some(b => b.id === "chainsaw_man")) {
       damage *= 1.8; // +80% de dano na forma transformada
+    }
+
+    if (attacker.id === "naoya_zenin" && attacker.naoyaTransformed) {
+      damage *= 1.8; // +80% de dano após transformação
+    }
+
+    // Congelado: -30% de dano do atacante congelado
+    if (attacker.statusEffects.some(e => e.type === "frozen")) {
+      damage *= 0.70;
     }
 
     // Passiva: Sinergia com Sangramento
