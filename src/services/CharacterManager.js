@@ -716,10 +716,10 @@ class CharacterManager {
         generation: 2,
         imageUrl: "https://i.ibb.co/3yShztft/naruto-sennin.png",
         skills: [
-          new Skill({ id: "naruto_sennin_rasengan", name: "Rasengan", description: "Golpe com Rasengan.", type: "attack", cost: 15, damage: 26, elementType: 'vento' }),
-          new Skill({ id: "naruto_sennin_rasenshuriken", name: "Rasenshuriken", description: "Dano alto. SANGRAMENTO 5% × 2t.", type: "attack", cost: 45, damage: 62, elementType: 'vento', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 } }),
-          new Skill({ id: "naruto_sennin_kata", name: "Kata do Sennin", description: "Dano alto. 35% chance de ATORDOAR.", type: "attack", cost: 50, damage: 65, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1, chance: 0.35 } }),
-          new Skill({ id: "naruto_sennin_invocacao", name: "Invocação: Gamabunta", description: "-35% dano recebido por 3t.", type: "buff", cost: 35, cooldown: 4, effect: { type: "damage_reduction_passive", value: 0.35, duration: 3 } }),
+          new Skill({ id: "naruto_sennin_rasengan", name: "Rasengan", description: "Golpe com Rasengan.", type: "attack", cost: 15, damage: 26, elementType: 'vento', gifUrl: "https://i.ibb.co/qMydx3Fp/naruto-uzumaki-sage-charging-rasengan-3bb7zyvnkexsunpg.gif" }),
+          new Skill({ id: "naruto_sennin_rasenshuriken", name: "Rasenshuriken", description: "Dano alto. SANGRAMENTO 5% × 2t.", type: "attack", cost: 45, damage: 62, elementType: 'vento', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.pinimg.com/originals/ca/2f/5b/ca2f5badf7e39dcf79c26f1ab8d3e08e.gif" }),
+          new Skill({ id: "naruto_sennin_kata", name: "Kata do Sapo", description: "Dano alto. 35% chance de ATORDOAR.", type: "attack", cost: 50, damage: 65, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1, chance: 0.35 }, gifUrl: "https://i.ibb.co/3mQ0QXfh/naruto-naruto-shippuden.gif" }),
+          new Skill({ id: "naruto_sennin_invocacao", name: "Invocação: Gamabunta", description: "-35% dano recebido por 3t.", type: "buff", cost: 35, cooldown: 4, effect: { type: "damage_reduction_passive", value: 0.35, duration: 3 }, gifUrl: "https://i.ibb.co/YTtDWRSp/quinehasenteredthediscord.gif" }),
           new Skill({ id: "naruto_sennin_absorcao", name: "Absorção Natural", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 } })
         ]
       });

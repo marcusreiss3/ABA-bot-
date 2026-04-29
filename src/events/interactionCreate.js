@@ -2160,19 +2160,47 @@ module.exports = {
         return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Você já está em um combate ativo!", false)], ephemeral: true });
       }
 
-      // Carregar time 3v3 do jogador
-      const towerTeamIds = BattleEngine.getRankedTeam(playerId);
-      if (!towerTeamIds || towerTeamIds.length < 3) {
-        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("A Torre Infinita exige um **Time de 3 personagens**. Configure em `!equip → Time 3v3`.", false)], ephemeral: true });
-      }
-      const towerTeamInsts = towerTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean);
-      if (towerTeamInsts.length < 3) {
-        return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Um ou mais personagens do seu time não foram encontrados. Reconfigure em `!equip → Time 3v3`.", false)], ephemeral: true });
-      }
-
-      // Verificar party (para canal e recompensas, o líder controla os 3 personagens)
+      // Verificar party
       const towerParty = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
       const towerPartyMembers = towerParty ? towerParty.members : [playerId];
+      const towerIsMultiParty = towerPartyMembers.length > 1;
+
+      let towerLeaderInst, towerBattlePartyArg, towerTeamInstsArg;
+
+      if (towerIsMultiParty) {
+        // Modo party: cada membro usa seu personagem equipado e participa diretamente
+        for (const memberId of towerPartyMembers) {
+          const memberPlayer = playerRepository.getPlayer(memberId);
+          if (!memberPlayer.equipped_instance_id) {
+            const memberUser = await interaction.client.users.fetch(memberId);
+            return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** não tem um personagem equipado!`, false)], ephemeral: true });
+          }
+          if (memberId !== playerId) {
+            const memberStatus = BattleEngine.canStartBattle(memberId);
+            if (!memberStatus.can) {
+              const memberUser = await interaction.client.users.fetch(memberId);
+              return interaction.reply({ embeds: [EmbedManager.createStatusEmbed(`O membro **${memberUser.username}** já está em um combate ativo!`, false)], ephemeral: true });
+            }
+          }
+        }
+        const leaderPlayer = playerRepository.getPlayer(playerId);
+        towerLeaderInst = playerRepository.getCharacterInstance(leaderPlayer.equipped_instance_id);
+        towerBattlePartyArg = towerPartyMembers;
+        towerTeamInstsArg = null;
+      } else {
+        // Modo solo: usa time 3v3
+        const towerTeamIds = BattleEngine.getRankedTeam(playerId);
+        if (!towerTeamIds || towerTeamIds.length < 3) {
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("A Torre Infinita exige um **Time de 3 personagens**. Configure em `!equip → Time 3v3`.", false)], ephemeral: true });
+        }
+        const towerTeamInsts = towerTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean);
+        if (towerTeamInsts.length < 3) {
+          return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Um ou mais personagens do seu time não foram encontrados. Reconfigure em `!equip → Time 3v3`.", false)], ephemeral: true });
+        }
+        towerLeaderInst = towerTeamInsts[0];
+        towerBattlePartyArg = [playerId];
+        towerTeamInstsArg = towerTeamInsts;
+      }
 
       // Criar canal temporário
       await interaction.deferUpdate();
@@ -2188,10 +2216,10 @@ module.exports = {
 
       const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
 
-      // Iniciar batalha com apenas o líder no turnOrder (somente ele controla os 3 personagens)
-      const battle = BattleEngine.startBattle(playerId, floorData.boss.id, towerTeamInsts[0], bossInstance, true, [playerId], false, channel.id, towerTeamInsts);
+      const battle = BattleEngine.startBattle(playerId, floorData.boss.id, towerLeaderInst, bossInstance, true, towerBattlePartyArg, false, channel.id, towerTeamInstsArg);
       battle.type = "tower";
       battle.currentFloor = floorNum;
+      // partyMembers já vem do startBattle, mas garantimos os membros reais para cooldown/recompensas
       battle.partyMembers = towerPartyMembers;
       battle.p1DisplayName = interaction.member?.displayName || interaction.user.username;
 
@@ -2225,32 +2253,48 @@ module.exports = {
       // Criar boss do novo andar
       const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
 
-      // Carregar time fresco para inicializar isPveTeam corretamente
-      const nextFloorTeamIds = BattleEngine.getRankedTeam(playerId);
-      const nextFloorTeamInsts = nextFloorTeamIds
-        ? nextFloorTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean)
-        : [];
+      const savedPartyMembers = oldBattle.partyMembers || [playerId];
+      let newBattle;
 
-      // Iniciar nova batalha no mesmo canal
-      const newBattle = BattleEngine.startBattle(
-        playerId, floorData.boss.id,
-        nextFloorTeamInsts[0] || playerRepository.getCharacterInstance(playerRepository.getPlayer(playerId).equipped_instance_id),
-        bossInstance, true, [playerId], false, oldBattle.channelId,
-        nextFloorTeamInsts.length >= 3 ? nextFloorTeamInsts : null
-      );
+      if (!oldBattle.isPveTeam && oldBattle.partyCharacters) {
+        // Modo party: cada membro traz seu personagem equipado
+        const leaderInst = playerRepository.getCharacterInstance(playerRepository.getPlayer(playerId).equipped_instance_id);
+        newBattle = BattleEngine.startBattle(
+          playerId, floorData.boss.id, leaderInst, bossInstance, true, savedPartyMembers, false, oldBattle.channelId, null
+        );
+        // Preservar HP dos personagens da luta anterior
+        for (const oldChar of oldBattle.partyCharacters) {
+          const newChar = newBattle.partyCharacters && newBattle.partyCharacters.find(c => c.ownerId === oldChar.ownerId);
+          if (newChar && oldChar.isAlive()) newChar.health = oldChar.health;
+        }
+      } else {
+        // Modo solo 3v3
+        const nextFloorTeamIds = BattleEngine.getRankedTeam(playerId);
+        const nextFloorTeamInsts = nextFloorTeamIds
+          ? nextFloorTeamIds.map(id => playerRepository.getCharacterInstance(id)).filter(Boolean)
+          : [];
+
+        newBattle = BattleEngine.startBattle(
+          playerId, floorData.boss.id,
+          nextFloorTeamInsts[0] || playerRepository.getCharacterInstance(playerRepository.getPlayer(playerId).equipped_instance_id),
+          bossInstance, true, [playerId], false, oldBattle.channelId,
+          nextFloorTeamInsts.length >= 3 ? nextFloorTeamInsts : null
+        );
+
+        // SOBRESCREVER o time pelo da luta anterior (com HP atual preservado)
+        if (oldBattle.p1Team) {
+          newBattle.p1Team = oldBattle.p1Team;
+          newBattle.isPveTeam = true;
+          const aliveIdx = oldBattle.p1Team.findIndex(c => c.isAlive());
+          newBattle.p1ActiveIdx = aliveIdx >= 0 ? aliveIdx : 0;
+          newBattle.character1 = newBattle.p1Team[newBattle.p1ActiveIdx];
+          newBattle.partyCharacters = null;
+        }
+      }
+
       newBattle.type = "tower";
       newBattle.currentFloor = floorNum;
-      newBattle.partyMembers = oldBattle.partyMembers || [playerId];
-
-      // SOBRESCREVER o time pelo da luta anterior (com HP atual preservado)
-      if (oldBattle.p1Team) {
-        newBattle.p1Team = oldBattle.p1Team;
-        newBattle.isPveTeam = true;
-        const aliveIdx = oldBattle.p1Team.findIndex(c => c.isAlive());
-        newBattle.p1ActiveIdx = aliveIdx >= 0 ? aliveIdx : 0;
-        newBattle.character1 = newBattle.p1Team[newBattle.p1ActiveIdx];
-        newBattle.partyCharacters = null;
-      }
+      newBattle.partyMembers = savedPartyMembers;
       newBattle.player1Id = playerId;
       newBattle.p1DisplayName = oldBattle.p1DisplayName || interaction.member?.displayName || interaction.user.username;
 
