@@ -372,6 +372,20 @@ async function handleInteraction(interaction) {
       });
     }
 
+    const limboCount = playerRepository.getLimboCount(userId);
+    if (limboCount > 1) {
+      const limboEmbed = new EmbedBuilder()
+        .setTitle("🌀 Limbo Lotado — Invocação Bloqueada")
+        .setDescription(
+          `Você tem **${limboCount} personagens no Limbo** e não pode invocar enquanto houver mais de 1 personagem aguardando resgate.\n\n` +
+          `Use \`!limbo\` para resgatar ou liberar seus personagens antes de continuar.\n\n` +
+          `> *O Nexus não aceita novos guerreiros enquanto os anteriores estiverem perdidos entre as dimensões.*`
+        )
+        .setColor("#ff4444")
+        .setFooter({ text: "!limbo → gerenciar personagens no Limbo" });
+      return interaction.reply({ embeds: [limboEmbed], ephemeral: true });
+    }
+
     playerRepository.updatePlayer(userId, { zenith_fragments: zenith - cost });
     const results = doPulls(bannerId, count, userId);
 

@@ -91,7 +91,7 @@ class BattleEngine {
   processTeamSwap(battleId, playerId, newCharIdx) {
     const battle = this.getBattle(battleId);
     if (!battle || battle.state !== "choosing_action" || battle.currentPlayerTurnId !== playerId) return null;
-    if (!battle.isTeamPvp) return null;
+    if (!battle.isTeamPvp && !battle.isPveTeam) return null;
 
     const isP1 = playerId === battle.player1Id;
     const team = isP1 ? battle.p1Team : battle.p2Team;

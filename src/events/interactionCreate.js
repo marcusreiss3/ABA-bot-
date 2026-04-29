@@ -2170,6 +2170,10 @@ module.exports = {
         return interaction.reply({ embeds: [EmbedManager.createStatusEmbed("Um ou mais personagens do seu time não foram encontrados. Reconfigure em `!equip → Time 3v3`.", false)], ephemeral: true });
       }
 
+      // Verificar party (para canal e recompensas, o líder controla os 3 personagens)
+      const towerParty = global.parties ? Array.from(global.parties.values()).find(p => p.members.includes(playerId)) : null;
+      const towerPartyMembers = towerParty ? towerParty.members : [playerId];
+
       // Criar canal temporário
       await interaction.deferUpdate();
       const guild = interaction.guild;
@@ -2178,23 +2182,24 @@ module.exports = {
         type: ChannelType.GuildText,
         permissionOverwrites: [
           { id: guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-          { id: playerId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }
+          ...towerPartyMembers.map(mId => ({ id: mId, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] }))
         ]
       });
 
       const bossInstance = { character_id: floorData.boss.id, level: floorData.boss.level };
 
+      // Iniciar batalha com apenas o líder no turnOrder (somente ele controla os 3 personagens)
       const battle = BattleEngine.startBattle(playerId, floorData.boss.id, towerTeamInsts[0], bossInstance, true, [playerId], false, channel.id, towerTeamInsts);
       battle.type = "tower";
       battle.currentFloor = floorNum;
-      battle.partyMembers = [playerId];
+      battle.partyMembers = towerPartyMembers;
       battle.p1DisplayName = interaction.member?.displayName || interaction.user.username;
 
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
       await channel.send({
-        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n<@${playerId}>\nPrepare-se para o combate contra **${floorData.boss.name}**!`,
+        content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n${towerPartyMembers.map(id => `<@${id}>`).join(" ")}\nPrepare-se para o combate contra **${floorData.boss.name}**!`,
         embeds: [embed],
         components: components
       });
@@ -2235,7 +2240,7 @@ module.exports = {
       );
       newBattle.type = "tower";
       newBattle.currentFloor = floorNum;
-      newBattle.partyMembers = [playerId];
+      newBattle.partyMembers = oldBattle.partyMembers || [playerId];
 
       // SOBRESCREVER o time pelo da luta anterior (com HP atual preservado)
       if (oldBattle.p1Team) {

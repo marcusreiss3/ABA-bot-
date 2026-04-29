@@ -192,7 +192,7 @@ class CharacterManager {
         energy: 100,
         maxEnergy: 100,
         rarity: "EC",
-        imageUrl: "https://i.ibb.co/placeholder/sasuke.png",
+        imageUrl: "https://i.ibb.co/fYdfSJps/sasuke.png",
         skills: [
           new Skill({ id: "sasuke_hosenka", name: "Katon: Hōsenka no Jutsu", description: "Múltiplos projéteis de fogo.", type: "attack", cost: 10, damage: 13, elementType: 'fogo' }),
           new Skill({ id: "sasuke_ryuka", name: "Katon: Ryūka no Jutsu", description: "QUEIMADURA 3% × 2t.", type: "attack", cost: 22, damage: 23, elementType: 'fogo', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.03 } }),
@@ -216,7 +216,7 @@ class CharacterManager {
         energy: 100,
         maxEnergy: 100,
         rarity: "EC",
-        imageUrl: "https://i.ibb.co/placeholder/ichigo.png",
+        imageUrl: "https://i.ibb.co/HDtwMcpQ/ichigo.png",
         skills: [
           new Skill({ id: "ichigo_corte", name: "Corte do Zangetsu", description: "Corte com reiatsu.", type: "attack", cost: 10, damage: 13, elementType: 'escuridao' }),
           new Skill({ id: "ichigo_reiatsu", name: "Pressão de Reiatsu", description: "SANGRAMENTO 5% × 2t.", type: "attack", cost: 22, damage: 23, elementType: 'escuridao', cooldown: 1, effect: { type: "bleed", duration: 2, value: 0.05 } }),
@@ -240,7 +240,7 @@ class CharacterManager {
         energy: 100,
         maxEnergy: 100,
         rarity: "EC",
-        imageUrl: "https://i.ibb.co/placeholder/meliodas.png",
+        imageUrl: "https://i.ibb.co/8nrq292k/meliodas.png",
         skills: [
           new Skill({ id: "meliodas_corte", name: "Corte do Dragão", description: "Corte com poder demoníaco.", type: "attack", cost: 10, damage: 13, elementType: 'escuridao' }),
           new Skill({ id: "meliodas_hellblaze", name: "Hell Blaze", description: "Chamas negras demoníacas. QUEIMADURA 3% × 2t.", type: "attack", cost: 25, damage: 27, elementType: 'escuridao', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.03 } }),
@@ -530,7 +530,7 @@ class CharacterManager {
         maxEnergy: 130,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/naoya.png",
+        imageUrl: "https://i.ibb.co/Q7Nkqr2P/naoya.png",
         skills: [
           new Skill({ id: "naoya_sequencia_socos", name: "Sequência de Socos", description: "Combo de socos rápidos.", type: "attack", cost: 10, damage: 18, elementType: 'vento', gifUrl: "https://i.ibb.co/SDvGrJzq/jjk-maki.gif" }),
           new Skill({ id: "naoya_24_quadros", name: "24 Quadros", description: "Ataque duplo nos próximos 3 turnos.", type: "buff", cost: 20, cooldown: 4, gifUrl: "https://i.ibb.co/8gLkF4dy/flpy7wzyx9jg1.gif" }),
@@ -555,7 +555,7 @@ class CharacterManager {
         maxEnergy: 135,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/zoro.png",
+        imageUrl: "https://i.ibb.co/p61FzFSj/zoro.png",
         skills: [
           new Skill({ id: "zoro_oni_giri", name: "Oni Giri", description: "Corte cruzado com três espadas.", type: "attack", cost: 12, damage: 22, elementType: 'vento', gifUrl: "https://i.ibb.co/zVdtdYWk/one-piece-zoro-vs-king.gif" }),
           new Skill({ id: "zoro_tatsu_maki", name: "Tatsu Maki", description: "Tornado de lâminas. 25% chance de ATORDOAR.", type: "attack", cost: 28, damage: 38, elementType: 'vento', cooldown: 2, effect: { type: "stun", duration: 1, chance: 0.25 }, gifUrl: "https://i.ibb.co/k6MZmm8y/zoro-hatchan.gif" }),
@@ -580,7 +580,7 @@ class CharacterManager {
         maxEnergy: 145,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/emilia.png",
+        imageUrl: "https://i.ibb.co/nMTp0stf/emilia.png",
         skills: [
           new Skill({ id: "emilia_gelo_eterno", name: "Martelada de Gelo", description: "Golpe com martelo de gelo.", type: "attack", cost: 12, damage: 18, elementType: 'gelo', gifUrl: "https://i.ibb.co/R4sNDVK3/re-zero-subaru.gif" }),
           new Skill({ id: "emilia_espinhos_gelo", name: "Espinhos de Gelo", description: "Múltiplos espinhos. CONGELADO 2t.", type: "attack", cost: 25, damage: 30, elementType: 'gelo', cooldown: 2, effect: { type: "frozen", duration: 2 }, gifUrl: "https://i.ibb.co/r2RFPmPy/132651.gif" }),
@@ -689,13 +689,13 @@ class CharacterManager {
         maxEnergy: 140,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/zenitsu.png",
+        imageUrl: "https://i.ibb.co/HL9yTPTK/zenitsu.png",
         skills: [
-          new Skill({ id: "zenitsu_corte", name: "Corte", description: "Corte rápido.", type: "attack", cost: 12, damage: 22, elementType: 'raio' }),
-          new Skill({ id: "zenitsu_respiracao_trovao", name: "Respiração do Trovão", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 25, damage: 38, elementType: 'raio', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.05 } }),
-          new Skill({ id: "zenitsu_deus_trovao", name: "Deus do Trovão", description: "Dano alto. 30% chance de atacar 2×.", type: "attack", cost: 50, damage: 55, elementType: 'raio', cooldown: 2 }),
-          new Skill({ id: "zenitsu_dormir", name: "Dormir", description: "Zenitsu dorme 3 turnos: +80% dano, mas ataca aleatoriamente.", type: "buff", cost: 30, cooldown: 6 }),
-          new Skill({ id: "zenitsu_instinto_sobrevivencia", name: "Instinto de Sobrevivência", description: "-60% dano recebido.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.40 } })
+          new Skill({ id: "zenitsu_corte", name: "Corte", description: "Corte rápido.", type: "attack", cost: 12, damage: 22, elementType: 'raio', gifUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT2OQrsbJD4F-bH2qhKgVh3xxA3yJDdwnEoEQ&s" }),
+          new Skill({ id: "zenitsu_respiracao_trovao", name: "Respiração do Trovão", description: "Dano médio. QUEIMADURA 5% × 2t.", type: "attack", cost: 25, damage: 38, elementType: 'raio', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.05 }, gifUrl: "https://i.pinimg.com/originals/1d/3d/bf/1d3dbf048330590da90564fc6404451a.gif" }),
+          new Skill({ id: "zenitsu_deus_trovao", name: "Deus do Trovão", description: "Dano alto. 30% chance de atacar 2×.", type: "attack", cost: 50, damage: 55, elementType: 'raio', cooldown: 2, gifUrl: "https://i.ibb.co/3ycf9FLt/demon-slayer-kimetsu-no-yaiba.gif" }),
+          new Skill({ id: "zenitsu_dormir", name: "Dormir", description: "Zenitsu dorme 3 turnos: +80% dano, mas ataca aleatoriamente.", type: "buff", cost: 30, cooldown: 6, gifUrl: "https://i.ibb.co/pBBsSJg6/zenitsu-agatsuma-demon-slayer.gif" }),
+          new Skill({ id: "zenitsu_instinto_sobrevivencia", name: "Instinto de Sobrevivência", description: "-60% dano recebido.", type: "reaction", cost: 30, cooldown: 2, effect: { type: "damage_reduction", value: 0.40 }, gifUrl: "https://i.ibb.co/twVzgvKw/zenitsu-dodge.gif" })
         ]
       });
     }
@@ -714,7 +714,7 @@ class CharacterManager {
         maxEnergy: 148,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/naruto_sennin.png",
+        imageUrl: "https://i.ibb.co/3yShztft/naruto-sennin.png",
         skills: [
           new Skill({ id: "naruto_sennin_rasengan", name: "Rasengan", description: "Golpe com Rasengan.", type: "attack", cost: 15, damage: 26, elementType: 'vento' }),
           new Skill({ id: "naruto_sennin_rasenshuriken", name: "Rasenshuriken", description: "Dano alto. SANGRAMENTO 5% × 2t.", type: "attack", cost: 45, damage: 62, elementType: 'vento', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 } }),
@@ -739,7 +739,7 @@ class CharacterManager {
         maxEnergy: 155,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/goku_ssj3.png",
+        imageUrl: "https://i.ibb.co/kgY2hFJ7/goku-ssj3.png",
         skills: [
           new Skill({ id: "goku_ssj3_kamehameha", name: "Kamehameha", description: "Onda de Ki.", type: "attack", cost: 18, damage: 28, elementType: 'luz' }),
           new Skill({ id: "goku_ssj3_super_kamehameha", name: "Super Kamehameha", description: "Dano alto.", type: "attack", cost: 40, damage: 68, elementType: 'luz', cooldown: 2 }),
@@ -764,7 +764,7 @@ class CharacterManager {
         maxEnergy: 140,
         rarity: "AL",
         generation: 2,
-        imageUrl: "https://i.ibb.co/placeholder/killua.png",
+        imageUrl: "https://i.ibb.co/27SSNwH0/killua.png",
         skills: [
           new Skill({ id: "killua_garra_trovao", name: "Garra do Trovão", description: "Dano baixo. 35% chance de ATORDOAR. +1 Spark.", type: "attack", cost: 12, damage: 22, elementType: 'raio', effect: { type: "stun", duration: 1, chance: 0.35 } }),
           new Skill({ id: "killua_narukami", name: "Narukami", description: "Dano médio. +2 Sparks.", type: "attack", cost: 32, damage: 48, elementType: 'raio', cooldown: 1 }),
