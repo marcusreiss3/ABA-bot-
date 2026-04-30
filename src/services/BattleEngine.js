@@ -1731,13 +1731,25 @@ class BattleEngine {
           }
         }
 
+        // Party: auto-swap para o próximo personagem vivo
+        if (battle.partyCharacters) {
+          const nextAlive = battle.partyCharacters.find(c => c !== defender && c.isAlive());
+          if (nextAlive) {
+            battle.character1 = nextAlive;
+            battle.lastActionMessage += `\n⚡ **${nextAlive.name}** entra em campo!`;
+            this.endTurnUpdate(battle);
+            if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+            return battle;
+          }
+        }
+
         // Verificar se todos os jogadores foram derrotados
         const allDead = battle.partyCharacters ? battle.partyCharacters.every(c => !c.isAlive()) : !battle.character1.isAlive();
         if (allDead) {
           battle.state = "finished";
           battle.winnerId = battle.player2Id;
           battle.lastActionMessage += `\n\n💀 Todos os jogadores foram derrotados! O Boss venceu.`;
-          
+
           // Se for Torre Infinita, aplicar cooldown de 35 minutos em todos
           if (battle.type === "tower") {
             const cooldownTime = 35 * 60 * 1000;
@@ -2085,6 +2097,15 @@ class BattleEngine {
           }
         }
       } else {
+        // Party: auto-swap para o próximo personagem vivo
+        if (battle.partyCharacters) {
+          const nextAlive = battle.partyCharacters.find(c => c !== character && c.isAlive());
+          if (nextAlive) {
+            battle.character1 = nextAlive;
+            battle.lastActionMessage += `\n⚡ **${nextAlive.name}** entra em campo!`;
+            return;
+          }
+        }
         const allDead = battle.partyCharacters
           ? battle.partyCharacters.every(c => !c.isAlive())
           : !battle.character1.isAlive();
