@@ -720,7 +720,7 @@ class CharacterManager {
           new Skill({ id: "naruto_sennin_rasenshuriken", name: "Rasenshuriken", description: "Dano alto. SANGRAMENTO 5% × 2t.", type: "attack", cost: 45, damage: 62, elementType: 'vento', cooldown: 2, effect: { type: "bleed", duration: 2, value: 0.05 }, gifUrl: "https://i.pinimg.com/originals/ca/2f/5b/ca2f5badf7e39dcf79c26f1ab8d3e08e.gif" }),
           new Skill({ id: "naruto_sennin_kata", name: "Kata do Sapo", description: "Dano alto. 35% chance de ATORDOAR.", type: "attack", cost: 50, damage: 65, elementType: 'vento', cooldown: 3, effect: { type: "stun", duration: 1, chance: 0.35 }, gifUrl: "https://i.ibb.co/3mQ0QXfh/naruto-naruto-shippuden.gif" }),
           new Skill({ id: "naruto_sennin_invocacao", name: "Invocação: Gamabunta", description: "-35% dano recebido por 3t.", type: "buff", cost: 35, cooldown: 4, effect: { type: "damage_reduction_passive", value: 0.35, duration: 3 }, gifUrl: "https://i.ibb.co/YTtDWRSp/quinehasenteredthediscord.gif" }),
-          new Skill({ id: "naruto_sennin_absorcao", name: "Absorção Natural", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 } })
+          new Skill({ id: "naruto_sennin_absorcao", name: "Absorção Natural", description: "-50% dano recebido.", type: "reaction", cost: 20, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 }, gifUrl: "https://i.pinimg.com/originals/25/42/ea/2542ea22dc70e3f98bbc8f1602a815f6.gif" })
         ]
       });
     }
@@ -741,10 +741,10 @@ class CharacterManager {
         generation: 2,
         imageUrl: "https://i.ibb.co/kgY2hFJ7/goku-ssj3.png",
         skills: [
-          new Skill({ id: "goku_ssj3_kamehameha", name: "Kamehameha", description: "Onda de Ki.", type: "attack", cost: 18, damage: 28, elementType: 'luz' }),
-          new Skill({ id: "goku_ssj3_super_kamehameha", name: "Super Kamehameha", description: "Dano alto.", type: "attack", cost: 40, damage: 68, elementType: 'luz', cooldown: 2 }),
-          new Skill({ id: "goku_ssj3_golpe", name: "Golpe Meteórico", description: "35% chance de ATORDOAR.", type: "attack", cost: 30, damage: 44, elementType: "fogo", cooldown: 1, effect: { type: "stun", duration: 1, chance: 0.35 } }),
-          new Skill({ id: "goku_ssj3_rugido", name: "Rugido de Ki", description: "+60% dano por 2t.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.6, duration: 2 } }),
+          new Skill({ id: "goku_ssj3_kamehameha", name: "Kamehameha", description: "Onda de Ki.", type: "attack", cost: 18, damage: 28, elementType: 'luz', gifUrl: "https://giffiles.alphacoders.com/105/105475.gif" }),
+          new Skill({ id: "goku_ssj3_super_kamehameha", name: "Super Kamehameha", description: "Dano alto.", type: "attack", cost: 40, damage: 68, elementType: 'luz', cooldown: 2, gifUrl: "https://i.ibb.co/zLPPdpG/dc28r29-02bb1181-dfb4-4f07-8b5d-907aba025a4e.gif" }),
+          new Skill({ id: "goku_ssj3_golpe", name: "Golpe Meteórico", description: "35% chance de ATORDOAR.", type: "attack", cost: 30, damage: 44, elementType: "fogo", cooldown: 1, effect: { type: "stun", duration: 1, chance: 0.35 }, gifUrl: "https://i.ibb.co/7xtcnr5P/4m25qw9pkimb1.gif" }),
+          new Skill({ id: "goku_ssj3_rugido", name: "Rugido de Ki", description: "+60% dano por 2t.", type: "buff", cost: 30, cooldown: 3, effect: { multiplier: 1.6, duration: 2 }, gifUrl: "https://i.pinimg.com/originals/ea/26/50/ea26506807114a0e6a962fd0adff8be0.gif" }),
           new Skill({ id: "goku_ssj3_aura", name: "Aura de Ki", description: "-50% dano recebido.", type: "reaction", cost: 15, cooldown: 1, effect: { type: "damage_reduction", value: 0.50 } })
         ]
       });

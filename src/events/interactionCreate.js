@@ -2262,10 +2262,17 @@ module.exports = {
         newBattle = BattleEngine.startBattle(
           playerId, floorData.boss.id, leaderInst, bossInstance, true, savedPartyMembers, false, oldBattle.channelId, null
         );
-        // Preservar HP dos personagens da luta anterior
+        // Preservar HP, energia e cooldowns dos personagens da luta anterior
         for (const oldChar of oldBattle.partyCharacters) {
           const newChar = newBattle.partyCharacters && newBattle.partyCharacters.find(c => c.ownerId === oldChar.ownerId);
-          if (newChar && oldChar.isAlive()) newChar.health = oldChar.health;
+          if (newChar && oldChar.isAlive()) {
+            newChar.health = oldChar.health;
+            newChar.energy = oldChar.energy;
+            for (const oldSkill of oldChar.skills) {
+              const newSkill = newChar.skills.find(s => s.id === oldSkill.id);
+              if (newSkill) newSkill.currentCooldown = oldSkill.currentCooldown;
+            }
+          }
         }
       } else {
         // Modo solo 3v3
