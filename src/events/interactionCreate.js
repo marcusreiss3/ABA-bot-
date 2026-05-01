@@ -52,35 +52,35 @@ async function sendStallEmbed(message, battleId, battle) {
   }
 }
 
-// Edits the battle message or falls back to sending a new one if the edit fails.
-// Always updates battle.lastMessageId to point at the current visible message.
+// Edits the battle message. Falls back to finding the latest bot embed in the channel.
+// Never sends a new message — all battle state lives on a single channel message.
 async function safeEditBattleMessage(client, battle, payload) {
   const channelId = battle.channelId;
   const msgId = battle.lastMessageId;
 
-  if (channelId && msgId) {
-    try {
-      const ch = await client.channels.fetch(channelId).catch(() => null);
-      if (ch) {
-        const msg = await ch.messages.fetch(msgId).catch(() => null);
-        if (msg) {
-          await msg.edit(payload);
-          return;
-        }
-      }
-    } catch (_) {}
-  }
-
-  // Fallback: send a new message
   if (channelId) {
     try {
       const ch = await client.channels.fetch(channelId).catch(() => null);
-      if (ch) {
-        const newMsg = await ch.send(payload);
-        battle.lastMessageId = newMsg.id;
+      if (!ch) return;
+
+      // Try the stored message first
+      if (msgId) {
+        const msg = await ch.messages.fetch(msgId).catch(() => null);
+        if (msg) { await msg.edit(payload); return; }
+      }
+
+      // Fallback: find the most recent bot message with an embed and edit it
+      const recent = await ch.messages.fetch({ limit: 10 }).catch(() => null);
+      if (recent) {
+        const botMsg = recent.find(m => m.author.id === client.user.id && m.embeds.length > 0);
+        if (botMsg) {
+          await botMsg.edit(payload);
+          battle.lastMessageId = botMsg.id;
+          return;
+        }
       }
     } catch (e) {
-      console.error("[SAFE_EDIT] Fallback send falhou:", e);
+      console.error("[SAFE_EDIT] Falhou:", e);
     }
   }
 }
@@ -1623,11 +1623,12 @@ module.exports = {
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
       
-      await channel.send({
+      const challengeMsg = await channel.send({
         content: `⚔️ **DESAFIO INICIADO!** ⚔️\n${partyMembers.map(id => `<@${id}>`).join(" ")} vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
         embeds: [embed],
         components: components
       });
+      battle.lastMessageId = challengeMsg.id;
 
       return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Desafio iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
@@ -2131,11 +2132,12 @@ module.exports = {
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
       
-      await channel.send({
+      const storyMsg = await channel.send({
         content: `📖 **JORNADA INICIADA!** 📖\n${partyMembers.map(id => `<@${id}>`).join(" ")} vs **${bossId.toUpperCase()}**\n\nEste canal será apagado ao fim da luta.`,
         embeds: [embed],
         components: components
       });
+      battle.lastMessageId = storyMsg.id;
 
       return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Jornada iniciada no canal <#${channel.id}>!`, true)], components: [] });
     }
@@ -2226,11 +2228,12 @@ module.exports = {
       const embed = EmbedManager.createBattleEmbed(battle);
       const components = ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
 
-      await channel.send({
+      const towerMsg = await channel.send({
         content: `🗼 **TORRE INFINITA - ANDAR ${floorNum}** 🗼\n${towerPartyMembers.map(id => `<@${id}>`).join(" ")}\nPrepare-se para o combate contra **${floorData.boss.name}**!`,
         embeds: [embed],
         components: components
       });
+      battle.lastMessageId = towerMsg.id;
 
       return interaction.editReply({ embeds: [EmbedManager.createStatusEmbed(`Combate iniciado no canal <#${channel.id}>!`, true)], components: [] });
     }
@@ -2787,8 +2790,36 @@ module.exports = {
       await interaction.editReply({ content: "✅ Personagem trocado!", components: [] });
 
       const embed = EmbedManager.createBattleEmbed(battle);
-      const components = battle.state === "finished" ? [] : ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), false, battle);
+      const isBossTurnAfterSwap = battle.isPve && battle.currentPlayerTurnId === battle.player2Id;
+      const components = battle.state === "finished" ? [] : ButtonManager.createActionComponents(battle.id, battle.getCurrentPlayer(), isBossTurnAfterSwap, battle);
       await safeEditBattleMessage(interaction.client, battle, { embeds: [embed], components });
+
+      // Dispara o turno do boss automaticamente em PvE após a troca
+      if (battle.isPve && battle.state === "choosing_action" && battle.currentPlayerTurnId === battle.player2Id) {
+        const swapBattleId = battleId;
+        const swapClient = interaction.client;
+        setTimeout(async () => {
+          try {
+            const fresh = BattleEngine.getBattle(swapBattleId);
+            if (!fresh || fresh.state !== "choosing_action" || fresh.currentPlayerTurnId !== fresh.player2Id || fresh.bossProcessing) return;
+            fresh.bossProcessing = true;
+            fresh.bossProcessingAt = Date.now();
+            const attackBattle = BattleEngine.processBossTurn(fresh);
+            fresh.bossProcessing = false;
+            if (!attackBattle) return;
+            const isBR = attackBattle.isPve && attackBattle.getOpponentId() === attackBattle.player2Id;
+            const attackComponents = attackBattle.state === "finished" ? [] :
+              (attackBattle.state === "choosing_reaction"
+                ? ButtonManager.createReactionButtons(swapBattleId, attackBattle.getOpponentPlayer(), isBR)
+                : ButtonManager.createActionComponents(swapBattleId, attackBattle.getCurrentPlayer(), false, attackBattle));
+            await safeEditBattleMessage(swapClient, attackBattle, { embeds: [EmbedManager.createBattleEmbed(attackBattle)], components: attackComponents });
+          } catch (e) {
+            console.error("[SWAP_BOSS] Erro no turno do boss após troca:", e);
+            const b = BattleEngine.getBattle(swapBattleId);
+            if (b) b.bossProcessing = false;
+          }
+        }, 1500);
+      }
       return;
     }
 

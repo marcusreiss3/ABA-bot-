@@ -98,6 +98,20 @@ class EmbedManager {
       }
     }
 
+    // Ilusão Polar (Ice Shield) HP indicator
+    if (battle.iceShield) {
+      for (const shieldState of Object.values(battle.iceShield)) {
+        if (shieldState.active && shieldState.health > 0) {
+          const iceBar = Math.round((shieldState.health / shieldState.maxHealth) * 10);
+          embed.addFields({
+            name: `❄️ Ilusão Polar`,
+            value: `${"█".repeat(iceBar)}${"░".repeat(10 - iceBar)} ${shieldState.health}/${shieldState.maxHealth} HP`,
+            inline: false
+          });
+        }
+      }
+    }
+
     // Vimana HP indicator
     if (battle.vimana) {
       for (const vimanaState of Object.values(battle.vimana)) {
@@ -222,6 +236,11 @@ class EmbedManager {
 
     if (char.buffs.some(b => b.id === "kaioken")) {
       stats += `\n🔴 **Kaioken Ativo!**`;
+    }
+
+    if (char.buffs.some(b => b.id === "hitsugaya_bankai")) {
+      const bankaiDuration = char.buffs.find(b => b.id === "hitsugaya_bankai")?.duration || 0;
+      stats += `\n❄️ **Daiguren Hyōrinmaru:** +80% Dano (${bankaiDuration}t restante${bankaiDuration !== 1 ? "s" : ""})`;
     }
 
     if (char.buffs.some(b => b.id === "chainsaw_man")) {

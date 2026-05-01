@@ -882,6 +882,36 @@ class BattleEngine {
       return battle;
     }
 
+    // --- Toshiro Hitsugaya: Ilusão Polar (escudo de gelo) ---
+    if (skill.id === "hitsugaya_ilusao_polar") {
+      if (!battle.iceShield) battle.iceShield = {};
+      const existingShield = battle.iceShield[battle.currentPlayerTurnId];
+      if (existingShield && existingShield.active) {
+        battle.lastActionMessage = `❄️ **${attacker.name}** já tem uma **Ilusão Polar** ativa! (${existingShield.health}/${existingShield.maxHealth} HP)`;
+        attacker.recoverEnergy(skill.cost);
+        battle.state = "choosing_action";
+        return battle;
+      }
+      const shieldHp = Math.floor(attacker.maxHealth * 0.20);
+      battle.iceShield[battle.currentPlayerTurnId] = { active: true, health: shieldHp, maxHealth: shieldHp };
+      battle.lastActionMessage = `❄️ **${attacker.name}** criou uma **Ilusão Polar**! Escudo com **${shieldHp}** HP — o inimigo deve destruí-lo primeiro!`;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
+    // --- Toshiro Hitsugaya: Bankai ---
+    if (skill.id === "hitsugaya_bankai") {
+      attacker.addBuff({ id: "hitsugaya_bankai", multiplier: 1.8, duration: 5 });
+      battle.lastActionMessage = `❄️ **${attacker.name}** ativou o **Bankai — Daiguren Hyōrinmaru**! Dano aumentado em **80%** por 5 turnos!`;
+      battle.lastBuffGifUrl = skill.gifUrl || null;
+      battle.switchTurn();
+      this.endTurnUpdate(battle);
+      if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+      return battle;
+    }
+
     // --- Killua: Kanmuru: Godspeed (5 Sparks — velocidade absoluta, sem reação) ---
     if (skill.id === "killua_kanmuru") {
       const sparks = (attacker.stacks && attacker.stacks["sparks"]) || 0;
@@ -1387,6 +1417,22 @@ class BattleEngine {
       } else {
         defender.addStack("naoya_mirror", 2);
         battle.lastActionMessage += `\n🪞 **Barra Espelho:** \`${defender.stacks["naoya_mirror"]}/2\``;
+      }
+    }
+
+    // Hitsugaya: Ilusão Polar — escudo absorve dano antes de chegar ao defensor
+    if (battle.iceShield && damageToApply > 0) {
+      const shieldOwnerId = defender.ownerId || (defender === battle.character1 ? battle.player1Id : battle.player2Id);
+      const iceS = battle.iceShield[shieldOwnerId];
+      if (iceS && iceS.active && iceS.health > 0) {
+        const absorbed = Math.min(iceS.health, damageToApply);
+        iceS.health -= absorbed;
+        damageToApply -= absorbed;
+        battle.lastActionMessage += `\n❄️ **Ilusão Polar** absorveu **${absorbed}** de dano! (${iceS.health}/${iceS.maxHealth} HP)`;
+        if (iceS.health <= 0) {
+          iceS.active = false;
+          battle.lastActionMessage += `\n💨 A **Ilusão Polar** foi destruída!`;
+        }
       }
     }
 
@@ -2021,6 +2067,24 @@ class BattleEngine {
       }
     }
 
+    // 25% de chance do boss atacar a Ilusão Polar do jogador
+    if (battle.iceShield) {
+      const playerIceShield = battle.iceShield[battle.player1Id];
+      if (playerIceShield && playerIceShield.active && playerIceShield.health > 0 && Math.random() < 0.25) {
+        const shieldHitDmg = Math.floor(playerIceShield.maxHealth * 0.20);
+        playerIceShield.health = Math.max(0, playerIceShield.health - shieldHitDmg);
+        battle.lastActionMessage = `⚔️ **${attacker.name}** atacou a **❄️ Ilusão Polar** causando **${shieldHitDmg}** de dano! (${playerIceShield.health}/${playerIceShield.maxHealth} HP)`;
+        if (playerIceShield.health <= 0) {
+          playerIceShield.active = false;
+          battle.lastActionMessage += `\n💨 **Ilusão Polar** foi destruída pelo Boss!`;
+        }
+        battle.switchTurn();
+        this.endTurnUpdate(battle);
+        if (battle.state !== "finished" && battle.state !== "waiting_next_floor") battle.state = "choosing_action";
+        return battle;
+      }
+    }
+
     const allAttacks = attacker.skills.filter(s => s.type === "attack");
     const affordableAttacks = allAttacks.filter(s => attacker.energy >= s.cost && !s.isOnCooldown());
     const healSkills = attacker.skills.filter(s => s.type === "heal" && attacker.energy >= s.cost && !s.isOnCooldown());
@@ -2410,6 +2474,7 @@ class BattleEngine {
     attacker.buffs.forEach(buff => {
       if (buff.id === "kaioken") damage *= 1.5;
       if (buff.id === "goku_ssj3_rugido") damage *= (buff.multiplier || 1.4);
+      if (buff.id === "hitsugaya_bankai") damage *= (buff.multiplier || 1.8);
       if (buff.type === "debuff_damage") damage *= (1 - buff.value);
     });
 

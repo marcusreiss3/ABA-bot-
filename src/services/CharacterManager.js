@@ -591,6 +591,57 @@ class CharacterManager {
       });
     }
 
+    if (characterId === "shinra") {
+      char = new Character({
+        id: "shinra",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Shinra Kusakabe",
+        anime: "fire_force",
+        element: "fogo",
+        health: 165,
+        maxHealth: 165,
+        energy: 130,
+        maxEnergy: 130,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://i.ibb.co/4kp2hQs/fire-force-fire-force-shinra.gif",
+        skills: [
+          new Skill({ id: "shinra_high_speed_kick", name: "High-Speed Kick", description: "Chute veloz flamejante. QUEIMADURA 4% × 1t.", type: "attack", cost: 10, damage: 15, elementType: 'fogo', effect: { type: "burn", duration: 1, value: 0.04 }, gifUrl: "https://i.ibb.co/4kp2hQs/fire-force-fire-force-shinra.gif" }),
+          new Skill({ id: "shinra_corna", name: "Corna", description: "Chute flamejante em chifre. QUEIMADURA 5% × 2t.", type: "attack", cost: 22, damage: 28, elementType: 'fogo', cooldown: 1, effect: { type: "burn", duration: 2, value: 0.05 }, gifUrl: "https://imgur.com/CB4K3cu.gif" }),
+          new Skill({ id: "shinra_chained_breakdance", name: "Chained Breakdance", description: "Série de chutes explosivos. 50% de ATORDOAR 1t.", type: "attack", cost: 30, damage: 35, elementType: 'fogo', cooldown: 2, effect: { type: "stun", duration: 1, chance: 0.50 }, gifUrl: "https://imgur.com/a/PvfCTAV.gif" }),
+          new Skill({ id: "shinra_adolla_burst", name: "Adolla Burst", description: "Chama primordial. QUEIMADURA 8% × 3t. Maldição de Adolla: +30% dano recebido por 2t.", type: "attack", cost: 50, damage: 70, elementType: 'fogo', cooldown: 4, effect: { type: "burn", duration: 3, value: 0.08, debuff_damage_taken: 0.30, debuff_duration: 2 }, gifUrl: "https://imgur.com/eYD76pg.gif" }),
+          new Skill({ id: "shinra_flaming_trace", name: "Flaming Trace", description: "-55% dano recebido.", type: "reaction", cost: 18, cooldown: 2, effect: { type: "damage_reduction", value: 0.45 }, gifUrl: "https://i.ibb.co/7xtcnr5P/4m25qw9pkimb1.gif" })
+        ]
+      });
+    }
+
+    if (characterId === "hitsugaya") {
+      char = new Character({
+        id: "hitsugaya",
+        instanceId: instanceData.id,
+        level: instanceData.level || 1,
+        name: "Toshiro Hitsugaya",
+        anime: "bleach",
+        element: "gelo",
+        health: 160,
+        maxHealth: 160,
+        energy: 145,
+        maxEnergy: 145,
+        rarity: "AL",
+        generation: 2,
+        imageUrl: "https://imgur.com/xgdNPDQ.gif",
+        skills: [
+          new Skill({ id: "hitsugaya_corte_gelo", name: "Corte de Gelo", description: "Corte com lâmina de gelo.", type: "attack", cost: 10, damage: 18, elementType: 'gelo', gifUrl: "https://imgur.com/xgdNPDQ.gif" }),
+          new Skill({ id: "hitsugaya_ilusao_polar", name: "Ilusão Polar", description: "Cria um escudo de gelo com 20% do HP máximo.", type: "buff", cost: 28, cooldown: 4, gifUrl: "https://imgur.com/a/tVbQ2XC.gif" }),
+          new Skill({ id: "hitsugaya_ruptura_artica", name: "Ruptura Ártica", description: "Explosão de gelo. CONGELADO 2t.", type: "attack", cost: 30, damage: 40, elementType: 'gelo', cooldown: 2, effect: { type: "frozen", duration: 2 }, gifUrl: "https://imgur.com/a/dNR2bL7.gif" }),
+          new Skill({ id: "hitsugaya_pilar_gelido", name: "Pilar Gélido", description: "Pilar de gelo. ATORDOA 1t.", type: "attack", cost: 20, damage: 22, elementType: 'gelo', cooldown: 2, effect: { type: "stun", duration: 1 }, gifUrl: "https://imgur.com/a/RhGVXQK.gif" }),
+          new Skill({ id: "hitsugaya_bankai", name: "Daiguren Hyōrinmaru", description: "Bankai: +80% de dano por 5 turnos. (1× por luta)", type: "buff", cost: 50, cooldown: 999, gifUrl: "https://imgur.com/a/NLQ91SV.gif" }),
+          new Skill({ id: "hitsugaya_cupula_gelo", name: "Cúpula de Gelo", description: "-70% dano recebido.", type: "reaction", cost: 22, cooldown: 2, effect: { type: "damage_reduction", value: 0.30 }, gifUrl: "https://imgur.com/a/Uk6haDm.gif" })
+        ]
+      });
+    }
+
     if (characterId === "gilgamesh") {
       const vimanaSkills = [
         new Skill({ id: "vimana_explosive_shots", name: "Vimana: Tiros Explosivos", description: "Dano médio. ATORDOA 1t.", type: "attack", cost: 20, damage: 45, elementType: 'luz', cooldown: 2, effect: { type: "stun", duration: 1 } }),
@@ -949,6 +1000,8 @@ class CharacterManager {
       naoya_zenin: 'vento',
       zoro: 'vento',
       emilia: 'gelo',
+      shinra: 'fogo',
+      hitsugaya: 'gelo',
       // EC
       sasuke: 'fogo',
       ichigo: 'escuridao',
